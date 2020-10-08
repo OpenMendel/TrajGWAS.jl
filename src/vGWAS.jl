@@ -47,19 +47,18 @@ function WSVarScoreTestBaseObs(nullObs::WSVarLmmObs{T}) where T <: BlasReal
 
     # construct A_21_β2β1_pre
     # X2t * Vinv, Vinv = Dinv - UUt
-    fill!(A_21_β2β1_pre, zero(T))
     X2t_U = nullObs.Xt * transpose(nullObs.Ut)
     mul!(A_21_β2β1_pre, -X2t_U, nullObs.Ut)
     @inbounds @simd for j in 1:n
         for i in 1:p
-            A_21_β2β1_pre[i, j] += nullObs.Xtnv[i, j] * nullObs.Dinv[j] # first term
+            A_21_β2β1_pre[i, j] += nullObs.Xt[i, j] * nullObs.Dinv[j] # first term
         end
     end    
 
     # construct A_21_τ2τ1_pre
     # W2t * D * Vinv .* Vinv * D, this is no longer symmetric.
     # compute W2t * D * Vinv .* Vinv 
-    mul!(A_21_τ2τ1_pre, nullObs.Wt_D_Ut_kr_Utt, obs.Ut_kr_Ut) # third term
+    mul!(A_21_τ2τ1_pre, nullObs.Wt_D_Ut_kr_Utt, nullObs.Ut_kr_Ut) # third term
     @inbounds @simd for j in 1:n
         for i in 1:l
             A_21_τ2τ1_pre[i, j] += nullObs.Wt_D_Dinv[i, j] * nullObs.Dinv[j] # first term
@@ -69,17 +68,17 @@ function WSVarScoreTestBaseObs(nullObs::WSVarLmmObs{T}) where T <: BlasReal
     # right-multiply by D. 
     @inbounds @simd for j in 1:n
         for i in 1:l
-            A_21_τ2τ1_pre[i, j] = A_21_τ2τ1_pre[i, j] * obs.expwτ[j]
+            A_21_τ2τ1_pre[i, j] = A_21_τ2τ1_pre[i, j] * nullObs.expwτ[j]
         end
     end    
 
     # construct A_21_Lγτ1_pre
     # 2 * Cq' * (L'Z'(V^-1) ⊙ Z'(V^-1)) * Diagonal(expwτ)
     # nullObs.storage_q◺n is always Cq' * (L'Z'(V^-1) ⊙ Z'(V^-1)).
-    A21_Lγτ1_pre .=  2 * nullObs.storage_q◺n
+    A_21_Lγτ1_pre .=  2 * nullObs.storage_q◺n
     @inbounds @simd for j in 1:n
         for i in 1:l
-            A21_Lγτ1_pre[i, j] = A21_Lγτ1_pre[i, j] * nullObs.expwτ[j]
+            A_21_Lγτ1_pre[i, j] = A_21_Lγτ1_pre[i, j] * nullObs.expwτ[j]
         end
     end
 
@@ -131,7 +130,7 @@ function WSVarScoreTestObs(testbaseobs::WSVarScoreTestBaseObs{T}, X1obs::Abstrac
     A_21_τ2τ1 = Matrix{T}(undef, l, r_W1)
     A_21_Lγτ1 = Matrix{T}(undef, q◺, r_W1)
 
-    mul!(ψ_β1, X1t, testbaseobs.nullObs.Dinv_r - transpose(testbaseobs.nullObs.rt_UUt))
+    mul!(ψ_β1, X1t, reshape(testbaseobs.nullObs.Dinv_r - transpose(testbaseobs.nullObs.rt_UUt), :))
     mul!(ψ_τ1, -W1t, testbaseobs.nullObs.diagDVRV)
 
     mul!(A_21_β2β1, testbaseobs.A_21_β2β1_pre, X1obs)
@@ -172,10 +171,10 @@ struct WSVarScoreTest{T <: BlasReal}
     # inv(A_22) = nullmodel.Ainv
 end
 
-function WSVarScoreTest(nullmodel::WSVarLmmModel{T}, X1vec::Vector{AbstractMatrix{T}}, W1vec::Vector{AbstractMatrix{T}}; 
+function WSVarScoreTest(nullmodel::WSVarLmmModel{T}, X1vec::Vector{<:AbstractMatrix{T}}, W1vec::Vector{<:AbstractMatrix{T}}; 
     testbaseobsvec::Union{Vector{WSVarScoreTestBaseObs{T}}, Nothing} = nothing) where T <: BlasReal
     if testbaseobsvec === nothing
-        testbaseobsvec = [WSVarScoreTestBaseObs(obs) for obs in m.data]
+        testbaseobsvec = [WSVarScoreTestBaseObs(obs) for obs in nullmodel.data]
     end
     testobsvec = [WSVarScoreTestObs(testbaseobs, X1obs, W1obs) for (testbaseobs, X1obs, W1obs) in zip(testbaseobsvec, X1vec, W1vec)]
 
@@ -193,7 +192,7 @@ function WSVarScoreTest(nullmodel::WSVarLmmModel{T}, X1vec::Vector{AbstractMatri
     # build ψ_1: sum_i testobs.ψ_1
     fill!(ψ_1, zero(T))
     for testobs in testobsvec
-        ψ_1 .+= testobsvec.ψ_1
+        ψ_1 .+= testobs.ψ_1
     end
 
     # build B_11: using BLAS.syr!()
@@ -210,7 +209,7 @@ function WSVarScoreTest(nullmodel::WSVarLmmModel{T}, X1vec::Vector{AbstractMatri
     ψ_β2 = @view ψ_2[1 : p]
     ψ_τ2 = @view ψ_2[p + 1 : p + l]
     ψ_Lγ = @view ψ_2[p + l + 1: end]
-    for (obs, testobs) in zip(m.data, testobsvec)
+    for (obs, testobs) in zip(nullmodel.data, testobsvec)
         ψ_β2 .= obs.∇β
         ψ_τ2 .= obs.∇τ
         offset = 1
@@ -234,7 +233,7 @@ function WSVarScoreTest(nullmodel::WSVarLmmModel{T}, X1vec::Vector{AbstractMatri
     end
     lmul!(1 / m, A_21)
 
-    WSVarScoreTest{T}(nullmodel, testobs, p, q, l, m, nsum, r_X1, r_W1, r, ψ_1, B_11, B_21, A_21)
+    WSVarScoreTest{T}(nullmodel, testobsvec, p, q, l, m, nsum, r_X1, r_W1, r, ψ_1, B_11, B_21, A_21)
 end
 
 end
