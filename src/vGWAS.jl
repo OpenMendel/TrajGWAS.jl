@@ -36,6 +36,10 @@ struct WSVarScoreTestBaseObs{T <: BlasReal}
     A_21_β2β1_pre   :: Matrix{T} # becomes A_21_β2β1 when right-multiplied by X1
     A_21_τ2τ1_pre   :: Matrix{T} # becomes A_21_τ2τ1 when right-multiplied by W1
     A_21_Lγτ1_pre   :: Matrix{T} # becomes A_21_Lγτ1 when right-multiplied by W1
+
+    A_21_β2β1_rowsum :: Vector{T} # for time-invariant X1
+    A_21_τ2τ1_rowsum :: Vector{T} # for time-invariant W1
+    A_21_Lγτ1_rowsum :: Vector{T} # for time-invariant W1
 end
 
 function WSVarScoreTestBaseObs(nullObs::WSVarLmmObs{T}) where T <: BlasReal
@@ -82,7 +86,12 @@ function WSVarScoreTestBaseObs(nullObs::WSVarLmmObs{T}) where T <: BlasReal
         end
     end
 
-    WSVarScoreTestBaseObs{T}(nullObs, n, p, q, l, A_21_β2β1_pre, A_21_τ2τ1_pre, A_21_Lγτ1_pre)
+    A_21_β2β1_rowsum = convert(Vector{T}, sum(A_21_β2β1_pre; dims=2))
+    A_21_τ2τ1_rowsum = convert(Vector{T}, sum(A_21_τ2τ1_pre; dims=2))
+    A_21_Lγτ1_rowsum = convert(Vector{T}, sum(A_21_Lγτ1_pre; dims=2))
+
+    WSVarScoreTestBaseObs{T}(nullObs, n, p, q, l, A_21_β2β1_pre, A_21_τ2τ1_pre, A_21_Lγτ1_pre, 
+                                A_21_β2β1_rowsum, A_21_τ2τ1_rowsum, A_21_Lγτ1_rowsum)
 end
 
 """
@@ -139,6 +148,62 @@ function WSVarScoreTestObs(testbaseobs::WSVarScoreTestBaseObs{T}, X1obs::Abstrac
 
     WSVarScoreTestObs{T}(testbaseobs, r_X1, r_W1, r, X1t, W1t, ψ_1, A_21_β2β1, A_21_τ2τ1, A_21_Lγτ1)
 end
+
+"""
+    WSVarScoreTestObsTimeInvariant
+
+A base per-observation object for the score test of within-subject variance linear mixed model data instance.
+H0: β1 = 0 and τ1 = 0, H1: β1 ≠ 0 or τ1 ≠ 0, 
+for the full model of WiSER (with parameters β = [β1, β2], τ = [τ1, τ2], and Lγ).
+We make use of the fitted null model.
+"""
+struct WSVarTimeInvariantScoreTestObs{T <: BlasReal}
+    # data
+    testbaseobs         :: WSVarScoreTestBaseObs{T}   # the base object without information on X1 and W1. is it redundant?
+    r_X1                :: Int              # number of test variables in X1
+    r_W1                :: Int              # number of test variables in W1
+    r                   :: Int              # number of total test variables, = r_X1 + r_W1.
+    X1t                 :: Matrix{T}        # test variables for X
+    W1t                 :: Matrix{T}        # test variables for W
+
+    # working arrays
+    ψ_1                 :: Vector{T}
+    # ψ_β2 = testbaseobs.nullObs.∇β         
+    # ψ_τ2 = testbaseobs.nullObs.∇τ
+    # ψ_Lγ = vech(testbaseobs.nullObs.∇Lγ), be consistent with order of variables in WiSER.sandwich!()
+
+    A_21_β2β1   :: Matrix{T} # p x r_X1, testbaseobs.A_21_β2β1_pre * X1
+    A_21_τ2τ1   :: Matrix{T} # l x r_W1, testbaseobs.A_21_τ2τ1_pre * W1
+    A_21_Lγτ1   :: Matrix{T} # q◺ x r_W1, testbaseobs.A_21_Lγτ1_pre * W1
+end
+
+function WSVarScoreTestObs(testbaseobs::WSVarScoreTestBaseObs{T}, X1obs::AbstractMatrix{T}, W1obs::AbstractMatrix{T}) where T <: BlasReal
+    n, p, q, l = testbaseobs.n, testbaseobs.p, testbaseobs.q, testbaseobs.l
+    q◺ = ◺(q)
+    r_X1 = size(X1obs, 2)
+    r_W1 = size(W1obs, 2)
+    r = r_X1 + r_W1
+    X1t = transpose(X1obs)
+    W1t = transpose(W1obs)
+
+    ψ_1 = Vector{T}(undef, r)
+    ψ_β1 = @view(ψ_1[1:r_X1])
+    ψ_τ1 = @view(ψ_1[r_X1+1:end])
+
+    A_21_β2β1 = Matrix{T}(undef, p, r_X1)
+    A_21_τ2τ1 = Matrix{T}(undef, l, r_W1)
+    A_21_Lγτ1 = Matrix{T}(undef, q◺, r_W1)
+
+    mul!(ψ_β1, X1t, reshape(testbaseobs.nullObs.Dinv_r - transpose(testbaseobs.nullObs.rt_UUt), :))
+    mul!(ψ_τ1, -W1t, testbaseobs.nullObs.diagDVRV)
+
+    mul!(A_21_β2β1, testbaseobs.A_21_β2β1_pre, X1obs)
+    mul!(A_21_τ2τ1, testbaseobs.A_21_τ2τ1_pre, W1obs)
+    mul!(A_21_Lγτ1, testbaseobs.A_21_Lγτ1_pre, W1obs)
+
+    WSVarScoreTestObs{T}(testbaseobs, r_X1, r_W1, r, X1t, W1t, ψ_1, A_21_β2β1, A_21_τ2τ1, A_21_Lγτ1)
+end
+
 
 """
     WSVarScoreTest
