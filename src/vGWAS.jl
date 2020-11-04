@@ -1,13 +1,17 @@
 module vGWAS
 
 using DataFrames, Tables, LinearAlgebra
-using Printf, Reexport, Statistics
+using Printf, Reexport, Statistics, SnpArrays, VCFTools, GeneticVariation
 import LinearAlgebra: BlasReal, copytri!
 import DataFrames: DataFrame
 
 @reexport using WiSER
 @reexport using StatsModels
 @reexport using Distributions 
+
+export vgwas
+
+include("gwas.jl")
 
 """
     ◺(n::Integer)
