@@ -17,4 +17,5 @@ module vGWAS
     @inline ◺(n::Integer) = (n * (n + 1)) >> 1
     include("scoretest.jl")
     include("scoretest_invariant.jl")
+    include("pvalues.jl")
 end
