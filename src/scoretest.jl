@@ -145,8 +145,8 @@ end
 Updates WSVarScoreTestObs based on the test data.
 """
 function update!(testobs::WSVarScoreTestObs,
-    X1obs::Union{Nothing, AbstractMatrix{T}},
-    W1obs::Union{Nothing, AbstractMatrix{T}}
+    X1obs::Union{Nothing, AbstractVecOrMat{T}},
+    W1obs::Union{Nothing, AbstractVecOrMat{T}}
 ) where {T <: BlasReal}
     testbaseobs = testobs.testbaseobs
     if testobs.r_X1 > 0
@@ -250,8 +250,8 @@ Performs the score test, and returns the three p-values on the
 time-variant test data
 """
 function test!(st::WSVarScoreTest,
-    X1vec::Union{Nothing, Vector{<:AbstractMatrix{T}}},
-    W1vec::Union{Nothing, Vector{<:AbstractMatrix{T}}}) where {T <: BlasReal}
+    X1vec::Union{Nothing, Vector{<:AbstractVecOrMat{T}}},
+    W1vec::Union{Nothing, Vector{<:AbstractVecOrMat{T}}}) where {T <: BlasReal}
 
     if X1vec === nothing
         @assert st.r_X1 == 0

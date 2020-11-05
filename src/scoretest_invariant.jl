@@ -130,8 +130,8 @@ time-invariant test data.
 - `W1::Union{Nothing, AbstractMatrix{T}}`: m x r_W1 data, nothing if r_W1 == 0
 """
 function test!(st::WSVarScoreTestInvariant,
-    X1::Union{Nothing, AbstractMatrix{T}},
-    W1::Union{Nothing, AbstractMatrix{T}}) where {T <: BlasReal}
+    X1::Union{Nothing, AbstractVecOrMat{T}},
+    W1::Union{Nothing, AbstractVecOrMat{T}}) where {T <: BlasReal}
 
     if st.r_X1 > 0
         @assert size(X1, 1) == st.m
@@ -147,13 +147,13 @@ function test!(st::WSVarScoreTestInvariant,
     r_X1, r_W1, r = st.r_X1, st.r_W1, st.r
 
     # build ψ_1: sum_i testobs.ψ_1
-    mul!(st.ψ_β1, transpose(X1), st.ψ_β1_pre)
-    mul!(st.ψ_τ1, transpose(W1), st.ψ_τ1_pre)
     if r_X1 > 0
         st.ψ_1obs[1:r_X1, :] .= transpose(X1) .* transpose(st.ψ_β1_pre)
+        mul!(st.ψ_β1, transpose(X1), st.ψ_β1_pre)
     end
     if r_W1 > 0
         st.ψ_1obs[(r_X1 + 1):end, :] .= transpose(W1) .* transpose(st.ψ_τ1_pre)
+        mul!(st.ψ_τ1, transpose(W1), st.ψ_τ1_pre)
     end
 
     # build B_11: using BLAS.syrk!()
@@ -165,9 +165,13 @@ function test!(st::WSVarScoreTestInvariant,
     mul!(st.B_21, st.ψ_2obs, transpose(st.ψ_1obs), one(T) / m, zero(T))
 
     # build A_21: 1/m sum_i Ai_21.
-    mul!(st.A_21_β2β1, st.A_21_β2β1_rowsums, X1, one(T) / m, zero(T))
-    mul!(st.A_21_τ2τ1, st.A_21_τ2τ1_rowsums, W1, one(T) / m, zero(T))
-    mul!(st.A_21_Lγτ1, st.A_21_Lγτ1_rowsums, W1, one(T) / m, zero(T))
+    if r_X1 > 0
+        mul!(st.A_21_β2β1, st.A_21_β2β1_rowsums, X1, one(T) / m, zero(T))
+    end
+    if r_W1 > 0
+        mul!(st.A_21_τ2τ1, st.A_21_τ2τ1_rowsums, W1, one(T) / m, zero(T))
+        mul!(st.A_21_Lγτ1, st.A_21_Lγτ1_rowsums, W1, one(T) / m, zero(T))
+    end
 
     pvalues(st)
 end
