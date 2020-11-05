@@ -287,9 +287,7 @@ function test!(st::WSVarScoreTest,
 
     # build B_11: using BLAS.syr!()
     fill!(st.B_11, zero(T))
-    for testobs in st.testobsvec
-        BLAS.syr!('U', T(1), testobs.ψ_1, st.B_11)
-    end
+    BLAS.syrk!('U', 'N', one(T), st.ψ_1obs, zero(T), st.B_11)
     copytri!(st.B_11, 'U')
     lmul!(one(T) / m, st.B_11)
 
