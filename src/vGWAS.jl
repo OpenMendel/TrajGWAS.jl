@@ -8,6 +8,7 @@ module vGWAS
     @reexport using WiSER
     @reexport using StatsModels
     @reexport using Distributions
+    export WSVarScoreTest, WSVarScoreTestInvariant, test!
 
     """
         ◺(n::Integer)
