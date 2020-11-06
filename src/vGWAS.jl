@@ -1,7 +1,7 @@
 module vGWAS
     using DataFrames, Tables, LinearAlgebra
     using Printf, Reexport, Statistics, SnpArrays, VCFTools, GeneticVariation
-    using Distributions
+    using Distributions, CSV
     import LinearAlgebra: BlasReal, copytri!
     import DataFrames: DataFrame
 

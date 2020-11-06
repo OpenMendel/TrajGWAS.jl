@@ -145,13 +145,13 @@ end
 
 function vgwas(
     # positional arguments
-    fittednullmodel::StatsModels.TableRegressionModel,
+    fittednullmodel::WSVarLmmModel,
     geneticfile::AbstractString;
     # keyword arguments
     analysistype::AbstractString = "singlesnp",
     geneticformat::AbstractString = "PLINK",
     vcftype::Union{Symbol, Nothing} = nothing,
-    testformula::FormulaTerm = fittednullmodel.mf.f.lhs ~ Term(:snp),
+    testformula::FormulaTerm = fittednullmodel.meanformula.lhs ~ Term(:snp),
     test::Symbol = :score,
     pvalfile::Union{AbstractString, IOStream} = "vgwas.pval.txt",
     snpmodel::Union{Val{1}, Val{2}, Val{3}} = ADDITIVE_MODEL,
@@ -185,7 +185,7 @@ function vgwas(
         # selected rows should match nobs in null model
         bedn = SnpArrays.makestream(countlines, famfile)
         bedids = SnpArrays.makestream(famfile) do io
-            CSV.read(io, DataFrame)[!, 1] # assuming first column is IDs column
+            CSV.read(io, DataFrame, header=false)[!, 1] # assuming first column is IDs column
         end
     else
         vcftype in [:GT, :DS] || throw(ArgumentError("vcftype not specified. Allowable types are :GT for genotypes and :DS for dosages."))
@@ -230,7 +230,7 @@ function vgwas(
         fittednullmodel.ids .= fittednullmodel.ids[nullinds]
         fittednullmodel.nis .= fittednullmodel.nis[nullinds]
         fittednullmodel.data .= fittednullmodel.data[nullinds]
-        warn("Null model data was rearranged to match geneticfile order")
+        warn("Null model data was rearranged to match genetic file order")
     end
 
     # validate testing method
@@ -273,12 +273,12 @@ end
 
 # For PLINK Analysis
 function vgwas(
-    fittednullmodel::StatsModels.TableRegressionModel,
+    fittednullmodel::WSVarLmmModel,
     bedfile::Union{AbstractString, IOStream}, # full path and bed file name
     bimfile::Union{AbstractString, IOStream}, # full path and bim file name
     bedn::Integer;           # number of samples in bed file
     analysistype::AbstractString = "singlesnp",
-    testformula::FormulaTerm = fittednullmodel.mf.f.lhs ~ Term(:snp),
+    testformula::FormulaTerm = fittednullmodel.meanformula.lhs ~ Term(:snp),
     test::Symbol = :score,
     pvalfile::Union{AbstractString, IOStream} = "vgwas.pval.txt",
     snpmodel::Union{Val{1}, Val{2}, Val{3}} = ADDITIVE_MODEL,
@@ -323,15 +323,24 @@ function vgwas(
         testdf = DataFrame(fittednullmodel)
         testdf[!, :snp] = zeros(fittednullmodel.nsum)
         snpholder = zeros(fittednullmodel.m)
-        Z = similar(modelmatrix(testformula, testdf))
-
+        if snponly
+            q = 1
+        else
+            Z = similar(modelmatrix(testformula, testdf))
+            q = size(Z, 2)
+        end
         SnpArrays.makestream(pvalfile, "w") do io
             if test == :score
                 println(io, "chr,pos,snpid,maf,hwepval,betapval,taupval,jointpval")
-                ts = OrdinalMultinomialScoreTest(fittednullmodel.model, Z)
-                ### CHANGE TO WSVARSCORE TEST
+                println("made it here")
+                if snponly 
+                    ts = WSVarScoreTestInvariant(fittednullmodel, 1, 1)
+                else
+                    ts = WSVarScoreTest(fittednullmodel, q, q)
+                    testvec = [Matrix{Float64}(undef, ni, q) for 
+                    ni in fittednullmodel.nis]
+                end
             else # wald
-                q = size(Z, 2)
                 γ̂β = Vector{Float64}(undef, q) # effect size for columns being tested
                 pvalsβ = Vector{Float64}(undef, q) # effect size for columns being tested
                 γ̂τ = Vector{Float64}(undef, q) # effect size for columns being tested
@@ -357,8 +366,10 @@ function vgwas(
                     println("")
                 end
             end
+            println("made it here2")
             SnpArrays.makestream(bimfile) do bimio
                 for j in eachindex(snpmask)
+                    println("made it here4")
                     row = readline(bimio)
                     snpmask[j] || continue
                     snpj = split(row)
@@ -371,16 +382,17 @@ function vgwas(
                             jointpval = 1.0
                         else
                             if snponly
-                                copyto!(ts.Z, @view(genomat[bedrowinds, j]),
+                                copyto!(snpholder, @view(genomat[bedrowinds, j]),
                                 impute=true, model=snpmodel)
+                                betapval, taupval, jointpval = test!(ts, snpholder, snpholder)
                             else # snp + other terms
                                 copyto!(snpholder, @view(genomat[bedrowinds, j]),
                                     impute=true, model=snpmodel)
                                 snptodf!(testdf[!, :snp], snpholder, fittednullmodel)
-                                ts.Z[:] = modelmatrix(testformula, testdf)
+                                copyto!(Z, modelmatrix(testformula, testdf))
+                                loadtimevar!(testvec, Z, fittednullmodel)
+                                betapval, taupval, jointpval = test!(ts, testvec, testvec)
                             end
-                            betapval, taupval, jointpval = polrtest(ts)
-                            ### CHANGE to WSVAR SCORE TEST
                         end
                         println(io, "$(snpj[1]),$(snpj[4]),$(snpj[2]),",
                         "$maf,$hwepval,$betapval, $taupval, $jointpval")
@@ -456,7 +468,7 @@ function vgwas(
                 if test == :score
                     println(io, "startchr,startpos,startsnpid,endchr,endpos,",
                         "endsnpid,betapval,taupval,jointpval")
-                    ts = OrdinalMultinomialScoreTest(fittednullmodel.model, Z)
+                    ts = WSVarScoreTestInvariant(fittednullmodel, setlength, setlength)
                 else # wald
                     # #TODO
                     # println(io, "startchr,startpos,startsnpid,endchr,",
@@ -476,8 +488,7 @@ function vgwas(
                             #length of Z will be different
                             if test == :score
                                 Z = zeros(fittednullmodel.m, q)
-                                ts = OrdinalMultinomialScoreTest(fittednullmodel.model, Z)
-                                ### CHANGE to WSVAR score test
+                                ts = WSVarScoreTestInvariant(fittednullmodel, q, q)
                             else
                                 # #TODO
                                 # Xaug = [fittednullmodel.model.X zeros(size(
@@ -496,9 +507,8 @@ function vgwas(
                                 taupval = 1.0
                                 jointpval = 1.0
                             else
-                                copyto!(ts.Z, @view(genomat[bedrowinds, j:endj]), impute=true, model=snpmodel)
-                                betapval, taupval, jointpval = polrtest(ts)
-                                ### CHANGE to WSVAR score test
+                                copyto!(Z, @view(genomat[bedrowinds, j:endj]), impute=true, model=snpmodel)
+                                betapval, taupval, jointpval = test!(ts, Z, Z)
                             end
                             println(io, "$(snpj[1]),$(snpj[4]),$(snpj[2]),$(snpj_s[1]),",
                                 "$(snpj_s[4]),$(snpj_s[2]),$betapval,$taupval,$jointpval")
@@ -536,7 +546,7 @@ function vgwas(
                     q = length(snpinds)
                     Z = zeros(fittednullmodel.m, q) ### m or nsum?
                     γ̂ = Vector{Float64}(undef, q)
-                    Xaug = [fittednullmodel.model.X Z]
+
                     if all(@view(mafs[snpinds]) .== 0) # all mono-allelic, unlikely but just in case
                         betapval = 1.0
                         taupval = 1.0
@@ -545,12 +555,12 @@ function vgwas(
                         test == :score ? println(io, "$(snpset_id),$q,$betapval,$taupval,$jointpval") :
                         println(io, "$(snpset_id),$q,$l2normeffect,$betapval,$taupval,$jointpval")
                     elseif test == :score
-                        ts = OrdinalMultinomialScoreTest(fittednullmodel.model, Z)
-                        copyto!(ts.Z, @view(genomat[bedrowinds, snpinds]), impute=true,
+                        ts = WSVarScoreTestInvariant(fittednullmodel, q, q)
+                        copyto!(Z, @view(genomat[bedrowinds, snpinds]), impute=true,
                             model=snpmodel)
-                        betapval, taupval, jointpval = polrtest(ts)
+                        betapval, taupval, jointpval = test!(ts, Z, Z)
                         ### CHANGE TO WSVAR score test
-                        println(io, "$(snpset_id),$q,$pval")
+                        println(io, "$(snpset_id),$q,$betapval,$taupval,$jointpval")
                     elseif test == :wald
                         # # TODO
                         # nulldev = deviance(fittednullmodel.model)
@@ -583,9 +593,9 @@ function vgwas(
                     γ̂ = Vector{Float64}(undef, q)
                     Z = zeros(fittednullmodel.m, q) # m or nsum?
                     if test == :score
-                        ts = OrdinalMultinomialScoreTest(fittednullmodel.model, Z)
-                        copyto!(ts.Z, @view(genomat[bedrowinds, snpset]), impute=true, model=snpmodel)
-                        betapval, taupval, jointpval = polrtest(ts)
+                        ts = WSVarScoreTestInvariant(fittednullmodel, q, q)
+                        copyto!(Z, @view(genomat[bedrowinds, snpset]), impute=true, model=snpmodel)
+                        betapval, taupval, jointpval = test!(ts, Z, Z)
                         ### CHANGE TO WSVAR score test
                         println(io, "The joint pvalue of snps indexed",
                          " at $(snpset) is betapval: $betapval, taupval: $taupval, jointpval: $jointpval")
@@ -617,10 +627,12 @@ function vgwas(
         testdf = DataFrame(fittednullmodel)
         @assert Symbol(e) in propertynames(testdf) "environmental variable $e not found in dataframe"
         testdf[!, :snp] = zeros(fittednullmodel.nsum)
-        testdf[!, :g_x_e] = zeros(fittednullmodel.nsum)
+
         snpholder = zeros(fittednullmodel.m)
         snpeffectnullbeta = 0.0
         snpeffectnulltau = 0.0
+        gxeformula = FormulaTerm(fittednullmodel.meanformula.lhs,
+        InteractionTerm(term.((:snp, Symbol(e)))))
         nullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
             sum(union(fittednullmodel.meanformula.rhs, term(:snp))))
         nullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
@@ -635,6 +647,12 @@ function vgwas(
             if test == :score
                 println(io, "chr,pos,snpid,maf,hwepval,snpeffectnullbeta,",
                 "snpeffectnulltau,betapval,taupval,jointpval")
+                # e may be factor - Z should match dimension
+                Z = similar(modelmatrix(FormulaTerm(term(:y), term(Symbol(e))), df))
+                # create vector of arrays for score test 
+                q = size(Z, 2)
+                testvec = [Matrix{Float64}(undef, ni, q) for 
+                ni in fittednullmodel.nis]
             else
                 γ̂β = 0.0 # effect size for beta gxe effect
                 γ̂τ = 0.0 # effect size for tau gxe effect
@@ -662,18 +680,19 @@ function vgwas(
                         copyto!(snpholder, @view(genomat[bedrowinds, j]),
                                 impute=true, model=snpmodel)
                         snptodf!(testdf[!, :snp], snpholder, fittednullmodel)
-                        copyto!(testdf[!, :g_x_e], @view(testdf[!, :snp]) .* @view(testdf[!, e]))
                         if test == :score
                             nm = WSVarLmmModel(nullmeanformula,
                                 fittednullmodel.reformula, nullwsvarformula,
                                 :id, testdf)
                             nm.obswts .= fittednullmodel.obswts
+                            @assert nm.ids == fittednullmodel.ids "IDs not matching for GxE."
                             WiSER.fit!(nm, solver, parallel = parallel, runs = runs)
                             snpeffectnullbeta = nm.β[end]
                             snpeffectnulltau = nm.τ[end]
-                            ts = OrdinalMultinomialScoreTest(nm, testdf[!, :g_x_e])
-                            betapval, taupval, jointpval = polrtest(ts)
-                            ### CHANGE to WSVAR score test
+                            copyto!(Z, modelmatrix(gxeformula, testdf))
+                            loadtimevar!(testvec, Z, nm)
+                            ts = WSVarScoreTest(nm, q, q)
+                            betapval, taupval, jointpval = test!(ts, testvec, testvec)
                         elseif test == :wald
                             fullmod = WSVarLmmModel(fullmeanformula,
                                 fittednullmodel.reformula, fullwsvarformula,
@@ -707,18 +726,21 @@ end
 
 # For VCF Analysis
 function vgwas(
-    fittednullmodel::StatsModels.TableRegressionModel,
+    fittednullmodel::WSVarLmmModel,
     vcffile::Union{AbstractString, IOStream}, # full path and vcf file name
     nsamples::Integer,          # number of samples in bed file
     vcftype::Symbol;           # :GT = genotype, :DS = dosage
     analysistype::AbstractString = "singlesnp",
-    testformula::FormulaTerm = fittednullmodel.mf.f.lhs ~ Term(:snp),
+    testformula::FormulaTerm = fittednullmodel.meanformula.lhs ~ Term(:snp),
     test::Symbol = :score,
     pvalfile::Union{AbstractString, IOStream} = "vgwas.pval.txt",
     snpmodel::Union{Val{1}, Val{2}, Val{3}} = ADDITIVE_MODEL,
     snpinds::Union{Nothing, AbstractVector{<:Integer}} = nothing,
     vcfrowinds::AbstractVector{<:Integer} = 1:nsamples, # row indices for VCF array
-    solver = NLoptSolver(algorithm=:LD_SLSQP, maxeval=4000),
+    solver = Ipopt.IpoptSolver(print_level=0, mehrotra_algorithm = "yes",
+    warm_start_init_point="yes", max_iter=100),
+    parallel::Bool = false,
+    runs::Int = 2,
     verbose::Bool = false,
     snpset::Union{Nothing, Integer, AbstractString, #for snpset analysis
         AbstractVector{<:Integer}} = nothing,
@@ -754,7 +776,13 @@ function vgwas(
         # extra columns in design matrix to be tested
         testdf = DataFrame(fittednullmodel)
         testdf[!, :snp] = zeros(fittednullmodel.nsum)
-        Z = similar(modelmatrix(testformula, testdf))
+        if snponly
+            q = 1
+        else
+            Z = similar(modelmatrix(testformula, testdf))
+            q = size(Z, 2)
+        end
+        
 
         # create holders for chromome, position, id, dosage/snps
         rec_chr = Array{Any, 1}(undef, 1)
@@ -767,9 +795,14 @@ function vgwas(
         SnpArrays.makestream(pvalfile, "w") do io
             if test == :score
                 println(io, "chr,pos,snpid,betapval,taupval,jointpval")
-                ts = OrdinalMultinomialScoreTest(fittednullmodel.model, Z)
+                if snponly 
+                    ts = WSVarScoreTestInvariant(fittednullmodel, 1, 1)
+                else
+                    ts = WSVarScoreTest(fittednullmodel, q, q)
+                    testvec = [Matrix{Float64}(undef, ni, q) for 
+                    ni in fittednullmodel.nis]
+                end
             else # wald
-                q = size(Z, 2)
                 γ̂β = Vector{Float64}(undef, q) # effect size for columns being tested
                 pvalsβ = Vector{Float64}(undef, q) # effect size for columns being tested
                 γ̂τ = Vector{Float64}(undef, q) # effect size for columns being tested
@@ -808,15 +841,16 @@ function vgwas(
                 end
                 if test == :score
                     if snponly
-                        copyto!(ts.Z, @view(gholder[vcfrowinds]))
+                        betapval, taupval, jointpval = test!(ts, @view(gholder[vcfrowinds]), 
+                        @view(gholder[vcfrowinds]))
                     else # snp + other terms
                         snptodf!(testdf[!, :snp], @view(gholder[vcfrowinds]), fittednullmodel)
-                        ts.Z[:] = modelmatrix(testformula, testdf)
+                        copyto!(Z, modelmatrix(testformula, testdf))
+                        loadtimevar!(testvec, Z, fittednullmodel)
+                        betapval, taupval, jointpval = test!(ts, testvec, testvec)
                     end
-                    betapval, taupval, jointpval = polrtest(ts)
                     println(io, "$(rec_chr[1]),$(rec_pos[1]),$(rec_ids[1][1]),",
                     "$betapval,$taupval,$jointpval")
-                    ### CHANGE to WSVAR SCORE TEST
                 elseif test == :wald
                     snptodf!(testdf[!, :snp], @view(gholder[vcfrowinds]), fittednullmodel)
                     altmodel = WSVarLmmModel(fullmeanformula,
@@ -886,7 +920,7 @@ function vgwas(
                 if test == :score
                     println(io, "startchr,startpos,startsnpid,endchr,endpos,",
                     "endsnpid,betapval,taupval,jointpval")
-                    ts = OrdinalMultinomialScoreTest(fittednullmodel.model, Z)
+                    ts = WSVarScoreTestInvariant(fittednullmodel, q, q)
                 elseif test == :wald
                     # TODO
                     # println(io, "startchr,startpos,startsnpid,endchr,",
@@ -907,8 +941,7 @@ function vgwas(
                         rec_ids = Array{Any, 1}(undef, q)
                         if test == :score
                             Z = zeros(fittednullmodel.m, q)
-                            ts = OrdinalMultinomialScoreTest(fittednullmodel.model, Z)
-                            ### CHANGE TO WSVAR SCORE Test
+                            ts = WSVarScoreTestInvariant(fittednullmodel, q, q)
                         elseif test == :wald
                             ## TODO
                             # Xaug = [fittednullmodel.model.X zeros(size(
@@ -923,9 +956,8 @@ function vgwas(
                         record_chr = rec_chr, record_pos = rec_pos, record_ids = rec_ids)
                     end
                     if test == :score
-                        copyto!(ts.Z, @view(gholder[vcfrowinds]))
-                        betapval, taupval, jointpval = polrtest(ts)
-                        ### CHANGE TO WSVAR score test
+                        copyto!(Z, @view(gholder[vcfrowinds, :]))
+                        betapval, taupval, jointpval = test!(ts, Z, Z)
                         println(io, "$(rec_chr[1]),$(rec_pos[1]),$(rec_ids[1][1]),",
                         "$(rec_chr[end]),$(rec_pos[end]),$(rec_ids[end][end]),$betapval,$taupval,$jointpval")
                     elseif test == :wald
@@ -963,10 +995,9 @@ function vgwas(
                     q = length(snpinds)
                     Z = zeros(fittednullmodel.m, q)
                     if test == :score
-                        ts = OrdinalMultinomialScoreTest(fittednullmodel.model, Z)
-                        copyto!(ts.Z, @view(genomat[vcfrowinds, snpinds]))
-                        betapval, taupval, jointpval = polrtest(ts)
-                        ### CHANGE TO WSVAR score test
+                        ts = WSVarScoreTestInvariant(fittednullmodel, q, q)
+                        copyto!(Z, @view(genomat[vcfrowinds, snpinds]))
+                        betapval, taupval, jointpval = test!(ts, Z, Z)
                         println(io, "$(snpset_id),$q,$betapval,$taupval,$jointpval")
                     elseif test == :wald
                         # # TODO
@@ -1001,10 +1032,9 @@ function vgwas(
                 γ̂ = Vector{Float64}(undef, q)
                 Z = zeros(fittednullmodel.m, q)
                 if test == :score
-                    ts = OrdinalMultinomialScoreTest(fittednullmodel.model, Z)
-                    copyto!(ts.Z, @view(genomat[vcfrowinds, snpset]))
-                    betapval, taupval, jointpval = polrtest(ts)
-                    ### CHANGE TO WSVAR score test
+                    ts = WSVarScoreTestInvariant(fittednullmodel, q, q)
+                    copyto!(Z, @view(genomat[vcfrowinds, snpset]))
+                    betapval, taupval, jointpval = test!(ts, Z, Z)
                     println(io, "The joint pvalue of snps indexed",
                      " at $(snpset) is betapval: $betapval, taupval: $taupval,",
                      " jointpval: $jointpval")
@@ -1034,7 +1064,6 @@ function vgwas(
         testdf = DataFrame(fittednullmodel)
         @assert Symbol(e) in propertynames(testdf) "environmental variable $e not found in dataframe"
         testdf[!, :snp] = zeros(fittednullmodel.nsum)
-        testdf[!, :g_x_e] = zeros(fittednullmodel.nsum)
 
         # create holders for chromome, position, id
         rec_chr = Array{Any, 1}(undef, 1)
@@ -1044,6 +1073,8 @@ function vgwas(
 
         snpeffectnullbeta = 0.0
         snpeffectnulltau = 0.0
+        gxeformula = FormulaTerm(fittednullmodel.meanformula.lhs,
+        InteractionTerm(term.((:snp, Symbol(e)))))
         nullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
             sum(union(fittednullmodel.meanformula.rhs, term(:snp))))
         nullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
@@ -1059,6 +1090,12 @@ function vgwas(
             if test == :score
                 println(io, "chr,pos,snpid,snpeffectnullbeta,",
                 "snpeffectnulltau,betapval,taupval,jointpval")
+                # e may be factor - Z should match dimension
+                Z = similar(modelmatrix(FormulaTerm(term(:y), term(Symbol(e))), df))
+                # create vector of arrays for score test 
+                q = size(Z, 2)
+                testvec = [Matrix{Float64}(undef, ni, q) for 
+                ni in fittednullmodel.nis]
             else
                 γ̂β = 0.0 # effect size for beta gxe effect
                 γ̂τ = 0.0 # effect size for tau gxe effect
@@ -1079,17 +1116,20 @@ function vgwas(
                 # add SNP values to testdf
                 snptodf!(testdf[!, :snp], @view(gholder[vcfrowinds]), fittednullmodel)
                 copyto!(testdf[!, :g_x_e], @view(testdf[!, :snp]) .* @view(testdf[!, e]))
-
+                #copyto!(testvec, modelmatrix(@formula(trait ~ snp & e), testdf))
                 if test == :score
                     nm = WSVarLmmModel(nullmeanformula,
                     fittednullmodel.reformula, nullwsvarformula,
                     :id, testdf)
                     nm.obswts .= fittednullmodel.obswts
+                    @assert nm.ids == fittednullmodel.ids "IDs not matching for GxE."
                     WiSER.fit!(nm, solver, parallel = parallel, runs = runs)
                     snpeffectnullbeta = nm.β[end]
                     snpeffectnulltau = nm.τ[end]
-                    ts = OrdinalMultinomialScoreTest(nm, testdf[!, :g_x_e])
-                    betapval, taupval, jointpval = polrtest(ts)
+                    copyto!(Z, modelmatrix(gxeformula, testdf))
+                    loadtimevar!(testvec, Z, nm)
+                    ts = WSVarScoreTest(nm, q, q)
+                    betapval, taupval, jointpval = test!(ts, testvec, testvec)
                     ### CHANGE to WSVAR score test
                     println(io, "$(rec_chr[1]),$(rec_pos[1]),$(rec_ids[1][1]),",
                         "$snpeffectnullbeta,$snpeffectnulltau,",
@@ -1126,10 +1166,27 @@ modelingdict = Dict(
 
 
 """
-    snptodf!(df[!, :snp], snpholder, nullmodel)
+    snptodf!(dfvec, snpholder, nullmodel)
 
 Takes SNPs in `snpholder` and puts them into the dfvec (df col) based on nullmodel observation counts.
 """
 function snptodf!(dfvec, snpholder, nullmodel)
     dfvec = vcat(map((x, y) -> fill(x, y), snpholder, nullmodel.nis)...)
+end
+
+"""
+    loadtimevar!(testvec, longmat, nullmodel)
+
+Takes entries from a matrix/vector of observations across all individuals
+and loads them into testvec which is a Vector{Array} based on nullmodel.nis.
+"""
+
+function loadtimevar!(testvec, longmat, nullmodel)
+    offset = 1
+    for i in 1:length(nullmodel.nis)
+        ni            = nullmodel.nis[i]
+        rangei        = offset:(offset + ni - 1)
+        testvec[i]    = @view(longmat[rangei, :])
+        offset       += ni
+    end
 end
