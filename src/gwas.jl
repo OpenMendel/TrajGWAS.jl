@@ -332,7 +332,6 @@ function vgwas(
         SnpArrays.makestream(pvalfile, "w") do io
             if test == :score
                 println(io, "chr,pos,snpid,maf,hwepval,betapval,taupval,jointpval")
-                println("made it here")
                 if snponly 
                     ts = WSVarScoreTestInvariant(fittednullmodel, 1, 1)
                 else
@@ -366,10 +365,8 @@ function vgwas(
                     println("")
                 end
             end
-            println("made it here2")
             SnpArrays.makestream(bimfile) do bimio
                 for j in eachindex(snpmask)
-                    println("made it here4")
                     row = readline(bimio)
                     snpmask[j] || continue
                     snpj = split(row)
