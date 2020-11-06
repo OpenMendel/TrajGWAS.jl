@@ -173,5 +173,5 @@ function test!(st::WSVarScoreTestInvariant,
         mul!(st.A_21_Lγτ1, st.A_21_Lγτ1_rowsums, W1, one(T) / m, zero(T))
     end
 
-    pvalues(st)
+    pvalues!(st)
 end

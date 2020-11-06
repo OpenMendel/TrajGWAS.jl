@@ -15,19 +15,20 @@ function test_statistic(
     one(T) / m * (transpose(ψ_1) * inv(B_11 -
         transpose(A_21) * nm.Ainv * B_21 -
         transpose(B_21) * nm.Ainv * A_21 +
-        transpose(A_21) * nm.Ainv * nm.B * nm.Ainv * A_21) *
-        ψ_1)
-        # TODO: devise something to avoid reallocation in st.
+        transpose(A_21) * nm.Ainv * nm.B * nm.Ainv * A_21
+        ) * ψ_1
+    )
+    # TODO: devise something to avoid reallocation in st.
 end
 
 """
-    pvalues(st::WSVarScoreTest)
+    pvalues!(st::WSVarScoreTest)
 
 Returns three p-values for the score test:
 for mean (`p1`), within-sample variability (`p2`), and both (`p3`).
 -1 is returned for any skipped tests.
 """
-function pvalues(st::Union{WSVarScoreTest{T},WSVarScoreTestInvariant{T}}
+function pvalues!(st::Union{WSVarScoreTest{T},WSVarScoreTestInvariant{T}}
 ) where {T <: BlasReal}
     nm = st.nullmodel
     r_X1, r_W1, r = st.r_X1, st.r_W1, st.r

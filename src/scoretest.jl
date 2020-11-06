@@ -312,5 +312,5 @@ function test!(st::WSVarScoreTest,
     end
     lmul!(1 / m, st.A_21)
 
-    pvalues(st)
+    pvalues!(st)
 end
