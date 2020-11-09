@@ -786,6 +786,7 @@ function vgwas(
         rec_pos = Array{Any, 1}(undef, 1)
         rec_ids = Array{Any, 1}(undef, 1)
         gholder = zeros(Union{Missing, Float64}, nsamples)
+        snpholder = zeros(fittednullmodel.m)
 
         # carry out score or LRT test SNP by SNP
 
@@ -838,8 +839,9 @@ function vgwas(
                 end
                 if test == :score
                     if snponly
-                        betapval, taupval, jointpval = test!(ts, @view(gholder[vcfrowinds]), 
-                        @view(gholder[vcfrowinds]))
+                        copyto!(snpholder, @view(gholder[vcfrowinds]))
+                        betapval, taupval, jointpval = test!(ts, snpholder, 
+                        snpholder)
                     else # snp + other terms
                         snptodf!(testdf[!, :snp], @view(gholder[vcfrowinds]), fittednullmodel)
                         copyto!(Z, modelmatrix(testformula, testdf))
@@ -1167,7 +1169,9 @@ modelingdict = Dict(
 
 Takes SNPs in `snpholder` and puts them into the dfvec (df col) based on nullmodel observation counts.
 """
-function snptodf!(dfvec, snpholder, nullmodel)
+function snptodf!(dfvec::AbstractVector,
+                 snpholder::AbstractArray,
+                 nullmodel::WSVarLmmModel)
     dfvec = vcat(map((x, y) -> fill(x, y), snpholder, nullmodel.nis)...)
 end
 
@@ -1178,7 +1182,9 @@ Takes entries from a matrix/vector of observations across all individuals
 and loads them into testvec which is a Vector{Array} based on nullmodel.nis.
 """
 
-function loadtimevar!(testvec, longmat, nullmodel)
+function loadtimevar!(testvec::AbstractVector, 
+                    longmat::AbstractArray, 
+                    nullmodel::WSVarLmmModel)
     offset = 1
     for i in 1:length(nullmodel.nis)
         ni            = nullmodel.nis[i]
