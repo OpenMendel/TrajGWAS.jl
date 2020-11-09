@@ -631,15 +631,15 @@ function vgwas(
         gxeformula = FormulaTerm(fittednullmodel.meanformula.lhs,
         InteractionTerm(term.((:snp, Symbol(e)))))
         nullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-            sum(union(fittednullmodel.meanformula.rhs, term(:snp))))
+            sum(union(fittednullmodel.meanformula.rhs, [term(:snp)])))
         nullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-            sum(union(fittednullmodel.wsvarformula.rhs, term(:snp))))
+            sum(union(fittednullmodel.wsvarformula.rhs, [term(:snp)])))
         fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-            sum(union(fittednullmodel.meanformula.rhs, term(Symbol(e)),
-            term(:snp), InteractionTerm(term.((:snp, Symbol(e)))) )))
+            sum(union(fittednullmodel.meanformula.rhs, [term(Symbol(e))],
+            [term(:snp)], InteractionTerm(term.((:snp, Symbol(e)))) )))
         fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-            sum(union(fittednullmodel.wsvarformula.rhs, term(Symbol(e)),
-            term(:snp), InteractionTerm(term.((:snp, Symbol(e)))) )))
+            sum(union(fittednullmodel.wsvarformula.rhs, [term(Symbol(e))],
+            [term(:snp)], InteractionTerm(term.((:snp, Symbol(e)))) )))
         SnpArrays.makestream(pvalfile, "w") do io
             if test == :score
                 println(io, "chr,pos,snpid,maf,hwepval,snpeffectnullbeta,",
@@ -1075,15 +1075,15 @@ function vgwas(
         gxeformula = FormulaTerm(fittednullmodel.meanformula.lhs,
         InteractionTerm(term.((:snp, Symbol(e)))))
         nullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-            sum(union(fittednullmodel.meanformula.rhs, term(:snp))))
+            sum(union(fittednullmodel.meanformula.rhs, [term(:snp)])))
         nullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-            sum(union(fittednullmodel.wsvarformula.rhs, term(:snp))))
+            sum(union(fittednullmodel.wsvarformula.rhs, [term(:snp)])))
         fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-            sum(union(fittednullmodel.meanformula.rhs, term(Symbol(e)),
-            term(:snp), InteractionTerm(term.((:snp, Symbol(e)))) )))
+            sum(union(fittednullmodel.meanformula.rhs, [term(Symbol(e))],
+            [term(:snp)], InteractionTerm(term.((:snp, Symbol(e)))) )))
         fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-            sum(union(fittednullmodel.wsvarformula.rhs, term(Symbol(e)),
-            term(:snp), InteractionTerm(term.((:snp, Symbol(e)))) )))
+            sum(union(fittednullmodel.wsvarformula.rhs, [term(Symbol(e))],
+            [term(:snp)], InteractionTerm(term.((:snp, Symbol(e)))) )))
 
         SnpArrays.makestream(pvalfile, "w") do io
             if test == :score
