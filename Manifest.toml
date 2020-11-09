@@ -642,7 +642,7 @@ version = "0.12.33"
 
 [[WiSER]]
 deps = ["DataFrames", "Distributions", "Ipopt", "LinearAlgebra", "MathProgBase", "NLopt", "Printf", "Reexport", "Statistics", "StatsBase", "StatsModels", "Tables"]
-git-tree-sha1 = "520d809338a0b13fc8f69cbcb5d9c57d0a4f6f45"
+git-tree-sha1 = "6650e6f32c376bf6b6be69b79cf8c8077b8d4515"
 repo-rev = "master"
 repo-url = "https://github.com/OpenMendel/WiSER.jl"
 uuid = "2ff19380-1883-49fc-9d10-450face6b90c"
