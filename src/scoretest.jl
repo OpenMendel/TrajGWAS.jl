@@ -70,7 +70,7 @@ function WSVarScoreTestBaseObs(nullObs::WSVarLmmObs{T}) where T <: BlasReal
     # nullObs.storage_q◺n is always Cq' * (L'Z'(V^-1) ⊙ Z'(V^-1)).
     A_21_Lγτ1_pre .=  2 * nullObs.storage_q◺n
     @inbounds @simd for j in 1:n
-        for i in 1:l
+        for i in 1:q◺
             A_21_Lγτ1_pre[i, j] = A_21_Lγτ1_pre[i, j] * nullObs.expwτ[j]
         end
     end
