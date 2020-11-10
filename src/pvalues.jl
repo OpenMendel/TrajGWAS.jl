@@ -44,11 +44,11 @@ function pvalues!(st::Union{WSVarScoreTest{T},WSVarScoreTestInvariant{T}}
     end
 
     if st.r_W1 > 0
-        ψ_2p  = @view st.ψ_1[(r_X1 + 1):end]
+        ψ_1p  = @view st.ψ_1[(r_X1 + 1):end]
         B_11p = @view st.B_11[(r_X1 + 1):end, (r_X1 + 1):end]
         A_21p = @view st.A_21[:, (r_X1 + 1):end]
         B_21p = @view st.B_21[:, (r_X1 + 1):end]
-        v2 = test_statistic(st, ψ_2p, B_11p, A_21p, B_21p, nm, st.m)
+        v2 = test_statistic(st, ψ_1p, B_11p, A_21p, B_21p, nm, st.m)
         p2 = Distributions.ccdf.(Chisq(st.r_W1), v2)
     else
         p2 = -one(T)

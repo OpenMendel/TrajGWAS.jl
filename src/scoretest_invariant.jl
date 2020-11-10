@@ -165,6 +165,7 @@ function test!(st::WSVarScoreTestInvariant,
     mul!(st.B_21, st.ψ_2obs, transpose(st.ψ_1obs), one(T) / m, zero(T))
 
     # build A_21: 1/m sum_i Ai_21.
+    fill!(st.A_21, zero(T))
     if r_X1 > 0
         mul!(st.A_21_β2β1, st.A_21_β2β1_rowsums, X1, one(T) / m, zero(T))
     end

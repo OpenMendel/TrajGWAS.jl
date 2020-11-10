@@ -332,11 +332,11 @@ function vgwas(
         SnpArrays.makestream(pvalfile, "w") do io
             if test == :score
                 println(io, "chr,pos,snpid,maf,hwepval,betapval,taupval,jointpval")
-                if snponly 
+                if snponly
                     ts = WSVarScoreTestInvariant(fittednullmodel, 1, 1)
                 else
                     ts = WSVarScoreTest(fittednullmodel, q, q)
-                    testvec = [Matrix{Float64}(undef, ni, q) for 
+                    testvec = [Matrix{Float64}(undef, ni, q) for
                     ni in fittednullmodel.nis]
                 end
             else # wald
@@ -646,9 +646,9 @@ function vgwas(
                 "snpeffectnulltau,betapval,taupval,jointpval")
                 # e may be factor - Z should match dimension
                 Z = similar(modelmatrix(FormulaTerm(term(:y), term(Symbol(e))), df))
-                # create vector of arrays for score test 
+                # create vector of arrays for score test
                 q = size(Z, 2)
-                testvec = [Matrix{Float64}(undef, ni, q) for 
+                testvec = [Matrix{Float64}(undef, ni, q) for
                 ni in fittednullmodel.nis]
             else
                 γ̂β = 0.0 # effect size for beta gxe effect
@@ -779,7 +779,7 @@ function vgwas(
             Z = similar(modelmatrix(testformula, testdf))
             q = size(Z, 2)
         end
-        
+
 
         # create holders for chromome, position, id, dosage/snps
         rec_chr = Array{Any, 1}(undef, 1)
@@ -793,11 +793,11 @@ function vgwas(
         SnpArrays.makestream(pvalfile, "w") do io
             if test == :score
                 println(io, "chr,pos,snpid,betapval,taupval,jointpval")
-                if snponly 
+                if snponly
                     ts = WSVarScoreTestInvariant(fittednullmodel, 1, 1)
                 else
                     ts = WSVarScoreTest(fittednullmodel, q, q)
-                    testvec = [Matrix{Float64}(undef, ni, q) for 
+                    testvec = [Matrix{Float64}(undef, ni, q) for
                     ni in fittednullmodel.nis]
                 end
             else # wald
@@ -840,7 +840,7 @@ function vgwas(
                 if test == :score
                     if snponly
                         copyto!(snpholder, @view(gholder[vcfrowinds]))
-                        betapval, taupval, jointpval = test!(ts, snpholder, 
+                        betapval, taupval, jointpval = test!(ts, snpholder,
                         snpholder)
                     else # snp + other terms
                         snptodf!(testdf[!, :snp], @view(gholder[vcfrowinds]), fittednullmodel)
@@ -1091,9 +1091,9 @@ function vgwas(
                 "snpeffectnulltau,betapval,taupval,jointpval")
                 # e may be factor - Z should match dimension
                 Z = similar(modelmatrix(FormulaTerm(term(:y), term(Symbol(e))), df))
-                # create vector of arrays for score test 
+                # create vector of arrays for score test
                 q = size(Z, 2)
-                testvec = [Matrix{Float64}(undef, ni, q) for 
+                testvec = [Matrix{Float64}(undef, ni, q) for
                 ni in fittednullmodel.nis]
             else
                 γ̂β = 0.0 # effect size for beta gxe effect
@@ -1182,8 +1182,8 @@ Takes entries from a matrix/vector of observations across all individuals
 and loads them into testvec which is a Vector{Array} based on nullmodel.nis.
 """
 
-function loadtimevar!(testvec::AbstractVector, 
-                    longmat::AbstractArray, 
+function loadtimevar!(testvec::AbstractVector,
+                    longmat::AbstractArray,
                     nullmodel::WSVarLmmModel)
     offset = 1
     for i in 1:length(nullmodel.nis)
