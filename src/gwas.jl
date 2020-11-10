@@ -636,16 +636,16 @@ function vgwas(
             sum(union(fittednullmodel.wsvarformula.rhs, [term(:snp)])))
         fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
             sum(union(fittednullmodel.meanformula.rhs, [term(Symbol(e))],
-            [term(:snp)], InteractionTerm(term.((:snp, Symbol(e)))) )))
+            [term(:snp)], [InteractionTerm(term.((:snp, Symbol(e))))] )))
         fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
             sum(union(fittednullmodel.wsvarformula.rhs, [term(Symbol(e))],
-            [term(:snp)], InteractionTerm(term.((:snp, Symbol(e)))) )))
+            [term(:snp)], [InteractionTerm(term.((:snp, Symbol(e))))] )))
         SnpArrays.makestream(pvalfile, "w") do io
             if test == :score
                 println(io, "chr,pos,snpid,maf,hwepval,snpeffectnullbeta,",
                 "snpeffectnulltau,betapval,taupval,jointpval")
                 # e may be factor - Z should match dimension
-                Z = similar(modelmatrix(FormulaTerm(term(:y), term(Symbol(e))), df))
+                Z = similar(modelmatrix(FormulaTerm(term(:y), term(Symbol(e))), testdf))
                 # create vector of arrays for score test 
                 q = size(Z, 2)
                 testvec = [Matrix{Float64}(undef, ni, q) for 
@@ -1080,17 +1080,17 @@ function vgwas(
             sum(union(fittednullmodel.wsvarformula.rhs, [term(:snp)])))
         fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
             sum(union(fittednullmodel.meanformula.rhs, [term(Symbol(e))],
-            [term(:snp)], InteractionTerm(term.((:snp, Symbol(e)))) )))
+            [term(:snp)], [InteractionTerm(term.((:snp, Symbol(e))))] )))
         fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
             sum(union(fittednullmodel.wsvarformula.rhs, [term(Symbol(e))],
-            [term(:snp)], InteractionTerm(term.((:snp, Symbol(e)))) )))
+            [term(:snp)], [InteractionTerm(term.((:snp, Symbol(e))))] )))
 
         SnpArrays.makestream(pvalfile, "w") do io
             if test == :score
                 println(io, "chr,pos,snpid,snpeffectnullbeta,",
                 "snpeffectnulltau,betapval,taupval,jointpval")
                 # e may be factor - Z should match dimension
-                Z = similar(modelmatrix(FormulaTerm(term(:y), term(Symbol(e))), df))
+                Z = similar(modelmatrix(FormulaTerm(term(:y), term(Symbol(e))), testdf))
                 # create vector of arrays for score test 
                 q = size(Z, 2)
                 testvec = [Matrix{Float64}(undef, ni, q) for 
