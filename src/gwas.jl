@@ -452,6 +452,22 @@ function vgwas(
             nSets = length(snpset_ids)
             setlength = 0
         elseif isa(snpset, Integer)
+            if snpset == 1
+                println("SNP-set length `snpset = 1`, a single-SNP analysis will be run.")
+                # single-snp analysis
+                vgwas(fittednullmodel, bedfile, bimfile, bedn;
+                analysistype = "singlesnp",
+                test = test,
+                pvalfile = pvalfile,
+                snpmodel = snpmodel,
+                snpinds = snpinds,
+                bedrowinds = bedrowinds,
+                solver = solver,
+                parallel = parallel,
+                runs = runs,
+                verbose = verbose)
+                return fittednullmodel
+            end
             setlength = snpset
         else #abstract vector (boolean of true at indicies or range or indicies)
             setlength = -1
@@ -899,6 +915,22 @@ function vgwas(
             nSets = length(snpset_ids)
             setlength = 0
         elseif isa(snpset, Integer)
+            if snpset == 1
+                println("SNP-set length `snpset = 1`, a single-SNP analysis will be run.")
+                # single-snp analysis
+                vgwas(fittednullmodel, vcffile, nsamples, vcftype;
+                analysistype = "singlesnp",
+                test = test,
+                pvalfile = pvalfile,
+                snpmodel = snpmodel,
+                snpinds = snpinds,
+                vcfrowinds = vcfrowinds,
+                solver = solver,
+                parallel = parallel,
+                runs = runs,
+                verbose = verbose)
+                return fittednullmodel
+            end
             setlength = snpset
             maxsnpset = snpset
         else #abstract vector (boolean of true at indicies or range or indicies)
@@ -1114,7 +1146,6 @@ function vgwas(
                 end
                 # add SNP values to testdf
                 snptodf!(testdf[!, :snp], @view(gholder[vcfrowinds]), fittednullmodel)
-                copyto!(testdf[!, :g_x_e], @view(testdf[!, :snp]) .* @view(testdf[!, e]))
                 #copyto!(testvec, modelmatrix(@formula(trait ~ snp & e), testdf))
                 if test == :score
                     nm = WSVarLmmModel(nullmeanformula,
@@ -1172,7 +1203,7 @@ Takes SNPs in `snpholder` and puts them into the dfvec (df col) based on nullmod
 function snptodf!(dfvec::AbstractVector,
                  snpholder::AbstractArray,
                  nullmodel::WSVarLmmModel)
-    dfvec = vcat(map((x, y) -> fill(x, y), snpholder, nullmodel.nis)...)
+    copyto!(dfvec, vcat(map((x, y) -> fill(x, y), snpholder, nullmodel.nis)...))
 end
 
 """
