@@ -10,19 +10,31 @@ function test_statistic(
     A_21::AbstractMatrix{T},
     B_21::AbstractMatrix{T},
     nm::WSVarLmmModel{T},
-    m::Integer
+    m::Integer,
+    tmp_rr::AbstractMatrix{T},
+    tmp_sr::AbstractMatrix{T},
+    tmp_r::AbstractVector{T}
 ) where {T <: BlasReal}
-    Vψ_1 = B_11 - transpose(A_21) * nm.Ainv * B_21 -
-        transpose(B_21) * nm.Ainv * A_21 +
-        transpose(A_21) * nm.Ainv * nm.B * nm.Ainv * A_21
-    eigfact = eigen!(Symmetric(Vψ_1))
-    v1 = one(T) / sqrt(m) * transpose(eigfact.vectors) * ψ_1
+    # Vψ_1 = B_11 - transpose(A_21) * nm.Ainv * B_21 -
+    #    transpose(B_21) * nm.Ainv * A_21 +
+    #    transpose(A_21) * st.AinvBAinv * A_21
+    tmp_rr .= B_11
+    mul!(tmp_sr, nm.Ainv, B_21)
+    mul!(tmp_rr, transpose(A_21), tmp_sr, -one(T), one(T))
+    mul!(tmp_sr, nm.Ainv, A_21)
+    mul!(tmp_rr, transpose(B_21), tmp_sr, -one(T), one(T))
+    mul!(tmp_sr, st.AinvBAinv, A_21)
+    mul!(tmp_rr, transpose(A_21), tmp_sr, one(T), one(T))
+
+    eigfact = eigen!(Symmetric(tmp_rr))
+    mul!(tmp_r, transpose(eigfact.vectors), ψ_1, one(T) / sqrt(m), zero(T))
+    # v1 = one(T) / sqrt(m) * transpose(eigfact.vectors) * ψ_1
     atol = 1e-8 # tolerance for determining rank
     rk = 0 # rank
     ts = zero(T)
     for j in 1:length(ψ_1)
         if eigfact.values[j] > atol
-            ts += abs2(v1[j]) / eigfact.values[j]
+            ts += abs2(tmp_r[j]) / eigfact.values[j]
             rk += 1
         end
     end
@@ -46,7 +58,8 @@ function pvalues!(st::Union{WSVarScoreTest{T},WSVarScoreTestInvariant{T}}
         B_11p = @view st.B_11[1:r_X1, 1:r_X1]
         A_21p = @view st.A_21[:, 1:r_X1]
         B_21p = @view st.B_21[:, 1:r_X1]
-        v1, r1 = test_statistic(st, ψ_1p, B_11p, A_21p, B_21p, nm, st.m)
+        v1, r1 = test_statistic(st, ψ_1p, B_11p, A_21p, B_21p, nm, st.m,
+            st.tmp_rx1rx1, st.tmp_srx1, st.tmp_rx1)
         p1 = v1 ≤ 0 ? 1.0 : ccdf(Chisq(r1), v1)
     else
         p1 = -one(T)
@@ -57,7 +70,8 @@ function pvalues!(st::Union{WSVarScoreTest{T},WSVarScoreTestInvariant{T}}
         B_11p = @view st.B_11[(r_X1 + 1):end, (r_X1 + 1):end]
         A_21p = @view st.A_21[:, (r_X1 + 1):end]
         B_21p = @view st.B_21[:, (r_X1 + 1):end]
-        v2, r2 = test_statistic(st, ψ_1p, B_11p, A_21p, B_21p, nm, st.m)
+        v2, r2 = test_statistic(st, ψ_1p, B_11p, A_21p, B_21p, nm, st.m,
+            st.tmp_rw1rw1, st.tmp_srw1, st.tmp_rw1)
         p2 = v2 ≤ 0 ? 1.0 : ccdf(Chisq(r2), v2)
     else
         p2 = -one(T)
@@ -65,7 +79,8 @@ function pvalues!(st::Union{WSVarScoreTest{T},WSVarScoreTestInvariant{T}}
 
     # for both
     if st.r_X1 > 0 && st.r_W1 > 0
-        v3, r3 = test_statistic(st, st.ψ_1, st.B_11, st.A_21, st.B_21, nm, st.m)
+        v3, r3 = test_statistic(st, st.ψ_1, st.B_11, st.A_21, st.B_21, nm, st.m,
+            st.tmp_rr, st.tmp_sr, st.tmp_r)
         p3 = v3 ≤ 0 ? 1.0 : ccdf(Chisq(r3), v3)
     else
         p3 = -one(T)

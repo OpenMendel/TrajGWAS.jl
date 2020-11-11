@@ -196,6 +196,16 @@ struct WSVarScoreTest{T <: BlasReal}
     A_21            :: Matrix{T}        # (p + l + q◺) x r matrix.
     # B_22 = nullmodel.B
     # inv(A_22) = nullmodel.Ainv
+    AinvBAinv   :: AbstractMatrix{T} # r x r.
+    tmp_sr      :: AbstractMatrix{T} # p + l + q◺ x r.
+    tmp_srx1    :: AbstractMatrix{T} # p + l + q◺ x r_X1.
+    tmp_srw1    :: AbstractMatrix{T} # p + l + q◺ x r_W1.
+    tmp_rr      :: AbstractMatrix{T} # r x r.
+    tmp_rx1rx1  :: AbstractMatrix{T} # r_X1 x r_X1.
+    tmp_rw1rw1  :: AbstractMatrix{T} # r_W1 x r_W1.
+    tmp_r       :: AbstractVector{T}
+    tmp_rx1     :: AbstractVector{T}
+    tmp_rw1     :: AbstractVector{T}
 end
 
 function WSVarScoreTest(nullmodel::WSVarLmmModel{T},
@@ -239,8 +249,22 @@ function WSVarScoreTest(nullmodel::WSVarLmmModel{T},
     B_21 = Matrix{T}(undef, p + l + q◺, r)
     A_21 = Matrix{T}(undef, p + l + q◺, r)
 
+    AinvBAinv = nullmodel.Ainv * nullmodel.B * nullmodel.Ainv
+    tmp_sr      = Matrix{T}(undef, p + l + q◺, r)
+    tmp_srx1    = Matrix{T}(undef, p + l + q◺, r_X1)
+    tmp_srw1    = Matrix{T}(undef, p + l + q◺, r_W1)
+    tmp_rr      = Matrix{T}(undef, r, r)
+    tmp_rx1rx1  = Matrix{T}(undef, r_X1, r_X1)
+    tmp_rw1rw1  = Matrix{T}(undef, r_W1, r_W1)
+    tmp_r       = Vector{T}(undef, r)
+    tmp_rx1     = Vector{T}(undef, r_X1)
+    tmp_rw1     = Vector{T}(undef, r_W1)
+
     WSVarScoreTest{T}(nullmodel, testobsvec, p, q, l, m, nsum, r_X1, r_W1, r,
-        ψ_1, ψ_1obs, ψ_2obs, B_11, B_21, A_21)
+        ψ_1, ψ_1obs, ψ_2obs, B_11, B_21, A_21,
+        AinvBAinv, tmp_sr, tmp_srx1, tmp_srw1, tmp_rr, tmp_rx1rx1, tmp_rw1rw1,
+        tmp_r, tmp_rx1, tmp_rw1
+    )
 end
 
 """
