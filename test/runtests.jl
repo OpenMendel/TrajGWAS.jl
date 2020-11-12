@@ -94,7 +94,7 @@ vgwas(@formula(y ~ 1 + sex + onMeds),
         filepath * "vgwas_plinkex.csv",
         filepath * "hapmap3",
         pvalfile = pvalpath)
-results = CSV.read("plink.vgwas.pval.txt")
+results = CSV.read(pvalpath)
 @test all(isapprox.((mean(results.betapval),
     mean(results.taupval),
     mean(results.jointpval)),
@@ -161,14 +161,15 @@ vgwas(@formula(y ~ 1 + sex + onMeds),
         :id,
         filepath * "vgwas_plinkex.csv",
         filepath * "hapmap3",
-        pvalfile = "gxe.plink.pval.txt",
+        pvalfile = pvalpath,
         analysistype = "gxe",
         e = :sex,
         snpinds = 1:10)
-results = CSV.read("gxe.plink.pval.txt")
+results = CSV.read(pvalpath)
 @test all(isapprox.((mean(results.betapval),
     mean(results.taupval),
     mean(results.jointpval)),
     (0.5924867510209822, 0.40587655481713425, 0.5209862444588567)))
 end
 rm(pvalpath)
+rm("vgwas.null.txt")

@@ -3,7 +3,7 @@
 
 Computes the test statistic for the score test
 """
-function test_statistic(
+function test_statistic!(
     st::Union{WSVarScoreTest{T},WSVarScoreTestInvariant{T}},
     ψ_1::AbstractVector{T},
     B_11::AbstractMatrix{T},
@@ -39,7 +39,6 @@ function test_statistic(
         end
     end
     return ts, rk
-    # TODO: devise something to avoid reallocation in st.
 end
 
 """
@@ -58,7 +57,7 @@ function pvalues!(st::Union{WSVarScoreTest{T},WSVarScoreTestInvariant{T}}
         B_11p = @view st.B_11[1:r_X1, 1:r_X1]
         A_21p = @view st.A_21[:, 1:r_X1]
         B_21p = @view st.B_21[:, 1:r_X1]
-        v1, r1 = test_statistic(st, ψ_1p, B_11p, A_21p, B_21p, nm, st.m,
+        v1, r1 = test_statistic!(st, ψ_1p, B_11p, A_21p, B_21p, nm, st.m,
             st.tmp_rx1rx1, st.tmp_srx1, st.tmp_rx1)
         p1 = v1 ≤ 0 ? 1.0 : ccdf(Chisq(r1), v1)
     else
@@ -70,7 +69,7 @@ function pvalues!(st::Union{WSVarScoreTest{T},WSVarScoreTestInvariant{T}}
         B_11p = @view st.B_11[(r_X1 + 1):end, (r_X1 + 1):end]
         A_21p = @view st.A_21[:, (r_X1 + 1):end]
         B_21p = @view st.B_21[:, (r_X1 + 1):end]
-        v2, r2 = test_statistic(st, ψ_1p, B_11p, A_21p, B_21p, nm, st.m,
+        v2, r2 = test_statistic!(st, ψ_1p, B_11p, A_21p, B_21p, nm, st.m,
             st.tmp_rw1rw1, st.tmp_srw1, st.tmp_rw1)
         p2 = v2 ≤ 0 ? 1.0 : ccdf(Chisq(r2), v2)
     else
@@ -79,7 +78,7 @@ function pvalues!(st::Union{WSVarScoreTest{T},WSVarScoreTestInvariant{T}}
 
     # for both
     if st.r_X1 > 0 && st.r_W1 > 0
-        v3, r3 = test_statistic(st, st.ψ_1, st.B_11, st.A_21, st.B_21, nm, st.m,
+        v3, r3 = test_statistic!(st, st.ψ_1, st.B_11, st.A_21, st.B_21, nm, st.m,
             st.tmp_rr, st.tmp_sr, st.tmp_r)
         p3 = v3 ≤ 0 ? 1.0 : ccdf(Chisq(r3), v3)
     else
