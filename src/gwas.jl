@@ -3,6 +3,7 @@
     vgwas(nullmeanformula, reformula, nullwsvarformula, idvar, df, geneticfile; kwargs...)
     vgwas(fittednullmodel, geneticfile; kwargs...)
     vgwas(fittednullmodel, bedfile, bimfile, bedn; kwargs...)
+    vgwas(fittednullmodel, vcffile, nsamples, vcftype; kwargs...)
 
 # Positional arguments
 - `nullmeanformula::FormulaTerm`: mean formula (β) for the null model.
@@ -22,6 +23,9 @@
     genotype (:GT) data with the `vcftype` command.
 - `fittednullmodel::StatsModels.TableRegressionModel`: the fitted null model
     output from `vgwas(nullformula, covfile)` or `vgwas(nullformula, df)`.
+    **NOTE** If the nullmodel is passed in with the `bedfile, bimfile, bedn` or 
+    `vcffile, nsamples, vcftype` arguments, the IDs/data in the null model must match the
+    order of the IDs in the PLINK/VCF file.  
 - `bedfile::Union{AbstractString,IOStream}`: path to Plink bed file with full file name.
 - `bimfile::Union{AbstractString,IOStream}`: path to Plink bim file with full file name.
 - `bedn::Integer`: number of samples in bed/vcf file.
@@ -344,14 +348,18 @@ function vgwas(
                 pvalsβ = Vector{Float64}(undef, q) # effect size for columns being tested
                 γ̂τ = Vector{Float64}(undef, q) # effect size for columns being tested
                 pvalsτ = Vector{Float64}(undef, q) # effect size for columns being tested
-                fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-                    sum(union(fittednullmodel.meanformula.rhs, testformula.rhs)))
-                fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-                    sum(union(fittednullmodel.wsvarformula.rhs, testformula.rhs)))
                 if snponly
                     println(io, "chr,pos,snpid,maf,hwepval,betaeffect,betapval,",
                     "taueffect,taupval")
+                    fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
+                    sum(union(fittednullmodel.meanformula.rhs, [testformula.rhs])))
+                    fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
+                    sum(union(fittednullmodel.wsvarformula.rhs, [testformula.rhs])))
                 else
+                    fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
+                    sum(union(fittednullmodel.meanformula.rhs, testformula.rhs)))
+                    fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
+                    sum(union(fittednullmodel.wsvarformula.rhs, testformula.rhs)))
                     print(io, "chr,pos,snpid,maf,hwepval,")
                     for j in 1:q
                         print(io, "betaeffect$j,betapval$j,")
@@ -411,11 +419,12 @@ function vgwas(
                             copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
                             copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
                             copyto!(pvalsβ, 1, coeftable(altmodel).cols[4], fittednullmodel.p + 1, q)
-                            copyto!(pvalsτ, coeftable(altmodel).cols[4][end-q:q])
+                            copyto!(pvalsτ, 1, coeftable(altmodel).cols[4], 
+                                altmodel.p + fittednullmodel.l + 1, q)
                         end
                         if snponly
-                            println(io, "$(snpj[1]),$(snpj[4]),$(snpj[2]),$maf,$hwepval,","
-                            $(γ̂β[1]),$(pvalsβ[1]),$(γ̂τ[1]),$(pvalsτ[1])")
+                            println(io, "$(snpj[1]),$(snpj[4]),$(snpj[2]),$maf,$hwepval,",
+                            "$(γ̂β[1]),$(pvalsβ[1]),$(γ̂τ[1]),$(pvalsτ[1])")
                         else
                             print(io, "$(snpj[1]),$(snpj[4]),$(snpj[2]),$maf,$hwepval,")
                             for j in 1:q
@@ -821,15 +830,19 @@ function vgwas(
                 pvalsβ = Vector{Float64}(undef, q) # effect size for columns being tested
                 γ̂τ = Vector{Float64}(undef, q) # effect size for columns being tested
                 pvalsτ = Vector{Float64}(undef, q) # effect size for columns being tested
-                fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-                    sum(union(fittednullmodel.meanformula.rhs, testformula.rhs)))
-                fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-                    sum(union(fittednullmodel.wsvarformula.rhs, testformula.rhs)))
                 if snponly
-                    println(io, "chr,pos,snpid,maf,hwepval,betaeffect,betapval,",
+                    println(io, "chr,pos,snpid,betaeffect,betapval,",
                     "taueffect,taupval")
+                    fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
+                    sum(union(fittednullmodel.meanformula.rhs, [testformula.rhs])))
+                    fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
+                    sum(union(fittednullmodel.wsvarformula.rhs, [testformula.rhs])))
                 else
-                    print(io, "chr,pos,snpid,maf,hwepval,")
+                    fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
+                    sum(union(fittednullmodel.meanformula.rhs, testformula.rhs)))
+                    fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
+                    sum(union(fittednullmodel.wsvarformula.rhs, testformula.rhs)))
+                    print(io, "chr,pos,snpid,")
                     for j in 1:q
                         print(io, "betaeffect$j,betapval$j,")
                     end
@@ -876,7 +889,8 @@ function vgwas(
                     copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
                     copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
                     copyto!(pvalsβ, 1, coeftable(altmodel).cols[4], fittednullmodel.p + 1, q)
-                    copyto!(pvalsτ, coeftable(altmodel).cols[4][end-q:q])
+                    copyto!(pvalsτ, 1, coeftable(altmodel).cols[4], 
+                    altmodel.p + fittednullmodel.l + 1, q)
                     if snponly
                         println(io, "$(rec_chr[1]),$(rec_pos[1]),$(rec_ids[1][1]),",
                         "$(γ̂β[1]),$(pvalsβ[1]),$(γ̂τ[1]),$(pvalsτ[1])")
