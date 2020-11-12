@@ -154,8 +154,6 @@ results = CSV.read(pvalpath)
     (0.25347423101832717, 0.19024751040999272, 0.22966140947913333)))
 end
 
-rm(pvalpath)
-
 @testset "vgwas_gxe_plink" begin
 vgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
@@ -173,3 +171,4 @@ results = CSV.read("gxe.plink.pval.txt")
     mean(results.jointpval)),
     (0.5924867510209822, 0.40587655481713425, 0.5209862444588567)))
 end
+rm(pvalpath)
