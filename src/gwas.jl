@@ -370,7 +370,7 @@ function vgwas(
                             print(io, ",")
                         end
                     end
-                    println("")
+                    println(io, "")
                 end
             end
             SnpArrays.makestream(bimfile) do bimio
@@ -436,7 +436,7 @@ function vgwas(
                                     print(io, ",")
                                 end
                             end
-                            println("") #end line
+                            println(io, "") #end line
                         end
                     end
                 end
@@ -852,7 +852,7 @@ function vgwas(
                             print(io, ",")
                         end
                     end
-                    println("")
+                    println(io, "")
                 end
             end
             for j in eachindex(snpmask)
@@ -905,7 +905,7 @@ function vgwas(
                                 print(io, ",")
                             end
                         end
-                        println("") #end line
+                        println(io, "") #end line
                     end
                 end
             end
