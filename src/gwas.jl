@@ -678,6 +678,8 @@ function vgwas(
             else
                 γ̂β = 0.0 # effect size for beta gxe effect
                 γ̂τ = 0.0 # effect size for tau gxe effect
+                snpeffectbeta = 0.0
+                snpeffecttau = 0.0
                 println(io, "chr,pos,snpid,maf,hwepval,snpeffectbeta,snpeffecttau,",
                 "GxEeffectbeta,GxEeffecttau,betapval,taupval")
             end
@@ -1144,7 +1146,9 @@ function vgwas(
             else
                 γ̂β = 0.0 # effect size for beta gxe effect
                 γ̂τ = 0.0 # effect size for tau gxe effect
-                println(io, "chr,pos,snpid,snpeffectnull,snpeffectbeta,snpeffecttau,",
+                snpeffectbeta = 0.0
+                snpeffecttau = 0.0
+                println(io, "chr,pos,snpid,snpeffectbeta,snpeffecttau,",
                 "GxEeffectbeta,GxEeffecttau,betapval,taupval")
             end
             for j in eachindex(snpmask)
