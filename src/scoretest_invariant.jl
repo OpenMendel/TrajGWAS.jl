@@ -97,6 +97,9 @@ function WSVarScoreTestInvariant(
         ψ_τ1_pre[i] = -sum(obs.diagDVRV)
     end
 
+    # println("ψ_β1_pre: ", ψ_β1_pre)
+    # println("ψ_τ1_pre: ", ψ_τ1_pre)
+
     # build ψ_2obs
     ψ_2obs = Matrix{T}(undef, p + l + q◺, m)
     fill!(ψ_2obs, zero(T))
@@ -179,6 +182,9 @@ function test!(st::WSVarScoreTestInvariant,
         mul!(st.ψ_τ1, transpose(W1), st.ψ_τ1_pre)
     end
 
+    # println("ψ_β1: ", st.ψ_β1)
+    # println("ψ_τ1: ", st.ψ_τ1)
+
     # build B_11: using BLAS.syrk!()
     BLAS.syrk!('U', 'N', one(T), st.ψ_1obs, zero(T), st.B_11)
     copytri!(st.B_11, 'U')
@@ -197,5 +203,11 @@ function test!(st::WSVarScoreTestInvariant,
         mul!(st.A_21_Lγτ1, st.A_21_Lγτ1_rowsums, W1, one(T) / m, zero(T))
     end
 
-    pvalues!(st)
+    if r_X1 == 1 && r_W1 == 1
+        zs = zs!(st)
+    else
+        zs = nothing
+    end
+    pvals = pvalues!(st)
+    return pvals, zs
 end
