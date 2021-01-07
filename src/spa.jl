@@ -2,7 +2,7 @@
 # after reworking SPA
 
 
-using Interpolations, Roots
+using Interpolations
 import Optim: minimizer, optimize, LBFGS, NelderMead
 
 function ecgf(z::AbstractVector; knots::Integer=10000)
