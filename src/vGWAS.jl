@@ -21,4 +21,5 @@ module vGWAS
     include("scoretest_invariant.jl")
     include("pvalues.jl")
     include("gwas.jl")
+    include("spa.jl")
 end
