@@ -1,8 +1,7 @@
 #Code to do type I error simulation for vGWAS.jl
 # after reworking SPA
 
-
-using Interpolations, Roots
+using Interpolations
 import Optim: minimizer, optimize, LBFGS, NelderMead
 
 function ecgf(z::AbstractVector; knots::Integer=10000)
@@ -46,6 +45,24 @@ function ecgf(vs::AbstractVector, zs::AbstractVector)
     return K0_int, K1_int, K2_int
 end
 
+struct vGWASEcgfCollection
+    K0_β
+    K1_β
+    K2_β
+    K0_τ
+    K1_τ
+    K2_τ
+    K0_βτ
+    K1_βτ
+    K2_βτ
+end
+function ecgf(st::WSVarScoreTestInvariant)
+    K0_β, K1_β, K2_β = ecgf(st.ψ_β1_pre)
+    K0_τ, K1_τ, K2_τ = ecgf(st.ψ_τ1_pre)
+    K0_βτ, K1_βτ, K2_βτ = ecgf(st.ψ_βτ_pre)
+    vGWASEcgfCollection(K0_β, K1_β, K2_β, K0_τ, K1_τ, K2_τ, K0_βτ, K1_βτ, K2_βτ)
+end
+
 function ecgf_g(cnts, vals_norm, K0, K1, K2)
     function K0_(z; tmp=Vector(undef, 3))
         for i in 1:3
@@ -68,47 +85,76 @@ function ecgf_g(cnts, vals_norm, K0, K1, K2)
     K0_, K1_, K2_
 end
 
-function spa_pval(s::AbstractFloat, K0, K1, K2; cutoff = 0.0, p_alt=-1.0)
-    if abs(s) > cutoff
-        f = x -> K0(x[1]) - x[1] * s
-        function g!(storage, x)
-            storage[1] = K1(x[1]) - s
-        end
-        function h!(storage, x)
-            storage[1] = K2(x[1])
-        end
-        r = optimize(f, g!, h!, [0.0], LBFGS())
-        zeta = minimizer(r)[1]
-
-        omega = sign(zeta) * sqrt(max(0, 2 * (zeta * s - K0(zeta))))
-        nu = zeta * sqrt(K2(zeta))
-        z2 = omega + 1.0/omega * log(nu / omega)
-
-        return ccdf(Normal(), abs(z2)) + cdf(Normal(), -abs(z2))
-    else
-        return p_alt
-    end
-end
-
-
 function spa(g::AbstractVector, pre_vec::AbstractVector, p_alt, K0, K1, K2;
     tmp_g=similar(g), tmp_g2=similar(g, 3), r=2.0, r_var=var(pre_vec))
     # involves internal normalization
-    m = mean(g)
-    s = std(g)
+    m = mean(skipmissing(g))
+    s = std(skipmissing(g))
     tmp_g .= (g .- m) ./ s
     s_tau = dot(tmp_g, pre_vec)
     cutoff = r * sqrt(r_var * sum(x -> x ^ 2, tmp_g))
-    if abs(s_tau) < cutoff
+    return _get_pval(s_tau, cutoff, p_alt, cnts, vals_norm, K0, K1, K2, tmp_g2)
+end
+
+function spa(g::AbstractVector,
+    st::WSVarScoreTestInvariant,
+    p_alt,
+    Ks::vGWASEcgfCollection;
+    tmp_g=similar(g),
+    tmp_g2=similar(g, 3),
+    r=2.0)
+
+    # involves internal normalization
+    m = mean(skipmissing(g))
+    s = std(skipmissing(g))
+    tmp_g .= (g .- m) ./ s
+
+    s_β = dot(tmp_g, st.ψ_β1_pre)
+    s_τ = dot(tmp_g, st.ψ_τ1_pre)
+    s_βτ = dot(tmp_g, st.ψ_βτ_pre)
+
+    cutoff_factor = sum(x -> x^2, tmp_g)
+    cutoff_β = r * sqrt(st.var_β1_pre * cutoff_factor)
+    cutoff_τ = r * sqrt(st.var_τ1_pre * cutoff_factor)
+    cutoff_βτ = r * sqrt(st.var_βτ_pre * cutoff_factor)
+    cnts = map(x -> count(x .== g), [0.0, 1.0, 2.0])
+    vals_norm = ([0.0, 1.0, 2.0] .- m) ./ s
+
+    p_β = _get_pval(s_β, cutoff_β, p_alt[1], cnts, vals_norm,
+        Ks.K0_β, Ks.K1_β, Ks.K2_β, tmp_g2)
+    p_τ = _get_pval(s_τ, cutoff_τ, p_alt[2], cnts, vals_norm,
+        Ks.K0_τ, Ks.K1_τ, Ks.K2_τ, tmp_g2)
+    p_βτ = _get_pval(s_βτ, cutoff_βτ, p_alt[3], cnts, vals_norm,
+        Ks.K0_βτ, Ks.K1_βτ, Ks.K2_βτ, tmp_g2)
+    p_β, p_τ, p_βτ
+end
+
+function _get_pval(s, cutoff, p_alt, cnts, vals_norm, K0, K1, K2, tmp3)
+    if abs(s) < cutoff
         return p_alt
     else
-        cnts = map(x -> count(x .== g), [0.0, 1.0, 2.0])
-        vals_norm = ([0.0, 1.0, 2.0] .- m) ./ s
-
         K0_, K1_, K2_ = ecgf_g(cnts, vals_norm, K0, K1, K2)
-        K0__(x) = K0_(x; tmp=tmp_g2)
-        K1__(x) = K1_(x; tmp=tmp_g2)
-        K2__(x) = K2_(x; tmp=tmp_g2)
-        return spa_pval(s_tau, K0__, K1__, K2__; p_alt=p_alt)
+        K0__(x) = K0_(x; tmp=tmp3)
+        K1__(x) = K1_(x; tmp=tmp3)
+        K2__(x) = K2_(x; tmp=tmp3)
+        return _spa_pval(s, K0__, K1__, K2__)
     end
+end
+
+function _spa_pval(s::AbstractFloat, K0, K1, K2)
+    f = x -> K0(x[1]) - x[1] * s
+    function g!(storage, x)
+        storage[1] = K1(x[1]) - s
+    end
+    function h!(storage, x)
+        storage[1] = K2(x[1])
+    end
+    r = optimize(f, g!, h!, [0.0], LBFGS())
+    zeta = minimizer(r)[1]
+
+    omega = sign(zeta) * sqrt(max(0, 2 * (zeta * s - K0(zeta))))
+    nu = zeta * sqrt(K2(zeta))
+    z2 = omega + 1.0/omega * log(nu / omega)
+
+    return ccdf(Normal(), abs(z2)) + cdf(Normal(), -abs(z2))
 end

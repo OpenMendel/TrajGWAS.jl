@@ -37,6 +37,11 @@ struct WSVarScoreTestInvariant{T <: BlasReal}
     ψ_β1_pre :: Vector{T} # length-m.
     # ψ_τ1 = transpose(W1) * ψ_τ1_pre.
     ψ_τ1_pre :: Vector{T} # length-m.
+    ψ_βτ_pre :: Vector{T}
+
+    var_β1_pre :: T
+    var_τ1_pre :: T
+    var_βτ_pre :: T
 
     ψ_2obs  :: Matrix{T} # (p + l + q◺) x m.
 
@@ -92,10 +97,17 @@ function WSVarScoreTestInvariant(
     ψ_β1_pre = Vector{T}(undef, m)
     # ψ_τ1 = transpose(W1) * ψ_τ1_pre.
     ψ_τ1_pre = Vector{T}(undef, m)
+    # for joint testing
+    ψ_βτ_pre = Vector{T}(undef, m)
     for (i, obs) in enumerate(nullmodel.data)
         ψ_β1_pre[i] = sum(obs.Dinv_r - transpose(obs.rt_UUt))
         ψ_τ1_pre[i] = -sum(obs.diagDVRV)
+        ψ_βτ_pre[i] = ψ_β1_pre[i] + ψ_τ1_pre[i]
     end
+
+    var_β1_pre = var(ψ_β1_pre)
+    var_τ1_pre = var(ψ_τ1_pre)
+    var_βτ_pre = var(ψ_βτ_pre)
 
     # println("ψ_β1_pre: ", ψ_β1_pre)
     # println("ψ_τ1_pre: ", ψ_τ1_pre)
@@ -136,8 +148,9 @@ function WSVarScoreTestInvariant(
 
     WSVarScoreTestInvariant{T}(nullmodel, p, q, q◺, l, m, r_X1, r_W1, r,
         A_21_β2β1_rowsums, A_21_τ2τ1_rowsums, A_21_Lγτ1_rowsums,
-        ψ_1, ψ_1obs, ψ_β1, ψ_τ1, ψ_β1_pre, ψ_τ1_pre, ψ_2obs,
-        B_11, B_21, A_21, A_21_β2β1, A_21_τ2τ1, A_21_Lγτ1,
+        ψ_1, ψ_1obs, ψ_β1, ψ_τ1, ψ_β1_pre, ψ_τ1_pre, ψ_βτ_pre,
+        var_β1_pre, var_τ1_pre, var_βτ_pre,
+        ψ_2obs, B_11, B_21, A_21, A_21_β2β1, A_21_τ2τ1, A_21_Lγτ1,
         AinvBAinv, tmp_sr, tmp_srx1, tmp_srw1, tmp_rr, tmp_rx1rx1, tmp_rw1rw1,
         tmp_r, tmp_rx1, tmp_rw1
     )
