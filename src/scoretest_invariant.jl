@@ -10,7 +10,7 @@ WiSER (with parameters β = [β1, β2], τ = [τ1, τ2], and Lγ).
 We make use of the fitted null model.
 """
 struct WSVarScoreTestInvariant{T <: BlasReal}
-    nullmodel   :: WSVarLmmModel{T}
+    nullmodel  :: WSVarLmmModel{T}
 
     # dimensions
     p          :: Int       # #mean parameters in linear regression
