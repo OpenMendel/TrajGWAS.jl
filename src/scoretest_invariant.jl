@@ -216,11 +216,6 @@ function test!(st::WSVarScoreTestInvariant,
         mul!(st.A_21_Lγτ1, st.A_21_Lγτ1_rowsums, W1, one(T) / m, zero(T))
     end
 
-    if r_X1 == 1 && r_W1 == 1
-        zs = zs!(st)
-    else
-        zs = nothing
-    end
     pvals = pvalues!(st)
-    return pvals, zs
+    return pvals
 end
