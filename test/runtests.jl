@@ -109,7 +109,7 @@ vgwas(@formula(y ~ 1 + sex + onMeds),
         filepath * "vgwas_plinkex.csv",
         filepath * "hapmap3",
         pvalfile = pvalpath,
-        usespa = false)
+        usespa = true)
 results = CSV.read(pvalpath, DataFrame)
 @test all(isapprox.((mean(results.betapval),
     mean(results.taupval),
