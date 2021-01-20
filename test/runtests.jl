@@ -93,12 +93,28 @@ vgwas(@formula(y ~ 1 + sex + onMeds),
         :id,
         filepath * "vgwas_plinkex.csv",
         filepath * "hapmap3",
-        pvalfile = pvalpath)
+        pvalfile = pvalpath,
+        usespa = false)
 results = CSV.read(pvalpath, DataFrame)
 @test all(isapprox.((mean(results.betapval),
     mean(results.taupval),
     mean(results.jointpval)),
     (0.20892290777343045, 0.1905578803635017, 0.15579304125062576)))
+
+#spa 
+vgwas(@formula(y ~ 1 + sex + onMeds),
+        @formula(y ~ 1),
+        @formula(y ~ 1 + sex + onMeds),
+        :id,
+        filepath * "vgwas_plinkex.csv",
+        filepath * "hapmap3",
+        pvalfile = pvalpath,
+        usespa = false)
+results = CSV.read(pvalpath, DataFrame)
+@test all(isapprox.((mean(results.betapval),
+    mean(results.taupval),
+    mean(results.jointpval)),
+    (0.20841895796564883, 0.18913812012732348, 0.15402208166833328)))
 end
 
 @testset "vgwas_singlesnp_vcf" begin
@@ -110,7 +126,8 @@ vgwas(@formula(y ~ 1 + sex + onMeds),
         filepath * "test_vcf",
         pvalfile = pvalpath,
         geneticformat = "VCF",
-        vcftype = :DS)
+        vcftype = :DS,
+        usespa = false)
 results = CSV.read(pvalpath, DataFrame)
 @test all(isapprox.((mean(results.betapval),
     mean(results.taupval),

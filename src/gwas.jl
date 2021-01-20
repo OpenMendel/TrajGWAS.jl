@@ -160,6 +160,7 @@ function vgwas(
     pvalfile::Union{AbstractString, IOStream} = "vgwas.pval.txt",
     snpmodel::Union{Val{1}, Val{2}, Val{3}} = ADDITIVE_MODEL,
     snpinds::Union{Nothing, AbstractVector{<:Integer}} = nothing,
+    usespa::Bool = true,
     geneticrowinds::Union{Nothing, AbstractVector{<:Integer}} = nothing,
     solver = Ipopt.IpoptSolver(print_level=0, mehrotra_algorithm = "yes",
     warm_start_init_point="yes", max_iter=100),
@@ -250,6 +251,7 @@ function vgwas(
             pvalfile = pvalfile,
             snpmodel = snpmodel,
             snpinds = snpinds,
+            usespa = usespa,
             bedrowinds = rowinds,
             solver = solver,
             parallel = parallel,
@@ -265,6 +267,7 @@ function vgwas(
             pvalfile = pvalfile,
             snpmodel = snpmodel,
             snpinds = snpinds,
+            usespa = usespa,
             vcfrowinds = rowinds,
             solver = solver,
             parallel = parallel,
@@ -287,6 +290,7 @@ function vgwas(
     pvalfile::Union{AbstractString, IOStream} = "vgwas.pval.txt",
     snpmodel::Union{Val{1}, Val{2}, Val{3}} = ADDITIVE_MODEL,
     snpinds::Union{Nothing, AbstractVector{<:Integer}} = nothing,
+    usespa::Bool = true,
     bedrowinds::AbstractVector{<:Integer} = 1:bedn, # row indices for SnpArray
     solver = Ipopt.IpoptSolver(print_level=0, mehrotra_algorithm = "yes",
     warm_start_init_point="yes", max_iter=100),
@@ -302,6 +306,12 @@ function vgwas(
     cc = SnpArrays.counts(genomat, dims=1) # column counts of genomat
     mafs = SnpArrays.maf(genomat)
     nbedrows = eltype(bedrowinds) == Bool ? count(bedrowinds) : length(bedrowinds)
+
+    # storage vectors for SPA if it is set to true
+    if (usespa == true) & (analysistype == "singlesnp")
+        tmp = Array{Float64}(undef, fittednullmodel.m)
+        tmp2 = Array{Float64}(undef, 3)
+    end
 
     # create SNP mask vector
     if snpinds == nothing
@@ -338,6 +348,9 @@ function vgwas(
                 println(io, "chr,pos,snpid,maf,hwepval,betapval,taupval,jointpval")
                 if snponly
                     ts = WSVarScoreTestInvariant(fittednullmodel, 1, 1)
+                    if usespa
+                        Ks = ecgf(ts)
+                    end
                 else
                     ts = WSVarScoreTest(fittednullmodel, q, q)
                     testvec = [Matrix{Float64}(undef, ni, q) for
@@ -390,6 +403,12 @@ function vgwas(
                                 copyto!(snpholder, @view(genomat[bedrowinds, j]),
                                 impute=true, model=snpmodel)
                                 betapval, taupval, jointpval = test!(ts, snpholder, snpholder)
+                                ps = test!(ts, snpholder, snpholder)
+                                betapval, taupval, jointpval = ps
+                                if usespa
+                                    betapval, taupval, jointpval = spa(snpholder, ts, 
+                                        ps, Ks; tmp_g = tmp, tmp_g2 = tmp2)
+                                end
                             else # snp + other terms
                                 copyto!(snpholder, @view(genomat[bedrowinds, j]),
                                     impute=true, model=snpmodel)
@@ -470,6 +489,7 @@ function vgwas(
                 pvalfile = pvalfile,
                 snpmodel = snpmodel,
                 snpinds = snpinds,
+                usespa = usespa,
                 bedrowinds = bedrowinds,
                 solver = solver,
                 parallel = parallel,
@@ -760,6 +780,7 @@ function vgwas(
     pvalfile::Union{AbstractString, IOStream} = "vgwas.pval.txt",
     snpmodel::Union{Val{1}, Val{2}, Val{3}} = ADDITIVE_MODEL,
     snpinds::Union{Nothing, AbstractVector{<:Integer}} = nothing,
+    usespa::Bool = true,
     vcfrowinds::AbstractVector{<:Integer} = 1:nsamples, # row indices for VCF array
     solver = Ipopt.IpoptSolver(print_level=0, mehrotra_algorithm = "yes",
     warm_start_init_point="yes", max_iter=100),
@@ -786,6 +807,13 @@ function vgwas(
         snpmask = falses(nsnps)
         snpmask[snpinds] .= true
     end
+
+    # storage vectors for SPA if it is set to true
+    if (usespa == true) & (analysistype == "singlesnp")
+        tmp = Array{Float64}(undef, fittednullmodel.m)
+        tmp2 = Array{Float64}(undef, 3)
+    end
+    
 
     analysistype = lowercase(analysistype)
     analysistype in ["singlesnp", "snpset", "gxe"] || error("Analysis type $analysis invalid option.
@@ -822,6 +850,9 @@ function vgwas(
                 println(io, "chr,pos,snpid,betapval,taupval,jointpval")
                 if snponly
                     ts = WSVarScoreTestInvariant(fittednullmodel, 1, 1)
+                    if usespa
+                        Ks = ecgf(ts)
+                    end
                 else
                     ts = WSVarScoreTest(fittednullmodel, q, q)
                     testvec = [Matrix{Float64}(undef, ni, q) for
@@ -871,8 +902,12 @@ function vgwas(
                 if test == :score
                     if snponly
                         copyto!(snpholder, @view(gholder[vcfrowinds]))
-                        betapval, taupval, jointpval = test!(ts, snpholder,
-                        snpholder)
+                        ps = test!(ts, snpholder, snpholder)
+                        betapval, taupval, jointpval = ps
+                        if usespa
+                            betapval, taupval, jointpval = spa(snpholder, ts, 
+                                ps, Ks; tmp_g = tmp, tmp_g2 = tmp2)
+                        end
                     else # snp + other terms
                         snptodf!(testdf[!, :snp], @view(gholder[vcfrowinds]), fittednullmodel)
                         copyto!(Z, modelmatrix(testformula, testdf))
