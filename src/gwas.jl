@@ -419,7 +419,7 @@ function vgwas(
                             end
                         end
                         println(io, "$(snpj[1]),$(snpj[4]),$(snpj[2]),",
-                        "$maf,$hwepval,$betapval, $taupval, $jointpval")
+                        "$maf,$hwepval,$betapval,$taupval,$jointpval")
                     elseif test == :wald
                         if maf == 0 # mono-allelic
                             fill!(γ̂β, 0)
