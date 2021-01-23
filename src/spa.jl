@@ -85,6 +85,28 @@ function ecgf_g(cnts, vals_norm, K0, K1, K2)
     K0_, K1_, K2_
 end
 
+function ecgf_g(vals_norm, K0, K1, K2)
+    function K0_(z; tmp=Vector(undef, n))
+        for i in 1:length(vals)
+            @inbounds tmp[i] = K0(vals_norm[i] * z)
+        end
+        sum(tmp)
+    end
+    function K1_(z; tmp=Vector(undef, n))
+        for i in 1:length(vals)
+            @inbounds tmp[i] = vals[i] * K1(vals_norm[i] * z)
+        end
+        sum(tmp)
+    end
+    function K2_(z; tmp=Vector(undef, n))
+        for i in 1:length(vals)
+            @inbounds tmp[i] = vals[i] ^ 2 * K2(vals_norm[i] * z)
+        end
+        sum(tmp)
+    end
+    K0_, K1_, K2_
+end
+
 function spa(g::AbstractVector, pre_vec::AbstractVector, p_alt, K0, K1, K2;
     tmp_g=similar(g), tmp_g2=similar(g, 3), r=2.0, r_var=var(pre_vec))
     # involves internal normalization
@@ -100,8 +122,9 @@ function spa(g::AbstractVector,
     st::WSVarScoreTestInvariant,
     p_alt,
     Ks::vGWASEcgfCollection;
+    genotypes=true,
     tmp_g=similar(g),
-    tmp_g2=similar(g, 3),
+    tmp_g2=genotypes ? similar(g, 3) : similar(g),
     r=2.0)
 
     # involves internal normalization
@@ -118,14 +141,23 @@ function spa(g::AbstractVector,
     cutoff_τ = r * sqrt(st.var_τ1_pre * cutoff_factor)
     cutoff_βτ = r * sqrt(st.var_βτ_pre * cutoff_factor)
     cnts = map(x -> count(x .== g), [0.0, 1.0, 2.0])
-    vals_norm = ([0.0, 1.0, 2.0] .- m) ./ s
-
-    p_β = _get_pval(s_β, cutoff_β, p_alt[1], cnts, vals_norm,
-        Ks.K0_β, Ks.K1_β, Ks.K2_β, tmp_g2)
-    p_τ = _get_pval(s_τ, cutoff_τ, p_alt[2], cnts, vals_norm,
-        Ks.K0_τ, Ks.K1_τ, Ks.K2_τ, tmp_g2)
-    p_βτ = _get_pval(s_βτ, cutoff_βτ, p_alt[3], cnts, vals_norm,
-        Ks.K0_βτ, Ks.K1_βτ, Ks.K2_βτ, tmp_g2)
+    if genotypes 
+        vals_norm = ([0.0, 1.0, 2.0] .- m) ./ s
+        p_β = _get_pval(s_β, cutoff_β, p_alt[1], cnts, vals_norm,
+            Ks.K0_β, Ks.K1_β, Ks.K2_β, tmp_g2)
+        p_τ = _get_pval(s_τ, cutoff_τ, p_alt[2], cnts, vals_norm,
+            Ks.K0_τ, Ks.K1_τ, Ks.K2_τ, tmp_g2)
+        p_βτ = _get_pval(s_βτ, cutoff_βτ, p_alt[3], cnts, vals_norm,
+            Ks.K0_βτ, Ks.K1_βτ, Ks.K2_βτ, tmp_g2)
+    else
+        vals_norm = (g .- m) ./ s
+        p_β = _get_pval(s_β, cutoff_β, p_alt[1], vals_norm,
+            Ks.K0_β, Ks.K1_β, Ks.K2_β, tmp_g2)
+        p_τ = _get_pval(s_τ, cutoff_τ, p_alt[2], vals_norm,
+            Ks.K0_τ, Ks.K1_τ, Ks.K2_τ, tmp_g2)
+        p_βτ = _get_pval(s_βτ, cutoff_βτ, p_alt[3], vals_norm,
+            Ks.K0_βτ, Ks.K1_βτ, Ks.K2_βτ, tmp_g2)  
+    end
     p_β, p_τ, p_βτ
 end
 
@@ -134,6 +166,18 @@ function _get_pval(s, cutoff, p_alt, cnts, vals_norm, K0, K1, K2, tmp3)
         return p_alt
     else
         K0_, K1_, K2_ = ecgf_g(cnts, vals_norm, K0, K1, K2)
+        K0__(x) = K0_(x; tmp=tmp3)
+        K1__(x) = K1_(x; tmp=tmp3)
+        K2__(x) = K2_(x; tmp=tmp3)
+        return _spa_pval(s, K0__, K1__, K2__)
+    end
+end
+
+function _get_pval(s, cutoff, p_alt, vals_norm, K0, K1, K2, tmp3)
+    if abs(s) < cutoff
+        return p_alt
+    else
+        K0_, K1_, K2_ = ecgf_g(vals_norm, K0, K1, K2)
         K0__(x) = K0_(x; tmp=tmp3)
         K1__(x) = K1_(x; tmp=tmp3)
         K2__(x) = K2_(x; tmp=tmp3)
