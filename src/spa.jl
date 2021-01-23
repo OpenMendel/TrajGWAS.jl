@@ -140,8 +140,9 @@ function spa(g::AbstractVector,
     cutoff_β = r * sqrt(st.var_β1_pre * cutoff_factor)
     cutoff_τ = r * sqrt(st.var_τ1_pre * cutoff_factor)
     cutoff_βτ = r * sqrt(st.var_βτ_pre * cutoff_factor)
-    cnts = map(x -> count(x .== g), [0.0, 1.0, 2.0])
-    if genotypes 
+    if genotypes
+        cnts = map(x -> count(x .== g), [0.0, 1.0, 2.0])
+        @assert sum(cnts) == length(g) "With genotypes == true, the values in g must be 0, 1, or 2."
         vals_norm = ([0.0, 1.0, 2.0] .- m) ./ s
         p_β = _get_pval(s_β, cutoff_β, p_alt[1], cnts, vals_norm,
             Ks.K0_β, Ks.K1_β, Ks.K2_β, tmp_g2)
