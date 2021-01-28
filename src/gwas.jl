@@ -144,7 +144,8 @@ function vgwas(
         show(io, nm)
     end
     geneticfile == nothing && (return nm)
-    vgwas(nm, geneticfile; solver = solver, verbose = verbose, kwargs...)
+    vgwas(nm, geneticfile; solver = solver, runs = runs, 
+        verbose = verbose, kwargs...)
 end
 
 function vgwas(
