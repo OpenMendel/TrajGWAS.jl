@@ -3,7 +3,7 @@ using Test
 using CSV, DataFrames, WiSER
 
 filepath = normpath(joinpath(dirname(pathof(WiSER)), "../data/"))
-df = DataFrame!(CSV.File(filepath * "sbp.csv"))
+df = DataFrame(CSV.File(filepath * "sbp.csv"), copycols = false)
 vlmm = WSVarLmmModel(
     @formula(sbp ~ 1 + agegroup + bmi_std + meds), # removed obswt, gender
     @formula(sbp ~ 1 + bmi_std),
@@ -118,7 +118,7 @@ results = CSV.read(pvalpath, DataFrame)
 end
 
 @testset "vgwas_singlesnp_vcf" begin
-vgwas(@formula(y ~ 1 + sex + onMeds),
+    vgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
@@ -128,11 +128,28 @@ vgwas(@formula(y ~ 1 + sex + onMeds),
         geneticformat = "VCF",
         vcftype = :DS,
         usespa = false)
-results = CSV.read(pvalpath, DataFrame)
-@test all(isapprox.((mean(results.betapval),
-    mean(results.taupval),
-    mean(results.jointpval)),
-    (0.47580382024875084, 0.4752535666464088, 0.48936769742780345)))
+    results = CSV.read(pvalpath, DataFrame)
+    @test all(isapprox.((mean(results.betapval),
+        mean(results.taupval),
+        mean(results.jointpval)),
+        (0.47580382024875084, 0.4752535666464088, 0.48936769742780345)))
+
+    #spa version
+    vgwas(@formula(y ~ 1 + sex + onMeds),
+        @formula(y ~ 1),
+        @formula(y ~ 1 + sex + onMeds),
+        :id,
+        filepath * "vgwas_vcfex.csv",
+        filepath * "test_vcf",
+        pvalfile = pvalpath,
+        geneticformat = "VCF",
+        vcftype = :DS,
+        usespa = true)
+    results = CSV.read(pvalpath, DataFrame)
+    @test all(isapprox.((mean(results.betapval),
+        mean(results.taupval),
+        mean(results.jointpval)),
+        (0.4709957279235137, 0.4691934843663542, 0.4766095197667451)))
 end
 
 @testset "vgwas_snpset_plink" begin

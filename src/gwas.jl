@@ -812,7 +812,7 @@ function vgwas(
     # storage vectors for SPA if it is set to true
     if (usespa == true) & (analysistype == "singlesnp")
         tmp = Array{Float64}(undef, fittednullmodel.m)
-        tmp2 = Array{Float64}(undef, 3)
+        tmp2 = Array{Float64}(undef, fittednullmodel.m)
     end
     
 
@@ -900,14 +900,18 @@ function vgwas(
                 if !snpmask[j] #skip snp, must have read marker still.
                     continue
                 end
+
                 if test == :score
-                    if snponly
+                    if var(@view(gholder[vcfrowinds])) == 0
+                        betapval, taupval, jointpval = 1., 1., 1.
+                    elseif snponly
                         copyto!(snpholder, @view(gholder[vcfrowinds]))
                         ps = test!(ts, snpholder, snpholder)
                         betapval, taupval, jointpval = ps
                         if usespa
                             betapval, taupval, jointpval = spa(snpholder, ts, 
-                                ps, Ks; tmp_g = tmp, tmp_g2 = tmp2)
+                                ps, Ks; tmp_g = tmp, tmp_g2 = tmp2,
+                                genotypes = false)
                         end
                     else # snp + other terms
                         snptodf!(testdf[!, :snp], @view(gholder[vcfrowinds]), fittednullmodel)
@@ -918,17 +922,25 @@ function vgwas(
                     println(io, "$(rec_chr[1]),$(rec_pos[1]),$(rec_ids[1][1]),",
                     "$betapval,$taupval,$jointpval")
                 elseif test == :wald
-                    snptodf!(testdf[!, :snp], @view(gholder[vcfrowinds]), fittednullmodel)
-                    altmodel = WSVarLmmModel(fullmeanformula,
-                        fittednullmodel.reformula, fullwsvarformula,
-                        :id, testdf)
-                    altmodel.obswts .= fittednullmodel.obswts
-                    WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs)
-                    copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
-                    copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
-                    copyto!(pvalsβ, 1, coeftable(altmodel).cols[4], fittednullmodel.p + 1, q)
-                    copyto!(pvalsτ, 1, coeftable(altmodel).cols[4], 
-                    altmodel.p + fittednullmodel.l + 1, q)
+                    if var(@view(gholder[vcfrowinds])) == 0
+                        fill!(γ̂β, 0) 
+                        fill!(pvalsβ, 1.)
+                        fill!(γ̂τ, 0) 
+                        fill!(pvalsτ, 1.)
+                    else
+                        snptodf!(testdf[!, :snp], @view(gholder[vcfrowinds]), fittednullmodel)
+                        altmodel = WSVarLmmModel(fullmeanformula,
+                            fittednullmodel.reformula, fullwsvarformula,
+                            :id, testdf)
+                        altmodel.obswts .= fittednullmodel.obswts
+                        WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs)
+                        copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
+                        copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
+                        copyto!(pvalsβ, 1, coeftable(altmodel).cols[4], 
+                            fittednullmodel.p + 1, q)
+                        copyto!(pvalsτ, 1, coeftable(altmodel).cols[4], 
+                        altmodel.p + fittednullmodel.l + 1, q)
+                    end
                     if snponly
                         println(io, "$(rec_chr[1]),$(rec_pos[1]),$(rec_ids[1][1]),",
                         "$(γ̂β[1]),$(pvalsβ[1]),$(γ̂τ[1]),$(pvalsτ[1])")
@@ -1039,8 +1051,12 @@ function vgwas(
                         record_chr = rec_chr, record_pos = rec_pos, record_ids = rec_ids)
                     end
                     if test == :score
-                        copyto!(Z, @view(gholder[vcfrowinds, :]))
-                        betapval, taupval, jointpval = test!(ts, Z, Z)
+                        if all(var(@view(gholder[vcfrowinds, :])) .== 0)
+                            betapval, taupval, jointpval = 1., 1., 1.
+                        else
+                            copyto!(Z, @view(gholder[vcfrowinds, :]))
+                            betapval, taupval, jointpval = test!(ts, Z, Z)
+                        end
                         println(io, "$(rec_chr[1]),$(rec_pos[1]),$(rec_ids[1][1]),",
                         "$(rec_chr[end]),$(rec_pos[end]),$(rec_ids[end][end]),$betapval,$taupval,$jointpval")
                     elseif test == :wald
@@ -1078,9 +1094,13 @@ function vgwas(
                     q = length(snpinds)
                     Z = zeros(fittednullmodel.m, q)
                     if test == :score
-                        ts = WSVarScoreTestInvariant(fittednullmodel, q, q)
-                        copyto!(Z, @view(genomat[vcfrowinds, snpinds]))
-                        betapval, taupval, jointpval = test!(ts, Z, Z)
+                        if all(var(@view(gholder[vcfrowinds, :])) .== 0)
+                            betapval, taupval, jointpval = 1., 1., 1.
+                        else
+                            ts = WSVarScoreTestInvariant(fittednullmodel, q, q)
+                            copyto!(Z, @view(genomat[vcfrowinds, snpinds]))
+                            betapval, taupval, jointpval = test!(ts, Z, Z)
+                        end
                         println(io, "$(snpset_id),$q,$betapval,$taupval,$jointpval")
                     elseif test == :wald
                         # # TODO
@@ -1115,9 +1135,13 @@ function vgwas(
                 γ̂ = Vector{Float64}(undef, q)
                 Z = zeros(fittednullmodel.m, q)
                 if test == :score
-                    ts = WSVarScoreTestInvariant(fittednullmodel, q, q)
-                    copyto!(Z, @view(genomat[vcfrowinds, snpset]))
-                    betapval, taupval, jointpval = test!(ts, Z, Z)
+                    if all(var(@view(gholder[vcfrowinds, :])) .== 0)
+                        betapval, taupval, jointpval = 1., 1., 1.
+                    else
+                        ts = WSVarScoreTestInvariant(fittednullmodel, q, q)
+                        copyto!(Z, @view(genomat[vcfrowinds, snpset]))
+                        betapval, taupval, jointpval = test!(ts, Z, Z)
+                    end
                     println(io, "The joint pvalue of snps indexed",
                      " at $(snpset) is betapval: $betapval, taupval: $taupval,",
                      " jointpval: $jointpval")
@@ -1174,7 +1198,8 @@ function vgwas(
                 println(io, "chr,pos,snpid,snpeffectnullbeta,",
                 "snpeffectnulltau,betapval,taupval,jointpval")
                 # e may be factor - Z should match dimension
-                Z = similar(modelmatrix(FormulaTerm(term(:y), term(Symbol(e))), testdf))
+                Z = similar(modelmatrix(FormulaTerm(term(:y), term(Symbol(e))),
+                    testdf))
                 # create vector of arrays for score test
                 q = size(Z, 2)
                 testvec = [Matrix{Float64}(undef, ni, q) for
@@ -1199,37 +1224,51 @@ function vgwas(
                     continue
                 end
                 # add SNP values to testdf
-                snptodf!(testdf[!, :snp], @view(gholder[vcfrowinds]), fittednullmodel)
+                if var(@view(gholder[vcfrowinds])) != 0
+                    snptodf!(testdf[!, :snp], @view(gholder[vcfrowinds]),
+                        fittednullmodel)
+                end
                 #copyto!(testvec, modelmatrix(@formula(trait ~ snp & e), testdf))
                 if test == :score
-                    nm = WSVarLmmModel(nullmeanformula,
-                    fittednullmodel.reformula, nullwsvarformula,
-                    :id, testdf)
-                    nm.obswts .= fittednullmodel.obswts
-                    @assert nm.ids == fittednullmodel.ids "IDs not matching for GxE."
-                    WiSER.fit!(nm, solver, parallel = parallel, runs = runs)
-                    snpeffectnullbeta = nm.β[end]
-                    snpeffectnulltau = nm.τ[end]
-                    copyto!(Z, modelmatrix(gxeformula, testdf))
-                    loadtimevar!(testvec, Z, nm)
-                    ts = WSVarScoreTest(nm, q, q)
-                    betapval, taupval, jointpval = test!(ts, testvec, testvec)
-                    ### CHANGE to WSVAR score test
+                    if var(@view(gholder[vcfrowinds])) == 0
+                        betapval, taupval, jointpval = 1., 1., 1.
+                        snpeffectnullbeta, snpeffectnulltau = 0., 0.
+                    else
+                        nm = WSVarLmmModel(nullmeanformula,
+                        fittednullmodel.reformula, nullwsvarformula,
+                        :id, testdf)
+                        nm.obswts .= fittednullmodel.obswts
+                        @assert nm.ids == fittednullmodel.ids "IDs not matching for GxE."
+                        WiSER.fit!(nm, solver, parallel = parallel, runs = runs)
+                        snpeffectnullbeta = nm.β[end]
+                        snpeffectnulltau = nm.τ[end]
+                        copyto!(Z, modelmatrix(gxeformula, testdf))
+                        loadtimevar!(testvec, Z, nm)
+                        ts = WSVarScoreTest(nm, q, q)
+                        betapval, taupval, jointpval = test!(ts, testvec, testvec)
+                    end
                     println(io, "$(rec_chr[1]),$(rec_pos[1]),$(rec_ids[1][1]),",
                         "$snpeffectnullbeta,$snpeffectnulltau,",
                         "$betapval,$taupval,$jointpval")
                 elseif test == :wald
-                    fullmod = WSVarLmmModel(fullmeanformula,
-                        fittednullmodel.reformula, fullwsvarformula,
-                        :id, testdf)
-                    fullmod.obswts .= fittednullmodel.obswts
-                    WiSER.fit!(fullmod, solver, parallel = parallel, runs = runs)
-                    γ̂β = fullmod.β[end]
-                    γ̂τ = fullmod.β[end]
-                    snpeffectbeta = fullmod.β[end-1]
-                    snpeffecttau = fullmod.τ[end-1]
-                    betapval = coeftable(fullmod).cols[4][fullmod.p]
-                    taupval = coeftable(fullmod).cols[4][end]
+                    if var(@view(gholder[vcfrowinds])) == 0
+                        betapval, taupval = 1., 1., 1.
+                        γ̂β, γ̂τ = 0., 0.
+                        snpeffectbeta, snpeffecttau = 0., 0.
+                    else
+                        fullmod = WSVarLmmModel(fullmeanformula,
+                            fittednullmodel.reformula, fullwsvarformula,
+                            :id, testdf)
+                        fullmod.obswts .= fittednullmodel.obswts
+                        WiSER.fit!(fullmod, solver, parallel = parallel,
+                            runs = runs)
+                        γ̂β = fullmod.β[end]
+                        γ̂τ = fullmod.β[end]
+                        snpeffectbeta = fullmod.β[end-1]
+                        snpeffecttau = fullmod.τ[end-1]
+                        betapval = coeftable(fullmod).cols[4][fullmod.p]
+                        taupval = coeftable(fullmod).cols[4][end]
+                    end
                     println(io, "$(rec_chr[1]),$(rec_pos[1]),$(rec_ids[1][1]),",
                         "$snpeffectbeta,$snpeffecttau,$γ̂β,$γ̂τ,",
                         "$betapval,$taupval")

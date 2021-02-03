@@ -86,21 +86,22 @@ function ecgf_g(cnts, vals_norm, K0, K1, K2)
 end
 
 function ecgf_g(vals_norm, K0, K1, K2)
+    n = length(vals_norm)
     function K0_(z; tmp=Vector(undef, n))
-        for i in 1:length(vals)
+        for i in 1:length(vals_norm)
             @inbounds tmp[i] = K0(vals_norm[i] * z)
         end
         sum(tmp)
     end
     function K1_(z; tmp=Vector(undef, n))
-        for i in 1:length(vals)
-            @inbounds tmp[i] = vals[i] * K1(vals_norm[i] * z)
+        for i in 1:length(vals_norm)
+            @inbounds tmp[i] = vals_norm[i] * K1(vals_norm[i] * z)
         end
         sum(tmp)
     end
     function K2_(z; tmp=Vector(undef, n))
-        for i in 1:length(vals)
-            @inbounds tmp[i] = vals[i] ^ 2 * K2(vals_norm[i] * z)
+        for i in 1:length(vals_norm)
+            @inbounds tmp[i] = vals_norm[i] ^ 2 * K2(vals_norm[i] * z)
         end
         sum(tmp)
     end
