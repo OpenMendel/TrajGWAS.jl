@@ -152,6 +152,39 @@ end
         (0.4709957279235137, 0.4691934843663542, 0.4766095197667451)))
 end
 
+@testset "vgwas_singlesnp_bgen" begin
+    vgwas(@formula(y ~ 1 + sex + onMeds),
+        @formula(y ~ 1),
+        @formula(y ~ 1 + sex + onMeds),
+        :id, 
+        filepath * "vgwas_bgen_ex.csv", 
+        filepath * "example.8bits", 
+        usespa = false,
+        geneticformat = "BGEN", 
+        pvalfile = pvalpath)
+    results = CSV.read(pvalpath, DataFrame)
+    @test all(isapprox.((mean(results.betapval),
+        mean(results.taupval),
+        mean(results.jointpval)),
+        (0.46429181963000665, 0.4931759050587741, 0.5046081797409608)))
+
+    #spa version
+    vgwas(@formula(y ~ 1 + sex + onMeds),
+        @formula(y ~ 1),
+        @formula(y ~ 1 + sex + onMeds),
+        :id, 
+        filepath * "vgwas_bgen_ex.csv", 
+        filepath * "example.8bits", 
+        usespa = true,
+        geneticformat = "BGEN", 
+        pvalfile = pvalpath)
+    results = CSV.read(pvalpath, DataFrame)
+    @test all(isapprox.((mean(results.betapval),
+        mean(results.taupval),
+        mean(results.jointpval)),
+        (0.46428062017147764, 0.49230409589144597, 0.5024177397539207)))
+end
+
 @testset "vgwas_snpset_plink" begin
 vgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
@@ -199,11 +232,36 @@ vgwas(@formula(y ~ 1 + sex + onMeds),
         analysistype = "gxe",
         e = :sex,
         snpinds = 1:10)
-results = CSV.read(pvalpath, DataFrame)
-@test all(isapprox.((mean(results.betapval),
-    mean(results.taupval),
-    mean(results.jointpval)),
-    (0.5924867510209822, 0.40587655481713425, 0.5209862444588567)))
+    results = CSV.read(pvalpath, DataFrame)
+    @test all(isapprox.((mean(results.betapval),
+        mean(results.taupval),
+        mean(results.jointpval)),
+        (0.5924867510209822, 0.40587655481713425, 0.5209862444588567)))
 end
+
+@testset "vgwas_gxe_bgen" begin
+    vgwas(@formula(y ~ 1 + sex + onMeds),
+        @formula(y ~ 1),
+        @formula(y ~ 1 + sex + onMeds),
+        :id, 
+        filepath * "vgwas_bgen_ex.csv", 
+        filepath * "example.8bits", 
+        geneticformat = "BGEN", 
+        pvalfile = pvalpath,
+        analysistype = "gxe",
+        e = :sex,
+        snpinds = 1:3)
+    results = CSV.read(pvalpath, DataFrame)
+    @test all(isapprox.((mean(results.betapval),
+        mean(results.taupval),
+        mean(results.jointpval)),
+        (0.5161655222831536, 0.4049021864084856, 0.5439672480147976)))
+    @test all(isapprox.((mean(results.snpeffectnullbeta),
+        mean(results.snpeffectnulltau)),
+        (0.6076516729747372, -0.3486224003739454)))
+end
+
+
+
 rm(pvalpath)
 rm("vgwas.null.txt")

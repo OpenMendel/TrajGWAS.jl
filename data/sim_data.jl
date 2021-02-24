@@ -1,5 +1,5 @@
 using SnpArrays, WiSER, vGWAS, Random, DataFrames, CSV, Statistics, Distributions, LinearAlgebra
-using GeneticVariation, VCFTools
+using GeneticVariation, VCFTools, BGEN
 
 # Simulate PLINK data 
 hapmap = SnpArray("hapmap3.bed")
@@ -240,3 +240,120 @@ vgwas(@formula(y ~ 1 + sex + onMeds),
 
 
 
+
+# Simulate BGEN data 
+b = Bgen(BGEN.datadir("example.8bits.bgen"))
+people = n_samples(b)
+sampleids = samples(b)
+variants = parse_variants(b; from_bgen_start=false)
+#sample 3 and 15 and 25 to be causal
+v3 = minor_allele_dosage!(b, variants[3]; T=Float64, mean_impute=true)
+v15 = minor_allele_dosage!(b, variants[15]; T=Float64, mean_impute=true)
+v25 = minor_allele_dosage!(b, variants[25]; T=Float64, mean_impute=true)
+
+ni = 10
+m = people
+Random.seed!(310)
+sex = rand(0:1, m)
+timeinvarX = [sex v3 v15 v25]
+p = 6
+l = 6
+q = 1
+
+βtrue = [10.0; -3.2; 0.5; 0.5; 1.5; 0.25]
+τtrue = [0.2; -0.3; 0.5; -0.5; 0.5; 0.25]
+Σγ    = Matrix(Diagonal([2.0]))
+δγω   = [0.0]
+σω    = [0.0]
+
+Σγω   = [Σγ δγω; δγω' σω]
+Lγω   = cholesky(Symmetric(Σγω), check = false).L
+Lγ    = Lγω[1:q, 1:q]
+lγω   = Lγω[q + 1, 1:q]
+lω    = Lγω[q + 1, q + 1]
+
+γω = Vector{Float64}(undef, q + 1)
+z  = similar(γω) # hold vector of iid std normal
+
+df = DataFrame()
+obsvec = Vector{WSVarLmmObs{Float64}}(undef, m)
+for i in 1:m
+    sex_i = timeinvarX[i, 1]
+    snp1_i = timeinvarX[i, 2]
+    snp2_i = timeinvarX[i, 3]
+    snp3_i = timeinvarX[i, 4]
+    # Xu from a normal dist 0 mean 2 std 
+    OnMeds = rand([0, 1], ni)
+    # first column intercept, remaining entries iid std normal
+    X = Matrix{Float64}(undef, ni, p)
+    X[:, 1] .= 1
+    X[:, 2] .= sex_i
+    X[:, 3] = OnMeds
+    X[:, 4] .= snp1_i
+    X[:, 5] .= snp2_i
+    X[:, 6] .= snp3_i
+
+    # first column intercept, remaining entries iid std normal
+    Z = Matrix{Float64}(undef, ni, q)
+    Z[:, 1] .= 1
+    # first column intercept, remaining entries iid std normal
+    W = Matrix{Float64}(undef, ni, l)
+    W[:, 1] .= 1
+    W[:, 2] .= sex_i
+    W[:, 3] = OnMeds
+    W[:, 4] .= snp1_i
+    W[:, 5] .= snp2_i
+    W[:, 6] .= snp3_i
+    # generate random effects: γω = Lγω * z
+    mul!(γω, Lγω, randn!(z))
+    # generate y
+    μy = X * βtrue + Z * γω[1:q]
+    @views ysd = exp.(0.5 .* (W * τtrue .+ dot(γω[1:q], lγω) .+ γω[end]))
+    y = ysd .* randn(ni) .+ μy
+    # form a VarLmmObs instance
+    obsvec[i] = WSVarLmmObs(y, X, Z, W)
+    tempdf = hcat(DataFrame(X[:, 2:end], 
+        [:sex, :onMeds, :snp1, :snp2, :snp3]),
+        DataFrame(y = y, id = fill(sampleids[i], ni))
+    )
+    df = vcat(df, tempdf)
+end
+
+fullmodel = WSVarLmmModel(@formula(y ~ 1 + sex + onMeds + snp1 + snp2 + snp3),
+              @formula(y ~ 1),
+              @formula(y ~ 1 + sex + onMeds + snp1 + snp2 + snp3),
+              :id,
+              df)
+nullmodel = WSVarLmmModel(@formula(y ~ 1 + sex + onMeds),
+                @formula(y ~ 1),
+                @formula(y ~ 1 + sex + onMeds),
+                :id,
+                df)
+WiSER.fit!(fullmodel)
+WiSER.fit!(nullmodel)
+
+CSV.write("vgwas_bgen_ex.csv", df)
+
+vgwas(@formula(y ~ 1 + sex + onMeds),
+        @formula(y ~ 1),
+        @formula(y ~ 1 + sex + onMeds),
+        :id, 
+        "vgwas_bgen_ex.csv", 
+        "example.8bits", 
+        usespa = false,
+        geneticformat = "BGEN", 
+        pvalfile = "vgwas_bgen.pval.txt")
+
+vgwas_res = CSV.read("vgwas_bgen.pval.txt", DataFrame)
+
+vgwas(@formula(y ~ 1 + sex + onMeds),
+        @formula(y ~ 1),
+        @formula(y ~ 1 + sex + onMeds),
+        :id, 
+        "vgwas_bgen_ex.csv", 
+        "example.8bits", 
+        usespa = true,
+        geneticformat = "BGEN", 
+        pvalfile = "vgwas_bgen_spa.pval.txt")
+
+vgwas_res_spa = CSV.read("vgwas_bgen_spa.pval.txt", DataFrame)

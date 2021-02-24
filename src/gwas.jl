@@ -4,6 +4,7 @@
     vgwas(fittednullmodel, geneticfile; kwargs...)
     vgwas(fittednullmodel, bedfile, bimfile, bedn; kwargs...)
     vgwas(fittednullmodel, vcffile, nsamples, vcftype; kwargs...)
+    vgwas(fittednullmodel, bgenfile, nsamples; kwargs...)
 
 # Positional arguments
 - `nullmeanformula::FormulaTerm`: mean formula (β) for the null model.
@@ -174,9 +175,8 @@ function vgwas(
     )
 
     # locate plink bed, fam, bim files or VCF file
-    lowercase(geneticformat) in ["plink", "vcf"] || error("`geneticformat` $geneticformat not valid. Please use 'VCF' or 'PLINK'.")
-    isplink = "plink" == lowercase(geneticformat)
-    if isplink
+    lowercase(geneticformat) in ["plink", "vcf", "bgen"] || error("`geneticformat` $geneticformat not valid. Please use 'VCF', 'BGEN', or 'PLINK'.")
+    if lowercase(geneticformat) == "plink"
         if isfile(geneticfile * ".bed")
             bedfile = geneticfile * ".bed"
         else
@@ -193,7 +193,7 @@ function vgwas(
         bedids = SnpArrays.makestream(famfile) do io
             CSV.read(io, DataFrame, header=false)[!, 1] # assuming first column is IDs column
         end
-    else
+    elseif lowercase(geneticformat) == "vcf"
         vcftype in [:GT, :DS] || throw(ArgumentError("vcftype not specified. Allowable types are :GT for genotypes and :DS for dosages."))
         if isfile(geneticfile * ".vcf")
             vcffile = geneticfile * ".vcf"
@@ -206,6 +206,17 @@ function vgwas(
         reader = VCF.Reader(openvcf(vcffile, "r"))
         bedids = VCF.header(reader).sampleID
         close(reader)
+    elseif lowercase(geneticformat) == "bgen"
+        if isfile(geneticfile * ".bgen")
+            bgenfile = geneticfile * ".bgen"
+        else
+            fmt = findfirst(isfile, geneticfile * ".bgen." .* SnpArrays.ALLOWED_FORMAT)
+            fmt == nothing && throw(ArgumentError("BGEN file not found"))
+            bgenfile = geneticfile * ".bgen." * SnpArrays.ALLOWED_FORMAT[fmt]
+        end
+        b = Bgen(bgenfile)
+        bedn = n_samples(b)
+        bedids = samples(b)
     end
     if geneticrowinds == nothing
         nbedrows = bedn
@@ -244,7 +255,7 @@ function vgwas(
     test == :score || test == :wald || throw(ArgumentError("unrecognized test $test"))
 
     # gwas
-    if isplink #plink
+    if lowercase(geneticformat) == "plink" #plink
         vgwas(fittednullmodel, bedfile, bimfile, bedn;
             analysistype = analysistype,
             testformula = testformula,
@@ -260,7 +271,7 @@ function vgwas(
             verbose = verbose,
             snpset = snpset,
             e = e)
-    else #vcf
+    elseif lowercase(geneticformat) == "vcf" #vcf
         vgwas(fittednullmodel, vcffile, bedn, vcftype;
             analysistype = analysistype,
             testformula = testformula,
@@ -270,6 +281,22 @@ function vgwas(
             snpinds = snpinds,
             usespa = usespa,
             vcfrowinds = rowinds,
+            solver = solver,
+            parallel = parallel,
+            runs = runs,
+            verbose = verbose,
+            snpset = snpset,
+            e = e)
+    else #bgen
+        vgwas(fittednullmodel, bgenfile, bedn;
+            analysistype = analysistype,
+            testformula = testformula,
+            test = test,
+            pvalfile = pvalfile,
+            snpmodel = snpmodel,
+            snpinds = snpinds,
+            usespa = usespa,
+            bgenrowinds = rowinds,
             solver = solver,
             parallel = parallel,
             runs = runs,
@@ -1277,6 +1304,490 @@ function vgwas(
         end
     end
     close(reader)
+    return fittednullmodel
+end
+
+# For BGEN Analysis
+function vgwas(
+    fittednullmodel::WSVarLmmModel,
+    bgenfile::Union{AbstractString, IOStream}, # full path and vcf file name
+    nsamples::Integer;         # number of samples in bed file
+    analysistype::AbstractString = "singlesnp",
+    testformula::FormulaTerm = fittednullmodel.meanformula.lhs ~ Term(:snp),
+    test::Symbol = :score,
+    pvalfile::Union{AbstractString, IOStream} = "vgwas.pval.txt",
+    snpmodel::Union{Val{1}, Val{2}, Val{3}} = ADDITIVE_MODEL,
+    snpinds::Union{Nothing, AbstractVector{<:Integer}} = nothing,
+    usespa::Bool = true,
+    bgenrowinds::AbstractVector{<:Integer} = 1:nsamples, # row indices for VCF array
+    solver = Ipopt.IpoptSolver(print_level=0, mehrotra_algorithm = "yes",
+    warm_start_init_point="yes", max_iter=100),
+    parallel::Bool = false,
+    runs::Int = 2,
+    verbose::Bool = false,
+    snpset::Union{Nothing, Integer, AbstractString, #for snpset analysis
+        AbstractVector{<:Integer}} = nothing,
+    e::Union{Nothing, AbstractString, Symbol} = nothing # for GxE analysis
+    )
+
+    # open BGEN file and get number of SNPs in file
+    bgendata = Bgen(bgenfile)
+    nsnps = n_variants(bgendata)
+    bgen_iterator = iterator(bgendata)
+
+    # create SNP mask vector
+    if snpinds == nothing
+        snpmask = trues(nsnps)
+    elseif eltype(snpinds) == Bool
+        snpmask = snpinds
+    else
+        snpmask = falses(nsnps)
+        snpmask[snpinds] .= true
+    end
+
+    # make sure snpmask is same length as iterator
+    @assert length(snpmask) == length(bgen_iterator) "Specified variant mask `snpinds` is not the same length as the number of variants in bgen file."
+
+    # storage vectors for SPA if it is set to true
+    if (usespa == true) & (analysistype == "singlesnp")
+        tmp = Array{Float64}(undef, fittednullmodel.m)
+        tmp2 = Array{Float64}(undef, fittednullmodel.m)
+    end
+    
+
+    analysistype = lowercase(analysistype)
+    analysistype in ["singlesnp", "snpset", "gxe"] || error("Analysis type $analysis invalid option.
+    Available options are 'singlesnp', 'snpset' and 'gxe'.")
+
+    # determine analysis type
+    if analysistype == "singlesnp"
+        # carry out score or wald test SNP by SNP
+        snponly = testformula.rhs == Term(:snp)
+        # extra columns in design matrix to be tested
+        testdf = DataFrame(fittednullmodel)
+        testdf[!, :snp] = zeros(fittednullmodel.nsum)
+        if snponly
+            q = 1
+        else
+            Z = similar(modelmatrix(testformula, testdf))
+            q = size(Z, 2)
+        end
+
+
+        # create holder for dosage
+        snpholder = zeros(fittednullmodel.m)
+
+        # carry out score or LRT test SNP by SNP
+        SnpArrays.makestream(pvalfile, "w") do io
+            if test == :score
+                println(io, "chr,pos,snpid,varid,betapval,taupval,jointpval")
+                if snponly
+                    ts = WSVarScoreTestInvariant(fittednullmodel, 1, 1)
+                    if usespa
+                        Ks = ecgf(ts)
+                    end
+                else
+                    ts = WSVarScoreTest(fittednullmodel, q, q)
+                    testvec = [Matrix{Float64}(undef, ni, q) for
+                    ni in fittednullmodel.nis]
+                end
+            else # wald
+                γ̂β = Vector{Float64}(undef, q) # effect size for columns being tested
+                pvalsβ = Vector{Float64}(undef, q) # effect size for columns being tested
+                γ̂τ = Vector{Float64}(undef, q) # effect size for columns being tested
+                pvalsτ = Vector{Float64}(undef, q) # effect size for columns being tested
+                if snponly
+                    println(io, "chr,pos,snpid,varid,betaeffect,betapval,",
+                    "taueffect,taupval")
+                    fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
+                    sum(union(fittednullmodel.meanformula.rhs, [testformula.rhs])))
+                    fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
+                    sum(union(fittednullmodel.wsvarformula.rhs, [testformula.rhs])))
+                else
+                    fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
+                    sum(union(fittednullmodel.meanformula.rhs, testformula.rhs)))
+                    fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
+                    sum(union(fittednullmodel.wsvarformula.rhs, testformula.rhs)))
+                    print(io, "chr,pos,snpid,varid,")
+                    for j in 1:q
+                        print(io, "betaeffect$j,betapval$j,")
+                    end
+                    for j in 1:q
+                        print(io, "taueffect$j,taupval$j")
+                        if j != q
+                            print(io, ",")
+                        end
+                    end
+                    println(io, "")
+                end
+            end
+            for (j, variant) in enumerate(bgen_iterator)
+                if !snpmask[j] #skip snp
+                    continue
+                end
+                minor_allele_dosage!(bgendata, variant; 
+                    T = Float64, mean_impute = true)
+                @views copyto!(snpholder, variant.genotypes[1].dose[bgenrowinds])
+                if test == :score
+                    if var(snpholder) == 0
+                        betapval, taupval, jointpval = 1., 1., 1.
+                    elseif snponly
+                        ps = test!(ts, snpholder, snpholder)
+                        betapval, taupval, jointpval = ps
+                        if usespa
+                            betapval, taupval, jointpval = spa(snpholder, ts, 
+                                ps, Ks; tmp_g = tmp, tmp_g2 = tmp2,
+                                genotypes = false)
+                        end
+                    else # snp + other terms
+                        snptodf!(testdf[!, :snp], snpholder, fittednullmodel)
+                        copyto!(Z, modelmatrix(testformula, testdf))
+                        loadtimevar!(testvec, Z, fittednullmodel)
+                        betapval, taupval, jointpval = test!(ts, testvec, testvec)
+                    end
+                    println(io, "$(variant.chrom),$(variant.pos),$(variant.rsid),",
+                    "$(variant.varid),$betapval,$taupval,$jointpval")
+                elseif test == :wald
+                    if var(snpholder) == 0
+                        fill!(γ̂β, 0) 
+                        fill!(pvalsβ, 1.)
+                        fill!(γ̂τ, 0) 
+                        fill!(pvalsτ, 1.)
+                    else
+                        snptodf!(testdf[!, :snp], snpholder, fittednullmodel)
+                        altmodel = WSVarLmmModel(fullmeanformula,
+                            fittednullmodel.reformula, fullwsvarformula,
+                            :id, testdf)
+                        altmodel.obswts .= fittednullmodel.obswts
+                        WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs)
+                        copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
+                        copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
+                        copyto!(pvalsβ, 1, coeftable(altmodel).cols[4], 
+                            fittednullmodel.p + 1, q)
+                        copyto!(pvalsτ, 1, coeftable(altmodel).cols[4], 
+                        altmodel.p + fittednullmodel.l + 1, q)
+                    end
+                    if snponly
+                        println(io, "$(variant.chrom),$(variant.pos),$(variant.rsid),",
+                        "$(variant.varid),$(γ̂β[1]),$(pvalsβ[1]),$(γ̂τ[1]),$(pvalsτ[1])")
+                    else
+                        print(io, "$(variant.chrom),$(variant.pos),$(variant.rsid),",
+                        "$(variant.varid),")
+                        for j in 1:q
+                            print(io, "$(γ̂β[j]),$(pvalsβ[j]),")
+                        end
+                        for j in 1:q
+                            print(io, "$(γ̂τ[j]),$(pvalsτ[j])")
+                            if j != q
+                                print(io, ",")
+                            end
+                        end
+                        println(io, "") #end line
+                    end
+                end
+            end
+        end
+    elseif analysistype == "snpset"
+        # max size of a snpset length
+        maxsnpset = 1
+
+        #determine snpset
+        if isa(snpset, Nothing)
+            setlength = 1
+            maxsnpset = 1
+        elseif isa(snpset, AbstractString)
+            isfile(snpset) || throw(ArgumentError("snpset file not found,
+            to specify a window replace snpset string with a window size"))
+            #first column SNPset ID, second column SNP ID
+            snpsetFile = CSV.read(snpset, DataFrame, header = [:snpset_id, :snp_id], delim = " ")
+            maxsnpset = combine(groupby(snpsetFile, :snpset_id), :snp_id => length => :snpset_length) |>
+                x -> maximum(x.snpset_length)
+            snpset_ids = unique(snpsetFile[!, :snpset_id])
+            nSets = length(snpset_ids)
+            setlength = 0
+        elseif isa(snpset, Integer)
+            if snpset == 1
+                println("SNP-set length `snpset = 1`, a single-SNP analysis will be run.")
+                # single-snp analysis
+                vgwas(fittednullmodel, bgenfile, nsamples;
+                analysistype = "singlesnp",
+                test = test,
+                pvalfile = pvalfile,
+                snpmodel = snpmodel,
+                snpinds = snpinds,
+                bgenrowinds = vcfrowinds,
+                solver = solver,
+                parallel = parallel,
+                runs = runs,
+                verbose = verbose)
+                return fittednullmodel
+            end
+            setlength = snpset
+            maxsnpset = snpset
+        else #abstract vector (boolean of true at indicies or range or indicies)
+            setlength = -1
+            maxsnpset = count(snpset .!= 0)
+        end
+
+        # TODO: Add for SNP-set
+        # if setlength > 0 #single snp analysis or window
+        #     Z = zeros(fittednullmodel.m, setlength) #
+        #     q = setlength
+        #     SnpArrays.makestream(pvalfile, "w") do io
+        #         if test == :score
+        #             println(io, "startchr,startpos,startsnpid,startvarid,endchr,endpos,",
+        #             "endsnpid,endvarid,betapval,taupval,jointpval")
+        #             ts = WSVarScoreTestInvariant(fittednullmodel, q, q)
+        #         elseif test == :wald
+        #             # TODO
+        #             # println(io, "startchr,startpos,startsnpid,endchr,",
+        #             # "endpos,endsnpid,l2normeffect,betapval,taupval,jointpval")
+        #             # nulldev = deviance(fittednullmodel.model)
+        #             # Xaug = [fittednullmodel.model.X Z]
+        #             # γ̂ = Vector{Float64}(undef, setlength) # effect size for columns being tested
+        #         end
+        #         for j in 1:q:nsnps
+        #             endj = j + q - 1
+        #             if endj >= nsnps
+        #                 endj = nsnps
+        #                 q = nsnps - j + 1
+        #                 #length of Z will be different
+        #                 gholder = zeros(Union{Missing, Float64}, nsamples, q)
+        #                 rec_chr = Array{Any, 1}(undef, q)
+        #                 rec_pos = Array{Any, 1}(undef, q)
+        #                 rec_ids = Array{Any, 1}(undef, q)
+        #                 if test == :score
+        #                     Z = zeros(fittednullmodel.m, q)
+        #                     ts = WSVarScoreTestInvariant(fittednullmodel, q, q)
+        #                 elseif test == :wald
+        #                     ## TODO
+        #                     # Xaug = [fittednullmodel.model.X zeros(size(
+        #                     # fittednullmodel.mm, 1), q)]
+        #                 end
+        #             end
+        #             if vcftype == :GT #genotype
+        #                 copy_gt!(gholder, reader; model = snpmodel, impute = true,
+        #                 record_chr = rec_chr, record_pos = rec_pos, record_ids = rec_ids)
+        #             else #dosage
+        #                 copy_ds!(gholder, reader; model = snpmodel, impute = true,
+        #                 record_chr = rec_chr, record_pos = rec_pos, record_ids = rec_ids)
+        #             end
+        #             if test == :score
+        #                 if all(var(@view(gholder[vcfrowinds, :])) .== 0)
+        #                     betapval, taupval, jointpval = 1., 1., 1.
+        #                 else
+        #                     copyto!(Z, @view(gholder[vcfrowinds, :]))
+        #                     betapval, taupval, jointpval = test!(ts, Z, Z)
+        #                 end
+        #                 println(io, "$(rec_chr[1]),$(rec_pos[1]),$(rec_ids[1][1]),",
+        #                 "$(rec_chr[end]),$(rec_pos[end]),$(rec_ids[end][end]),$betapval,$taupval,$jointpval")
+        #             elseif test == :wald
+        #                 # # TODO
+        #                 # copyto!(@view(Xaug[:, (fittednullmodel.model.p+1):end]),
+        #                 # @view(gholder[vcfrowinds]))
+        #                 # altmodel = polr(Xaug, fittednullmodel.model.Y,
+        #                 # fittednullmodel.model.link, solver,
+        #                 # wts = fittednullmodel.model.wts)
+        #                 # copyto!(γ̂, @view(altmodel.β[(fittednullmodel.model.p+1):end]))#, fittednullmodel.model.p + 1, setlength)
+        #                 # l2normeffect = norm(γ̂)
+        #                 # pval = ccdf(Chisq(q), nulldev - deviance(altmodel))
+        #                 # println(io, "$(rec_chr[1]),$(rec_pos[1]),$(rec_ids[1][1]),",
+        #                 # "$(rec_chr[end]),$(rec_pos[end]),$(rec_ids[end][end]),$l2normeffect,$betapval,taupval,jointpval")
+        #             end
+        #         end
+        #     end
+        # elseif setlength == 0 #snpset is defined by snpset file
+        #     @warn("This method requires reading in the entire VCF File.
+        #      This can take a lot of memory for large files, as they must be brought into memory.")
+        #     if vcftype == :GT #genotype
+        #         genomat = convert_gt(Float64, vcffile;
+        #         model = snpmodel, impute = true,
+        #         center = false, scale = false)
+        #     else #dosage
+        #         genomat = convert_ds(Float64, vcffile; model = snpmodel,
+        #         key="DS", impute = true, center = false, scale = false)
+        #     end
+        #     SnpArrays.makestream(pvalfile, "w") do io
+        #         test == :score ? println(io, "snpsetid,nsnps,betapval,taupval,jointpval") :
+        #             println(io, "snpsetid,nsnps,l2normeffect,betapval,taupval,jointpval")
+        #         for j in eachindex(snpset_ids)
+        #             snpset_id = snpset_ids[j]
+        #             snpinds = findall(snpsetFile[!, :snpset_id] .== snpset_id)
+        #             q = length(snpinds)
+        #             Z = zeros(fittednullmodel.m, q)
+        #             if test == :score
+        #                 if all(var(@view(gholder[vcfrowinds, :])) .== 0)
+        #                     betapval, taupval, jointpval = 1., 1., 1.
+        #                 else
+        #                     ts = WSVarScoreTestInvariant(fittednullmodel, q, q)
+        #                     copyto!(Z, @view(genomat[vcfrowinds, snpinds]))
+        #                     betapval, taupval, jointpval = test!(ts, Z, Z)
+        #                 end
+        #                 println(io, "$(snpset_id),$q,$betapval,$taupval,$jointpval")
+        #             elseif test == :wald
+        #                 # # TODO
+        #                 # γ̂ = Vector{Float64}(undef, q)
+        #                 # Xaug = [fittednullmodel.model.X Z]
+        #                 # nulldev = deviance(fittednullmodel.model)
+        #                 # copyto!(@view(Xaug[:, fittednullmodel.model.p+1:end]),
+        #                 #         @view(genomat[vcfrowinds, snpinds]))
+        #                 # altmodel = polr(Xaug, fittednullmodel.model.Y,
+        #                 #     fittednullmodel.model.link, solver,
+        #                 #     wts = fittednullmodel.model.wts)
+        #                 # copyto!(γ̂, 1, altmodel.β, fittednullmodel.model.p + 1, q)
+        #                 # l2normeffect = norm(γ̂)
+        #                 # pval = ccdf(Chisq(q), nulldev - deviance(altmodel))
+        #                 # println(io, "$(snpset_id),$q,$l2normeffect,$betapval,taupval,jointpval")
+        #             end
+        #         end
+        #     end
+        # else #setlength == -1 (testing just one set with specified snps in snpset)
+        #     @warn("This method requires reading in the entire VCF File.
+        #     This can take a lot of memory for large files, as they must be brought into memory.")
+        #     if vcftype == :GT #genotype
+        #         genomat = convert_gt(Float64, vcffile;
+        #         model = snpmodel, impute = true,
+        #         center = false, scale = false)
+        #     else #dosage
+        #         genomat = convert_ds(Float64, vcffile; model = snpmodel,
+        #         key="DS", impute=true, center=false, scale=false)
+        #     end
+        #     SnpArrays.makestream(pvalfile, "w") do io
+        #         q = length(snpset)
+        #         γ̂ = Vector{Float64}(undef, q)
+        #         Z = zeros(fittednullmodel.m, q)
+        #         if test == :score
+        #             if all(var(@view(gholder[vcfrowinds, :])) .== 0)
+        #                 betapval, taupval, jointpval = 1., 1., 1.
+        #             else
+        #                 ts = WSVarScoreTestInvariant(fittednullmodel, q, q)
+        #                 copyto!(Z, @view(genomat[vcfrowinds, snpset]))
+        #                 betapval, taupval, jointpval = test!(ts, Z, Z)
+        #             end
+        #             println(io, "The joint pvalue of snps indexed",
+        #              " at $(snpset) is betapval: $betapval, taupval: $taupval,",
+        #              " jointpval: $jointpval")
+        #         elseif test == :wald
+        #             # #TODO
+        #             # nulldev = deviance(fittednullmodel.model)
+        #             # Xaug = [fittednullmodel.model.X Z]
+        #             # copyto!(@view(Xaug[:, fittednullmodel.model.p+1:end]),
+        #             #         @view(genomat[vcfrowinds, snpset]))
+        #             # altmodel = polr(Xaug, fittednullmodel.model.Y,
+        #             #     fittednullmodel.model.link, solver,
+        #             #     wts = fittednullmodel.model.wts)
+        #             # copyto!(γ̂, 1, altmodel.β, fittednullmodel.model.p + 1, q)
+        #             # l2normeffect = norm(γ̂)
+        #             # pval = ccdf(Chisq(q), nulldev - deviance(altmodel))
+        #             # println(io, "The l2norm of the effect size vector",
+        #             # " is $l2normeffect and joint pvalue of snps indexed",
+        #             # " at $(snpset) is $pval")
+        #         end
+        #     end
+        # end
+    else #analysistype == "gxe"
+        isnothing(e) &&
+            @error("GxE analysis indicated but no environmental variable keyword argument: `e` set.")
+
+        # extra columns in design matrix to be tested
+        testdf = DataFrame(fittednullmodel)
+        @assert Symbol(e) in propertynames(testdf) "environmental variable $e not found in dataframe"
+        testdf[!, :snp] = zeros(fittednullmodel.nsum)
+        snpholder = zeros(fittednullmodel.m)
+
+        snpeffectnullbeta = 0.0
+        snpeffectnulltau = 0.0
+        gxeformula = FormulaTerm(fittednullmodel.meanformula.lhs,
+        InteractionTerm(term.((:snp, Symbol(e)))))
+        nullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
+            sum(union(fittednullmodel.meanformula.rhs, [term(:snp)])))
+        nullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
+            sum(union(fittednullmodel.wsvarformula.rhs, [term(:snp)])))
+        fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
+            sum(union(fittednullmodel.meanformula.rhs, [term(Symbol(e))],
+            [term(:snp)], [InteractionTerm(term.((:snp, Symbol(e))))] )))
+        fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
+            sum(union(fittednullmodel.wsvarformula.rhs, [term(Symbol(e))],
+            [term(:snp)], [InteractionTerm(term.((:snp, Symbol(e))))] )))
+
+        SnpArrays.makestream(pvalfile, "w") do io
+            if test == :score
+                println(io, "chr,pos,snpid,varid,snpeffectnullbeta,",
+                "snpeffectnulltau,betapval,taupval,jointpval")
+                # e may be factor - Z should match dimension
+                Z = similar(modelmatrix(FormulaTerm(term(:y), term(Symbol(e))),
+                    testdf))
+                # create vector of arrays for score test
+                q = size(Z, 2)
+                testvec = [Matrix{Float64}(undef, ni, q) for
+                ni in fittednullmodel.nis]
+            else
+                γ̂β = 0.0 # effect size for beta gxe effect
+                γ̂τ = 0.0 # effect size for tau gxe effect
+                snpeffectbeta = 0.0
+                snpeffecttau = 0.0
+                println(io, "chr,pos,snpid,varid,snpeffectbeta,snpeffecttau,",
+                "GxEeffectbeta,GxEeffecttau,betapval,taupval")
+            end
+            for (j, variant) in enumerate(bgen_iterator)
+                if !snpmask[j] #skip snp
+                    continue
+                end
+                minor_allele_dosage!(bgendata, variant; 
+                    T = Float64, mean_impute = true)
+                @views copyto!(snpholder, variant.genotypes[1].dose[bgenrowinds])
+
+                # add SNP values to testdf
+                if var(snpholder) != 0
+                    snptodf!(testdf[!, :snp], snpholder, fittednullmodel)
+                end
+                if test == :score
+                    if var(snpholder) == 0
+                        betapval, taupval, jointpval = 1., 1., 1.
+                        snpeffectnullbeta, snpeffectnulltau = 0., 0.
+                    else
+                        nm = WSVarLmmModel(nullmeanformula,
+                        fittednullmodel.reformula, nullwsvarformula,
+                        :id, testdf)
+                        nm.obswts .= fittednullmodel.obswts
+                        @assert nm.ids == fittednullmodel.ids "IDs not matching for GxE."
+                        WiSER.fit!(nm, solver, parallel = parallel, runs = runs)
+                        snpeffectnullbeta = nm.β[end]
+                        snpeffectnulltau = nm.τ[end]
+                        copyto!(Z, modelmatrix(gxeformula, testdf))
+                        loadtimevar!(testvec, Z, nm)
+                        ts = WSVarScoreTest(nm, q, q)
+                        betapval, taupval, jointpval = test!(ts, testvec, testvec)
+                    end
+                    println(io, "$(variant.chrom),$(variant.pos),$(variant.rsid),",
+                        "$(variant.varid),$snpeffectnullbeta,$snpeffectnulltau,",
+                        "$betapval,$taupval,$jointpval")
+                elseif test == :wald
+                    if var(snpholder) == 0
+                        betapval, taupval = 1., 1., 1.
+                        γ̂β, γ̂τ = 0., 0.
+                        snpeffectbeta, snpeffecttau = 0., 0.
+                    else
+                        fullmod = WSVarLmmModel(fullmeanformula,
+                            fittednullmodel.reformula, fullwsvarformula,
+                            :id, testdf)
+                        fullmod.obswts .= fittednullmodel.obswts
+                        WiSER.fit!(fullmod, solver, parallel = parallel,
+                            runs = runs)
+                        γ̂β = fullmod.β[end]
+                        γ̂τ = fullmod.β[end]
+                        snpeffectbeta = fullmod.β[end-1]
+                        snpeffecttau = fullmod.τ[end-1]
+                        betapval = coeftable(fullmod).cols[4][fullmod.p]
+                        taupval = coeftable(fullmod).cols[4][end]
+                    end
+                    println(io, "$(variant.chrom),$(variant.pos),$(variant.rsid),",
+                        "$(variant.varid),$snpeffectbeta,$snpeffecttau,$γ̂β,$γ̂τ,",
+                        "$betapval,$taupval")
+                end
+            end
+        end
+    end
     return fittednullmodel
 end
 
