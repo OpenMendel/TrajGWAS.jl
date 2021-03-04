@@ -4,6 +4,9 @@
 using Interpolations
 import Optim: minimizer, optimize, LBFGS, NelderMead
 
+const bgenlookup = [i / 255 for i in 0:510]
+const bgendict = Dict((v, i) for (i, v) in enumerate(bgenlookup))
+
 function ecgf(z::AbstractVector; knots::Integer=10000)
 
     range = (-200.0, 200.0)
@@ -64,23 +67,23 @@ function ecgf(st::WSVarScoreTestInvariant)
 end
 
 function ecgf_g(cnts, vals_norm, K0, K1, K2)
-    function K0_(z; tmp=Vector(undef, 3))
-        for i in 1:3
+    function K0_(z; tmp=Vector(undef, length(cnts)))
+        for i in 1:length(tmp)
             @inbounds tmp[i] = K0(vals_norm[i] * z)
         end
-        cnts[1] * tmp[1] + cnts[2] * tmp[2] + cnts[3] * tmp[3]
+        dot(cnts, tmp)
     end
-    function K1_(z; tmp=Vector(undef, 3))
-        for i in 1:3
+    function K1_(z; tmp=Vector(undef, length(cnts)))
+        for i in 1:length(tmp)
             @inbounds tmp[i] = vals_norm[i] * K1(vals_norm[i] * z)
         end
-        cnts[1] * tmp[1] + cnts[2] * tmp[2] + cnts[3] * tmp[3]
+        dot(cnts, tmp)
     end
-    function K2_(z; tmp=Vector(undef, 3))
-        for i in 1:3
+    function K2_(z; tmp=Vector(undef, length(cnts)))
+        for i in 1:length(tmp)
             @inbounds tmp[i] = vals_norm[i] ^ 2 * K2(vals_norm[i] * z)
         end
-        cnts[1] * tmp[1] + cnts[2] * tmp[2] + cnts[3] * tmp[3]
+        dot(cnts, tmp)
     end
     K0_, K1_, K2_
 end
@@ -119,13 +122,25 @@ function spa(g::AbstractVector, pre_vec::AbstractVector, p_alt, K0, K1, K2;
     return _get_pval(s_tau, cutoff, p_alt, cnts, vals_norm, K0, K1, K2, tmp_g2)
 end
 
+"""
+    spa(g, st, p_alt, Ks; mode, tmp_g, tmp_g2, r)
+
+Perform saddlepoint approximation for a single variant. 
+
+## arguments 
+- `g`::AbstractVector:  genotype vector
+- `st::WSVarScoreTestInvariant`
+- `p_alt` : alternative p-value if saddlepoint approximation is skipped due to cutoff `r`
+- `Ks::vGWASEcgfCollection`
+- `mode`: `:bed` for hard calls of 0, 1, 2; `:ukbbgen` for bgen format provided by UK Biobank; anything else for others
+"""
 function spa(g::AbstractVector,
     st::WSVarScoreTestInvariant,
     p_alt,
     Ks::vGWASEcgfCollection;
-    genotypes=true,
+    mode=:bed,
     tmp_g=similar(g),
-    tmp_g2=genotypes ? similar(g, 3) : similar(g),
+    tmp_g2= mode == :bed ? similar(g, 3) : (mode == :ukbbgen ? similar(g, 512) : similar(g)),
     r=2.0)
 
     # involves internal normalization
@@ -141,7 +156,7 @@ function spa(g::AbstractVector,
     cutoff_β = r * sqrt(st.var_β1_pre * cutoff_factor)
     cutoff_τ = r * sqrt(st.var_τ1_pre * cutoff_factor)
     cutoff_βτ = r * sqrt(st.var_βτ_pre * cutoff_factor)
-    if genotypes
+    if mode == :bed
         cnts = map(x -> count(x .== g), [0.0, 1.0, 2.0])
         #@assert sum(cnts) == length(g) "With genotypes == true, the values in g must be 0, 1, or 2."
         vals_norm = ([0.0, 1.0, 2.0] .- m) ./ s
@@ -151,6 +166,25 @@ function spa(g::AbstractVector,
             Ks.K0_τ, Ks.K1_τ, Ks.K2_τ, tmp_g2)
         p_βτ = _get_pval(s_βτ, cutoff_βτ, p_alt[3], cnts, vals_norm,
             Ks.K0_βτ, Ks.K1_βτ, Ks.K2_βτ, tmp_g2)
+    elseif mode == :ukbbgen
+        cnts = begin
+            r = zeros(Int, 512)
+            for v in g
+                try
+                    r[bgendict[v]] += 1
+                catch e 
+                    r[512] += 1
+                end
+            end
+            r
+        end
+        vals_norm = vcat((bgenlookup .- m) ./ s, [0])
+        p_β = _get_pval(s_β, cutoff_β, p_alt[1], cnts, vals_norm,
+            Ks.K0_β, Ks.K1_β, Ks.K2_β, tmp_g2)
+        p_τ = _get_pval(s_τ, cutoff_τ, p_alt[2], cnts, vals_norm,
+            Ks.K0_τ, Ks.K1_τ, Ks.K2_τ, tmp_g2)
+        p_βτ = _get_pval(s_βτ, cutoff_βτ, p_alt[3], cnts, vals_norm,
+            Ks.K0_βτ, Ks.K1_βτ, Ks.K2_βτ, tmp_g2)        
     else
         vals_norm = (g .- m) ./ s
         p_β = _get_pval(s_β, cutoff_β, p_alt[1], vals_norm,

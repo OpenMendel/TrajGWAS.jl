@@ -435,7 +435,7 @@ function vgwas(
                                 betapval, taupval, jointpval = ps
                                 if usespa
                                     betapval, taupval, jointpval = spa(snpholder, ts, 
-                                        ps, Ks; tmp_g = tmp, tmp_g2 = tmp2)
+                                        ps, Ks; tmp_g = tmp, tmp_g2 = tmp2, mode=:bed)
                                 end
                             else # snp + other terms
                                 copyto!(snpholder, @view(genomat[bedrowinds, j]),
@@ -938,7 +938,7 @@ function vgwas(
                         if usespa
                             betapval, taupval, jointpval = spa(snpholder, ts, 
                                 ps, Ks; tmp_g = tmp, tmp_g2 = tmp2,
-                                genotypes = false)
+                                mode = :none)
                         end
                     else # snp + other terms
                         snptodf!(testdf[!, :snp], @view(gholder[vcfrowinds]), fittednullmodel)
@@ -1336,7 +1336,7 @@ function vgwas(
     bgen_iterator = iterator(bgendata)
 
     # create SNP mask vector
-    if snpinds == nothing
+    if snpinds === nothing
         snpmask = trues(nsnps)
     elseif eltype(snpinds) == Bool
         snpmask = snpinds
@@ -1351,7 +1351,7 @@ function vgwas(
     # storage vectors for SPA if it is set to true
     if (usespa == true) & (analysistype == "singlesnp")
         tmp = Array{Float64}(undef, fittednullmodel.m)
-        tmp2 = Array{Float64}(undef, fittednullmodel.m)
+        tmp2 = Array{Float64}(undef, 512)
     end
     
 
@@ -1437,7 +1437,7 @@ function vgwas(
                         if usespa
                             betapval, taupval, jointpval = spa(snpholder, ts, 
                                 ps, Ks; tmp_g = tmp, tmp_g2 = tmp2,
-                                genotypes = false)
+                                mode = :ukbbgen)
                         end
                     else # snp + other terms
                         snptodf!(testdf[!, :snp], snpholder, fittednullmodel)
