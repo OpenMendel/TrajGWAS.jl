@@ -259,10 +259,10 @@ end
     @test all(isapprox.((mean(results.betapval),
         mean(results.taupval),
         mean(results.jointpval)),
-        (0.5161655222831536, 0.4049021864084856, 0.5439672480147976); rtol=1e-5))
+        (0.5161655222831536, 0.4049021864084856, 0.5439672480147976); rtol=1e-3))
     @test all(isapprox.((mean(results.snpeffectnullbeta),
         mean(results.snpeffectnulltau)),
-        (0.6076516729747372, -0.3486224003739454)))
+        (0.6076516729747372, -0.3486224003739454); rtol=1e-5))
 end
 
 

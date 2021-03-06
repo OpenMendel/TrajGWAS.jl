@@ -5,7 +5,6 @@ using Interpolations
 import Optim: minimizer, optimize, LBFGS, NelderMead
 
 const bgenlookup = [i / 255 for i in 0:510]
-const bgendict = Dict((v, i) for (i, v) in enumerate(bgenlookup))
 
 function ecgf(z::AbstractVector; knots::Integer=10000)
 
@@ -171,7 +170,7 @@ function spa(g::AbstractVector,
             r = zeros(Int, 512)
             for v in g
                 try
-                    r[bgendict[v]] += 1
+                    r[convert(Int, v * 255)] += 1
                 catch e 
                     r[512] += 1
                 end

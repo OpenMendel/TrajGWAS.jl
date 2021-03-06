@@ -1734,7 +1734,7 @@ function vgwas(
                     continue
                 end
                 minor_allele_dosage!(bgendata, variant; 
-                    T = Float64, mean_impute = true)
+                    T = Float32, mean_impute = true)
                 @views copyto!(snpholder, variant.genotypes[1].dose[bgenrowinds])
 
                 # add SNP values to testdf
