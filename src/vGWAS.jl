@@ -1,7 +1,7 @@
 module vGWAS
     using DataFrames, Tables, LinearAlgebra
-    using Printf, Reexport, Statistics
-    using Distributions
+    using Printf, Reexport, Statistics, SnpArrays, VCFTools, GeneticVariation
+    using Distributions, CSV, BGEN
     import LinearAlgebra: BlasReal, copytri!
     import DataFrames: DataFrame
 
@@ -9,6 +9,7 @@ module vGWAS
     @reexport using StatsModels
     @reexport using Distributions
     export WSVarScoreTest, WSVarScoreTestInvariant, test!
+    export vgwas
 
     """
         ◺(n::Integer)
@@ -19,4 +20,6 @@ module vGWAS
     include("scoretest.jl")
     include("scoretest_invariant.jl")
     include("pvalues.jl")
+    include("gwas.jl")
+    include("spa.jl")
 end
