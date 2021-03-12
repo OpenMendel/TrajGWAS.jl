@@ -338,7 +338,7 @@ function vgwas(
     # storage vectors for SPA if it is set to true
     if (usespa == true) & (analysistype == "singlesnp")
         tmp = Array{Float64}(undef, fittednullmodel.m)
-        tmp2 = Array{Float64}(undef, 3)
+        tmp2 = Array{Float64}(undef, 4)
     end
 
     # create SNP mask vector
