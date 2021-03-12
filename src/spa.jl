@@ -39,11 +39,11 @@ function ecgf(vs::AbstractVector, zs::AbstractVector)
         K2[i] = M2 / M0 - (M1 / M0) ^ 2
     end
     K0_int = LinearInterpolation(vs, convert(Vector{Float64}, K0);
-        extrapolation_bc=Linear())
+        extrapolation_bc=Line())
     K1_int = LinearInterpolation(vs, convert(Vector{Float64}, K1);
-        extrapolation_bc=Linear())
+        extrapolation_bc=Line())
     K2_int = LinearInterpolation(vs, convert(Vector{Float64}, K2);
-        extrapolation_bc=Linear())
+        extrapolation_bc=Line())
     return K0_int, K1_int, K2_int
 end
 
@@ -67,20 +67,26 @@ end
 
 function ecgf_g(cnts, vals_norm, K0, K1, K2)
     function K0_(z; tmp=Vector(undef, length(cnts)))
-        for i in 1:length(tmp)
-            @inbounds tmp[i] = K0(vals_norm[i] * z)
+        @inbounds for i in 1:length(tmp)
+            if cnts[i] != 0
+                tmp[i] = K0(vals_norm[i] * z)
+            end
         end
         dot(cnts, tmp)
     end
     function K1_(z; tmp=Vector(undef, length(cnts)))
         for i in 1:length(tmp)
-            @inbounds tmp[i] = vals_norm[i] * K1(vals_norm[i] * z)
+            if cnts[i] != 0
+                tmp[i] = vals_norm[i] * K1(vals_norm[i] * z)
+            end
         end
         dot(cnts, tmp)
     end
     function K2_(z; tmp=Vector(undef, length(cnts)))
-        for i in 1:length(tmp)
-            @inbounds tmp[i] = vals_norm[i] ^ 2 * K2(vals_norm[i] * z)
+        @inbounds for i in 1:length(tmp)
+            if cnts[i] != 0
+                tmp[i] = vals_norm[i] ^ 2 * K2(vals_norm[i] * z)
+            end
         end
         dot(cnts, tmp)
     end
@@ -156,9 +162,19 @@ function spa(g::AbstractVector,
     cutoff_τ = r * sqrt(st.var_τ1_pre * cutoff_factor)
     cutoff_βτ = r * sqrt(st.var_βτ_pre * cutoff_factor)
     if mode == :bed
-        cnts = map(x -> count(x .== g), [0.0, 1.0, 2.0])
+        cnts = begin
+            r = zeros(Int, 4)
+            for v in g
+                try
+                    r[convert(Int, v) + 1] += 1
+                catch e
+                    r[4] += 1
+                end
+            end
+            r
+        end
         #@assert sum(cnts) == length(g) "With genotypes == true, the values in g must be 0, 1, or 2."
-        vals_norm = ([0.0, 1.0, 2.0] .- m) ./ s
+        vals_norm = ([0.0, 1.0, 2.0, m] .- m) ./ s
         p_β = _get_pval(s_β, cutoff_β, p_alt[1], cnts, vals_norm,
             Ks.K0_β, Ks.K1_β, Ks.K2_β, tmp_g2)
         p_τ = _get_pval(s_τ, cutoff_τ, p_alt[2], cnts, vals_norm,
@@ -170,7 +186,7 @@ function spa(g::AbstractVector,
             r = zeros(Int, 512)
             for v in g
                 try
-                    r[convert(Int, v * 255)] += 1
+                    r[convert(Int, v * 255) + 1] += 1
                 catch e 
                     r[512] += 1
                 end
@@ -230,7 +246,6 @@ function _spa_pval(s::AbstractFloat, K0, K1, K2)
     end
     r = optimize(f, g!, h!, [0.0], LBFGS())
     zeta = minimizer(r)[1]
-
     omega = sign(zeta) * sqrt(max(0, 2 * (zeta * s - K0(zeta))))
     nu = zeta * sqrt(K2(zeta))
     z2 = omega + 1.0/omega * log(nu / omega)

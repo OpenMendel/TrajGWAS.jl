@@ -182,7 +182,9 @@ end
         geneticformat = "BGEN", 
         pvalfile = pvalpath)
     results = CSV.read(pvalpath, DataFrame)
-
+    println(mean(results.betapval))
+    println(mean(results.taupval))
+    println(mean(results.jointpval))
     @test all(isapprox.((mean(results.betapval),
         mean(results.taupval),
         mean(results.jointpval)),
@@ -256,6 +258,9 @@ end
         e = :sex,
         snpinds = 1:3)
     results = CSV.read(pvalpath, DataFrame)
+    println(mean(results.betapval))
+    println(mean(results.taupval))
+    println(mean(results.jointpval))
     @test all(isapprox.((mean(results.betapval),
         mean(results.taupval),
         mean(results.jointpval)),
