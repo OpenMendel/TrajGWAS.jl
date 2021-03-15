@@ -145,21 +145,19 @@ function spa(g::AbstractVector,
     Ks::vGWASEcgfCollection;
     mode=:bed,
     tmp_g=similar(g),
-    tmp_g2= mode == :bed ? similar(g, 4) : (mode == :ukbbgen ? similar(g, 512) : similar(g)),
+    tmp_g2= mode == :bed ? similar(g, 3) : (mode == :ukbbgen ? similar(g, 512) : similar(g)),
     r=2.0)
 
     # involves internal normalization
     m = mean(skipmissing(g))
-    tmp_g .= g .- m
-    cutoff_factor = sum(x -> x^2, tmp_g)
-    s = sqrt(cutoff_factor)
+    s = std(skipmissing(g))
     tmp_g .= (g .- m) ./ s
 
-    s_β = dot(tmp_g, st.ψ_β1_pre) / sqrt(st.var_β1_pre)
-    s_τ = dot(tmp_g, st.ψ_τ1_pre)  / sqrt(st.var_τ1_pre)
-    s_βτ = dot(tmp_g, st.ψ_βτ_pre) / sqrt(st.var_βτ_pre)
+    s_β = dot(tmp_g, st.ψ_β1_pre)
+    s_τ = dot(tmp_g, st.ψ_τ1_pre)
+    s_βτ = dot(tmp_g, st.ψ_βτ_pre)
 
-
+    cutoff_factor = sum(x -> x^2, tmp_g)
     cutoff_β = r * sqrt(st.var_β1_pre * cutoff_factor)
     cutoff_τ = r * sqrt(st.var_τ1_pre * cutoff_factor)
     cutoff_βτ = r * sqrt(st.var_βτ_pre * cutoff_factor)
@@ -176,13 +174,11 @@ function spa(g::AbstractVector,
             r
         end
         #@assert sum(cnts) == length(g) "With genotypes == true, the values in g must be 0, 1, or 2."
-        vals_norm = ([0.0, 1.0, 2.0, m] .- m) ./ (s * sqrt(st.var_β1_pre))
+        vals_norm = ([0.0, 1.0, 2.0, m] .- m) ./ s
         p_β = _get_pval(s_β, cutoff_β, p_alt[1], cnts, vals_norm,
             Ks.K0_β, Ks.K1_β, Ks.K2_β, tmp_g2)
-        vals_norm .*= sqrt(st.var_β1_pre) / sqrt(st.var_τ1_pre)
         p_τ = _get_pval(s_τ, cutoff_τ, p_alt[2], cnts, vals_norm,
             Ks.K0_τ, Ks.K1_τ, Ks.K2_τ, tmp_g2)
-        vals_norm .*= sqrt(st.var_τ1_pre) / sqrt(st.var_βτ_pre)
         p_βτ = _get_pval(s_βτ, cutoff_βτ, p_alt[3], cnts, vals_norm,
             Ks.K0_βτ, Ks.K1_βτ, Ks.K2_βτ, tmp_g2)
     elseif mode == :ukbbgen
@@ -197,23 +193,19 @@ function spa(g::AbstractVector,
             end
             r
         end
-        vals_norm = vcat((bgenlookup .- m) ./ (s * sqrt(st.var_β1_pre)), [0])
+        vals_norm = vcat((bgenlookup .- m) ./ s, [0])
         p_β = _get_pval(s_β, cutoff_β, p_alt[1], cnts, vals_norm,
             Ks.K0_β, Ks.K1_β, Ks.K2_β, tmp_g2)
-        vals_norm .*= sqrt(st.var_β1_pre) / sqrt(st.var_τ1_pre)
         p_τ = _get_pval(s_τ, cutoff_τ, p_alt[2], cnts, vals_norm,
             Ks.K0_τ, Ks.K1_τ, Ks.K2_τ, tmp_g2)
-        vals_norm .*= sqrt(st.var_τ1_pre) / sqrt(st.var_βτ_pre)
         p_βτ = _get_pval(s_βτ, cutoff_βτ, p_alt[3], cnts, vals_norm,
             Ks.K0_βτ, Ks.K1_βτ, Ks.K2_βτ, tmp_g2)        
     else
-        vals_norm = (g .- m) ./ (s * sqrt(st.var_β1_pre))
+        vals_norm = (g .- m) ./ s
         p_β = _get_pval(s_β, cutoff_β, p_alt[1], vals_norm,
             Ks.K0_β, Ks.K1_β, Ks.K2_β, tmp_g2)
-        vals_norm .*= sqrt(st.var_β1_pre) / sqrt(st.var_τ1_pre)
         p_τ = _get_pval(s_τ, cutoff_τ, p_alt[2], vals_norm,
             Ks.K0_τ, Ks.K1_τ, Ks.K2_τ, tmp_g2)
-        vals_norm .*= sqrt(st.var_τ1_pre) / sqrt(st.var_βτ_pre)
         p_βτ = _get_pval(s_βτ, cutoff_βτ, p_alt[3], vals_norm,
             Ks.K0_βτ, Ks.K1_βτ, Ks.K2_βτ, tmp_g2)  
     end
