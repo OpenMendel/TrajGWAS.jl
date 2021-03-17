@@ -157,6 +157,7 @@ function vgwas(
     analysistype::AbstractString = "singlesnp",
     geneticformat::AbstractString = "PLINK",
     vcftype::Union{Symbol, Nothing} = nothing,
+    samplepath::Union{AbstractString, Nothing} = nothing,
     testformula::FormulaTerm = fittednullmodel.meanformula.lhs ~ Term(:snp),
     test::Symbol = :score,
     pvalfile::Union{AbstractString, IOStream} = "vgwas.pval.txt",
@@ -214,9 +215,10 @@ function vgwas(
             fmt == nothing && throw(ArgumentError("BGEN file not found"))
             bgenfile = geneticfile * ".bgen." * SnpArrays.ALLOWED_FORMAT[fmt]
         end
-        b = Bgen(bgenfile)
+        b = Bgen(bgenfile; sample_path=samplepath)
         bedn = n_samples(b)
         bedids = samples(b)
+        bedids = map(x -> parse(Int, x), bedids)
     end
     if geneticrowinds == nothing
         nbedrows = bedn
@@ -225,7 +227,6 @@ function vgwas(
         nbedrows = eltype(geneticrowinds) == Bool ? count(geneticrowinds) : length(geneticrowinds)
         rowinds = geneticrowinds
     end
-
 
     # Match null model ids to genetic file
     nullinds = indexin(bedids[rowinds], fittednullmodel.ids)
@@ -290,6 +291,7 @@ function vgwas(
     else #bgen
         vgwas(fittednullmodel, bgenfile, bedn;
             analysistype = analysistype,
+            samplepath = samplepath,
             testformula = testformula,
             test = test,
             pvalfile = pvalfile,
@@ -1312,6 +1314,7 @@ function vgwas(
     fittednullmodel::WSVarLmmModel,
     bgenfile::Union{AbstractString, IOStream}, # full path and vcf file name
     nsamples::Integer;         # number of samples in bed file
+    samplepath::Union{AbstractString, Nothing} = nothing,
     analysistype::AbstractString = "singlesnp",
     testformula::FormulaTerm = fittednullmodel.meanformula.lhs ~ Term(:snp),
     test::Symbol = :score,
@@ -1331,7 +1334,7 @@ function vgwas(
     )
 
     # open BGEN file and get number of SNPs in file
-    bgendata = Bgen(bgenfile)
+    bgendata = Bgen(bgenfile; sample_path=samplepath)
     nsnps = n_variants(bgendata)
     bgen_iterator = iterator(bgendata)
 
@@ -1376,7 +1379,8 @@ function vgwas(
 
         # create holder for dosage
         snpholder = zeros(fittednullmodel.m)
-
+        dosageholder = Vector{Float32}(undef, n_samples(bgendata))
+        decompressed = Vector{UInt8}(undef, 3 * n_samples(bgendata) + 10)
         # carry out score or LRT test SNP by SNP
         SnpArrays.makestream(pvalfile, "w") do io
             if test == :score
@@ -1421,13 +1425,14 @@ function vgwas(
                     println(io, "")
                 end
             end
-            for (j, variant) in enumerate(bgen_iterator)
+            @time for (j, variant) in enumerate(bgen_iterator)
                 if !snpmask[j] #skip snp
                     continue
                 end
                 minor_allele_dosage!(bgendata, variant; 
-                    T = Float64, mean_impute = true)
-                @views copyto!(snpholder, variant.genotypes[1].dose[bgenrowinds])
+                    T = Float64, mean_impute = true, data = dosageholder, 
+                    decompressed=decompressed)
+                @views copyto!(snpholder, dosageholder[bgenrowinds])
                 if test == :score
                     if var(snpholder) == 0
                         betapval, taupval, jointpval = 1., 1., 1.
@@ -1734,8 +1739,9 @@ function vgwas(
                     continue
                 end
                 minor_allele_dosage!(bgendata, variant; 
-                    T = Float32, mean_impute = true)
-                @views copyto!(snpholder, variant.genotypes[1].dose[bgenrowinds])
+                    T = Float32, mean_impute = true, data=dosageholder,
+                    decompressed=decompressed)
+                @views copyto!(snpholder, dosageholder[bgenrowinds])
 
                 # add SNP values to testdf
                 if var(snpholder) != 0
