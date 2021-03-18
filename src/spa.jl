@@ -65,59 +65,8 @@ function ecgf(st::WSVarScoreTestInvariant)
     vGWASEcgfCollection(K0_β, K1_β, K2_β, K0_τ, K1_τ, K2_τ, K0_βτ, K1_βτ, K2_βτ)
 end
 
-function ecgf_g(cnts, vals_norm, K0, K1, K2)
-    function K0_(z; tmp=Vector(undef, length(cnts)))
-        @inbounds for i in 1:length(tmp)
-            if cnts[i] != 0
-                tmp[i] = K0(vals_norm[i] * z)
-            end
-        end
-        dot(cnts, tmp)
-    end
-    function K1_(z; tmp=Vector(undef, length(cnts)))
-        for i in 1:length(tmp)
-            if cnts[i] != 0
-                tmp[i] = vals_norm[i] * K1(vals_norm[i] * z)
-            end
-        end
-        dot(cnts, tmp)
-    end
-    function K2_(z; tmp=Vector(undef, length(cnts)))
-        @inbounds for i in 1:length(tmp)
-            if cnts[i] != 0
-                tmp[i] = vals_norm[i] ^ 2 * K2(vals_norm[i] * z)
-            end
-        end
-        dot(cnts, tmp)
-    end
-    K0_, K1_, K2_
-end
-
-function ecgf_g(vals_norm, K0, K1, K2)
-    n = length(vals_norm)
-    function K0_(z; tmp=Vector(undef, n))
-        for i in 1:length(vals_norm)
-            @inbounds tmp[i] = K0(vals_norm[i] * z)
-        end
-        sum(tmp)
-    end
-    function K1_(z; tmp=Vector(undef, n))
-        for i in 1:length(vals_norm)
-            @inbounds tmp[i] = vals_norm[i] * K1(vals_norm[i] * z)
-        end
-        sum(tmp)
-    end
-    function K2_(z; tmp=Vector(undef, n))
-        for i in 1:length(vals_norm)
-            @inbounds tmp[i] = vals_norm[i] ^ 2 * K2(vals_norm[i] * z)
-        end
-        sum(tmp)
-    end
-    K0_, K1_, K2_
-end
-
 function spa(g::AbstractVector, pre_vec::AbstractVector, p_alt, K0, K1, K2;
-    tmp_g=similar(g), tmp_g2=similar(g, 3), r=2.0, r_var=var(pre_vec))
+    tmp_g=similar(g), tmp_g2=similar(g, 4), r=2.0, r_var=var(pre_vec))
     # involves internal normalization
     m = mean(skipmissing(g))
     s = std(skipmissing(g))
@@ -166,7 +115,7 @@ function spa(g::AbstractVector,
             r = zeros(Int, 4)
             for v in g
                 try
-                    r[convert(Int, v) + 1] += 1
+                    r[convert(Int, round(v)) + 1] += 1
                 catch e
                     r[4] += 1
                 end
@@ -185,11 +134,7 @@ function spa(g::AbstractVector,
         cnts = begin
             r = zeros(Int, 512)
             for v in g
-                try
-                    r[convert(Int, v * 255) + 1] += 1
-                catch e 
-                    r[512] += 1
-                end
+                r[convert(Int, round(v*255)) + 1] += 1
             end
             r
         end
@@ -212,43 +157,86 @@ function spa(g::AbstractVector,
     p_β, p_τ, p_βτ
 end
 
-function _get_pval(s, cutoff, p_alt, cnts, vals_norm, K0, K1, K2, tmp3)
-    if abs(s) < cutoff
-        return p_alt
-    else
-        K0_, K1_, K2_ = ecgf_g(cnts, vals_norm, K0, K1, K2)
-        K0__(x) = K0_(x; tmp=tmp3)
-        K1__(x) = K1_(x; tmp=tmp3)
-        K2__(x) = K2_(x; tmp=tmp3)
-        return _spa_pval(s, K0__, K1__, K2__)
+function _get_pval(s, cutoff, p_alt, cnts, vals_norm, K0, K1, K2, tmp)
+    function K0_(z)
+        @inbounds for i in 1:length(tmp)
+            if cnts[i] != 0
+                tmp[i] = K0(vals_norm[i] * z)
+            end
+        end
+        dot(cnts, tmp)
     end
-end
-
-function _get_pval(s, cutoff, p_alt, vals_norm, K0, K1, K2, tmp3)
-    if abs(s) < cutoff
-        return p_alt
-    else
-        K0_, K1_, K2_ = ecgf_g(vals_norm, K0, K1, K2)
-        K0__(x) = K0_(x; tmp=tmp3)
-        K1__(x) = K1_(x; tmp=tmp3)
-        K2__(x) = K2_(x; tmp=tmp3)
-        return _spa_pval(s, K0__, K1__, K2__)
+    function K1_(z)
+        for i in 1:length(tmp)
+            if cnts[i] != 0
+                tmp[i] = vals_norm[i] * K1(vals_norm[i] * z)
+            end
+        end
+        dot(cnts, tmp)
     end
-end
-
-function _spa_pval(s::AbstractFloat, K0, K1, K2)
-    f = x -> K0(x[1]) - x[1] * s
+    function K2_(z)
+        @inbounds for i in 1:length(tmp)
+            if cnts[i] != 0
+                tmp[i] = vals_norm[i] ^ 2 * K2(vals_norm[i] * z)
+            end
+        end
+        dot(cnts, tmp)
+    end
+    f = x -> K0_(x[1]) - x[1] * s
     function g!(storage, x)
-        storage[1] = K1(x[1]) - s
+        storage[1] = K1_(x[1]) - s
     end
     function h!(storage, x)
-        storage[1] = K2(x[1])
+        storage[1] = K2_(x[1])
     end
-    r = optimize(f, g!, h!, [0.0], LBFGS())
-    zeta = minimizer(r)[1]
-    omega = sign(zeta) * sqrt(max(0, 2 * (zeta * s - K0(zeta))))
-    nu = zeta * sqrt(K2(zeta))
-    z2 = omega + 1.0/omega * log(nu / omega)
+    if abs(s) < cutoff
+        return p_alt
+    else
+        r = optimize(f, g!, h!, [0.0], LBFGS())
+        zeta = minimizer(r)[1]
+        omega = sign(zeta) * sqrt(max(0, 2 * (zeta * s - K0_(zeta))))
+        nu = zeta * sqrt(K2_(zeta))
+        z2 = omega + 1.0/omega * log(nu / omega)
+    
+        return ccdf(Normal(), abs(z2)) + cdf(Normal(), -abs(z2))
+    end
+end
 
-    return ccdf(Normal(), abs(z2)) + cdf(Normal(), -abs(z2))
+function _get_pval(s, cutoff, p_alt, vals_norm, K0, K1, K2, tmp)
+    function K0_(z)
+        for i in 1:length(vals_norm)
+            @inbounds tmp[i] = K0(vals_norm[i] * z)
+        end
+        sum(tmp)
+    end
+    function K1_(z)
+        for i in 1:length(vals_norm)
+            @inbounds tmp[i] = vals_norm[i] * K1(vals_norm[i] * z)
+        end
+        sum(tmp)
+    end
+    function K2_(z)
+        for i in 1:length(vals_norm)
+            @inbounds tmp[i] = vals_norm[i] ^ 2 * K2(vals_norm[i] * z)
+        end
+        sum(tmp)
+    end
+    f = x -> K0_(x[1]) - x[1] * s
+    function g!(storage, x)
+        storage[1] = K1_(x[1]) - s
+    end
+    function h!(storage, x)
+        storage[1] = K2_(x[1])
+    end
+    if abs(s) < cutoff
+        return p_alt
+    else
+        r = optimize(f, g!, h!, [0.0], LBFGS())
+        zeta = minimizer(r)[1]
+        omega = sign(zeta) * sqrt(max(0, 2 * (zeta * s - K0_(zeta))))
+        nu = zeta * sqrt(K2_(zeta))
+        z2 = omega + 1.0/omega * log(nu / omega)
+    
+        return ccdf(Normal(), abs(z2)) + cdf(Normal(), -abs(z2))
+    end
 end
