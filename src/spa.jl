@@ -134,7 +134,11 @@ function spa(g::AbstractVector,
         cnts = begin
             r = zeros(Int, 512)
             for v in g
-                r[convert(Int, round(v*255)) + 1] += 1
+                try
+                    r[convert(Int, round(v*255)) + 1] += 1
+                catch e
+                    r[512] += 1
+                end
             end
             r
         end
