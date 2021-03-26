@@ -181,6 +181,9 @@ function spa(g_norm::AbstractVector, pre_vec::AbstractVector,
     return _get_pval(s, cutoff, p_alt, vals_norm, K0, K1, K2, tmp_ecgf; cnts=cnts)
 end
 
+const normal = Normal()
+const lbfgs = LBFGS()
+const singleton_zero = [0.0]
 function _get_pval(s, cutoff, p_alt, vals_norm, K0, K1, K2, tmp_ecgf; cnts=nothing)
     function K0_(z)
         if cnts === nothing
@@ -240,12 +243,12 @@ function _get_pval(s, cutoff, p_alt, vals_norm, K0, K1, K2, tmp_ecgf; cnts=nothi
     if abs(s) < cutoff
         return p_alt
     else
-        r = optimize(f, g!, h!, [0.0], LBFGS())
+        r = optimize(f, g!, h!, singleton_zero, lbfgs)
         zeta = minimizer(r)[1]
-        omega = sign(zeta) * sqrt(max(0, 2 * (zeta * s - K0_(zeta))))
+        omega = sign(zeta) * sqrt(max(0.0, 2 * (zeta * s - K0_(zeta))))
         nu = zeta * sqrt(max(0, K2_(zeta)))
         z2 = omega + 1.0/omega * log(nu / omega)
     
-        return ccdf(Normal(), abs(z2)) + cdf(Normal(), -abs(z2))
+        return ccdf(normal, abs(z2)) + cdf(normal, -abs(z2))
     end
 end
