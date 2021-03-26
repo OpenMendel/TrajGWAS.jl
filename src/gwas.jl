@@ -172,7 +172,8 @@ function vgwas(
     verbose::Bool = false,
     snpset::Union{Nothing, Integer, AbstractString, #for snpset analysis
         AbstractVector{<:Integer}} = nothing,
-    e::Union{Nothing, AbstractString, Symbol} = nothing # for GxE analysis
+    e::Union{Nothing, AbstractString, Symbol} = nothing, # for GxE analysis
+    kwargs...
     )
 
     # locate plink bed, fam, bim files or VCF file
@@ -200,7 +201,7 @@ function vgwas(
             vcffile = geneticfile * ".vcf"
         else
             fmt = findfirst(isfile, geneticfile * ".vcf." .* SnpArrays.ALLOWED_FORMAT)
-            fmt == nothing && throw(ArgumentError("VCF file not found"))
+            fmt === nothing && throw(ArgumentError("VCF file not found"))
             vcffile = geneticfile * ".vcf." * SnpArrays.ALLOWED_FORMAT[fmt]
         end
         bedn = VCFTools.nsamples(vcffile)
@@ -212,7 +213,7 @@ function vgwas(
             bgenfile = geneticfile * ".bgen"
         else
             fmt = findfirst(isfile, geneticfile * ".bgen." .* SnpArrays.ALLOWED_FORMAT)
-            fmt == nothing && throw(ArgumentError("BGEN file not found"))
+            fmt === nothing && throw(ArgumentError("BGEN file not found"))
             bgenfile = geneticfile * ".bgen." * SnpArrays.ALLOWED_FORMAT[fmt]
         end
         b = Bgen(bgenfile; sample_path=samplepath)
@@ -220,7 +221,7 @@ function vgwas(
         bedids = samples(b)
         bedids = map(x -> parse(Int, x), bedids)
     end
-    if geneticrowinds == nothing
+    if geneticrowinds === nothing
         nbedrows = bedn
         rowinds = 1:bedn
     else
@@ -271,7 +272,8 @@ function vgwas(
             runs = runs,
             verbose = verbose,
             snpset = snpset,
-            e = e)
+            e = e,
+            kwargs...)
     elseif lowercase(geneticformat) == "vcf" #vcf
         vgwas(fittednullmodel, vcffile, bedn, vcftype;
             analysistype = analysistype,
@@ -287,7 +289,8 @@ function vgwas(
             runs = runs,
             verbose = verbose,
             snpset = snpset,
-            e = e)
+            e = e,
+            kwargs...)
     else #bgen
         vgwas(fittednullmodel, bgenfile, bedn;
             analysistype = analysistype,
@@ -304,7 +307,8 @@ function vgwas(
             runs = runs,
             verbose = verbose,
             snpset = snpset,
-            e = e)
+            e = e,
+            kwargs...)
     end
 end
 
@@ -339,12 +343,15 @@ function vgwas(
 
     # storage vectors for SPA if it is set to true
     if (usespa == true) & (analysistype == "singlesnp")
-        tmp = Array{Float64}(undef, fittednullmodel.m)
-        tmp2 = Array{Float64}(undef, 4)
+        g_norm = Array{Float64}(undef, fittednullmodel.m)
+        cnts = Vector{Int}(undef, 4)
+        ref_vals = [0.0, 1.0, 2.0, NaN]
+        vals_norm = similar(ref_vals)
+        tmp_ecgf = similar(ref_vals)
     end
 
     # create SNP mask vector
-    if snpinds == nothing
+    if snpinds === nothing
         snpmask = trues(SnpArrays.makestream(countlines, bimfile))
     elseif eltype(snpinds) == Bool
         snpmask = snpinds
@@ -373,9 +380,10 @@ function vgwas(
             Z = similar(modelmatrix(testformula, testdf))
             q = size(Z, 2)
         end
+
         SnpArrays.makestream(pvalfile, "w") do io
             if test == :score
-                println(io, "chr,pos,snpid,maf,hwepval,betapval,taupval,jointpval")
+                println(io, "chr\tpos\tsnpid\tmaf\thwepval\tbetapval\ttaupval\tjointpval")
                 if snponly
                     ts = WSVarScoreTestInvariant(fittednullmodel, 1, 1)
                     if usespa
@@ -392,8 +400,8 @@ function vgwas(
                 γ̂τ = Vector{Float64}(undef, q) # effect size for columns being tested
                 pvalsτ = Vector{Float64}(undef, q) # effect size for columns being tested
                 if snponly
-                    println(io, "chr,pos,snpid,maf,hwepval,betaeffect,betapval,",
-                    "taueffect,taupval")
+                    println(io, "chr\tpos\tsnpid\tmaf\thwepval\tbetaeffect\tbetapval\t",
+                    "taueffect\ttaupval")
                     fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
                     sum(union(fittednullmodel.meanformula.rhs, [testformula.rhs])))
                     fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
@@ -403,14 +411,14 @@ function vgwas(
                     sum(union(fittednullmodel.meanformula.rhs, testformula.rhs)))
                     fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
                     sum(union(fittednullmodel.wsvarformula.rhs, testformula.rhs)))
-                    print(io, "chr,pos,snpid,maf,hwepval,")
+                    print(io, "chr\tpos\tsnpid\tmaf\thwepval\t")
                     for j in 1:q
-                        print(io, "betaeffect$j,betapval$j,")
+                        print(io, "betaeffect$j\tbetapval$j\t")
                     end
                     for j in 1:q
-                        print(io, "taueffect$j,taupval$j")
+                        print(io, "taueffect$j\ttaupval$j")
                         if j != q
-                            print(io, ",")
+                            print(io, "\t")
                         end
                     end
                     println(io, "")
@@ -436,8 +444,17 @@ function vgwas(
                                 ps = test!(ts, snpholder, snpholder)
                                 betapval, taupval, jointpval = ps
                                 if usespa
+                                    cnts[1] = cc[1, j]
+                                    cnts[2] = cc[3, j]
+                                    cnts[3] = cc[4, j]
+                                    cnts[4] = cc[2, j]
                                     betapval, taupval, jointpval = spa(snpholder, ts, 
-                                        ps, Ks; tmp_g = tmp, tmp_g2 = tmp2, mode=:bed)
+                                        ps, Ks; g_norm = g_norm, ref_vals = ref_vals, 
+                                        cnts = cnts, vals_norm=vals_norm,
+                                        tmp_ecgf = tmp_ecgf)
+                                    # betapval, taupval, jointpval = spa(snpholder, ts, 
+                                    #     ps, Ks; g_norm = g_norm, 
+                                    #     tmp_ecgf = tmp_ecgf)
                                 end
                             else # snp + other terms
                                 copyto!(snpholder, @view(genomat[bedrowinds, j]),
@@ -448,8 +465,8 @@ function vgwas(
                                 betapval, taupval, jointpval = test!(ts, testvec, testvec)
                             end
                         end
-                        println(io, "$(snpj[1]),$(snpj[4]),$(snpj[2]),",
-                        "$maf,$hwepval,$betapval,$taupval,$jointpval")
+                        println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
+                        "$maf\t$hwepval\t$betapval\t$taupval\t$jointpval")
                     elseif test == :wald
                         if maf == 0 # mono-allelic
                             fill!(γ̂β, 0)
@@ -472,17 +489,17 @@ function vgwas(
                                 altmodel.p + fittednullmodel.l + 1, q)
                         end
                         if snponly
-                            println(io, "$(snpj[1]),$(snpj[4]),$(snpj[2]),$maf,$hwepval,",
-                            "$(γ̂β[1]),$(pvalsβ[1]),$(γ̂τ[1]),$(pvalsτ[1])")
+                            println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t$maf\t$hwepval\t",
+                            "$(γ̂β[1])\t$(pvalsβ[1])\t$(γ̂τ[1])\t$(pvalsτ[1])")
                         else
-                            print(io, "$(snpj[1]),$(snpj[4]),$(snpj[2]),$maf,$hwepval,")
+                            print(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t$maf\t$hwepval\t")
                             for j in 1:q
-                                print(io, "$(γ̂β[j]),$(pvalsβ[j]),")
+                                print(io, "$(γ̂β[j])\t$(pvalsβ[j])\t")
                             end
                             for j in 1:q
-                                print(io, "$(γ̂τ[j]),$(pvalsτ[j])")
+                                print(io, "$(γ̂τ[j])\t$(pvalsτ[j])")
                                 if j != q
-                                    print(io, ",")
+                                    print(io, "\t")
                                 end
                             end
                             println(io, "") #end line
@@ -538,8 +555,8 @@ function vgwas(
             totalsnps = SnpArrays.makestream(countlines, bimfile)
             SnpArrays.makestream(pvalfile, "w") do io
                 if test == :score
-                    println(io, "startchr,startpos,startsnpid,endchr,endpos,",
-                        "endsnpid,betapval,taupval,jointpval")
+                    println(io, "startchr\tstartpos\tstartsnpid\tendchr\tendpos\t",
+                        "endsnpid\tbetapval\ttaupval\tjointpval")
                     ts = WSVarScoreTestInvariant(fittednullmodel, setlength, setlength)
                 else # wald
                     # #TODO
@@ -582,8 +599,8 @@ function vgwas(
                                 copyto!(Z, @view(genomat[bedrowinds, j:endj]), impute=true, model=snpmodel)
                                 betapval, taupval, jointpval = test!(ts, Z, Z)
                             end
-                            println(io, "$(snpj[1]),$(snpj[4]),$(snpj[2]),$(snpj_s[1]),",
-                                "$(snpj_s[4]),$(snpj_s[2]),$betapval,$taupval,$jointpval")
+                            println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t$(snpj_s[1])\t",
+                                "$(snpj_s[4])\t$(snpj_s[2])\t$betapval\t$taupval\t$jointpval")
                         elseif test == :wald
                             # # TODO
                             # if all(@view(mafs[j:endj]) .== 0) # all mono-allelic, unlikely but just in case
@@ -609,9 +626,9 @@ function vgwas(
         elseif setlength == 0 #snpset is defined by snpset file
             # Report effects and pvals in beta and tau for each SNP
             SnpArrays.makestream(pvalfile, "w") do io
-                test == :score ? println(io, "snpsetid,nsnps,betapval,taupval,",
-                "jointpval") : println(io, "snpsetid,nsnps,l2normeffect,betapval,",
-                "taupval,jointpval")
+                test == :score ? println(io, "snpsetid\tnsnps\tbetapval\ttaupval\t",
+                "jointpval") : println(io, "snpsetid\tnsnps\tl2normeffect\tbetapval\t",
+                "taupval\tjointpval")
                 for j in eachindex(snpset_ids)
                     snpset_id = snpset_ids[j]
                     snpinds = findall(snpsetFile[!, :snpset_id] .== snpset_id)
@@ -624,15 +641,15 @@ function vgwas(
                         taupval = 1.0
                         jointpval = 1.0
                         l2normeffect = 0.0
-                        test == :score ? println(io, "$(snpset_id),$q,$betapval,$taupval,$jointpval") :
-                        println(io, "$(snpset_id),$q,$l2normeffect,$betapval,$taupval,$jointpval")
+                        test == :score ? println(io, "$(snpset_id)\t$q\t$betapval\t$taupval\t$jointpval") :
+                        println(io, "$(snpset_id)\t$q\t$l2normeffect\t$betapval\t$taupval\t$jointpval")
                     elseif test == :score
                         ts = WSVarScoreTestInvariant(fittednullmodel, q, q)
                         copyto!(Z, @view(genomat[bedrowinds, snpinds]), impute=true,
                             model=snpmodel)
                         betapval, taupval, jointpval = test!(ts, Z, Z)
                         ### CHANGE TO WSVAR score test
-                        println(io, "$(snpset_id),$q,$betapval,$taupval,$jointpval")
+                        println(io, "$(snpset_id)\t$q\t$betapval\t$taupval\t$jointpval")
                     elseif test == :wald
                         # # TODO
                         # nulldev = deviance(fittednullmodel.model)
@@ -717,8 +734,8 @@ function vgwas(
             [term(:snp)], [InteractionTerm(term.((:snp, Symbol(e))))] )))
         SnpArrays.makestream(pvalfile, "w") do io
             if test == :score
-                println(io, "chr,pos,snpid,maf,hwepval,snpeffectnullbeta,",
-                "snpeffectnulltau,betapval,taupval,jointpval")
+                println(io, "chr\tpos\tsnpid\tmaf\thwepval\tsnpeffectnullbeta\t",
+                "snpeffectnulltau\tbetapval\ttaupval\tjointpval")
                 # e may be factor - Z should match dimension
                 Z = similar(modelmatrix(FormulaTerm(term(:y), term(Symbol(e))), testdf))
                 # create vector of arrays for score test
@@ -730,8 +747,8 @@ function vgwas(
                 γ̂τ = 0.0 # effect size for tau gxe effect
                 snpeffectbeta = 0.0
                 snpeffecttau = 0.0
-                println(io, "chr,pos,snpid,maf,hwepval,snpeffectbeta,snpeffecttau,",
-                "GxEeffectbeta,GxEeffecttau,betapval,taupval")
+                println(io, "chr\tpos\tsnpid\tmaf\thwepval\tsnpeffectbeta\tsnpeffecttau\t",
+                "GxEeffectbeta\tGxEeffecttau\tbetapval\ttaupval")
             end
             SnpArrays.makestream(bimfile) do bimio
                 for j in eachindex(snpmask)
@@ -782,13 +799,13 @@ function vgwas(
                         end
                     end
                     if test == :score
-                        println(io, "$(snpj[1]),$(snpj[4]),$(snpj[2]),$maf,",
-                        "$hwepval,$snpeffectnullbeta,$snpeffectnulltau,",
-                        "$betapval,$taupval,$jointpval")
+                        println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t$maf\t",
+                        "$hwepval\t$snpeffectnullbeta\t$snpeffectnulltau\t",
+                        "$betapval\t$taupval\t$jointpval")
                     else
-                        println(io, "$(snpj[1]),$(snpj[4]),$(snpj[2]),$maf,",
-                        "$hwepval,$snpeffectbeta,$snpeffecttau,$γ̂β,$γ̂τ,",
-                        "$betapval,$taupval")
+                        println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t$maf\t",
+                        "$hwepval\t$snpeffectbeta\t$snpeffecttau\t$γ̂β\t$γ̂τ\t",
+                        "$betapval\t$taupval")
                     end
                 end
             end
@@ -829,7 +846,7 @@ function vgwas(
     snpmodel = modelingdict[snpmodel]
 
     # create SNP mask vector
-    if snpinds == nothing
+    if snpinds === nothing
         snpmask = trues(nsnps)
     elseif eltype(snpinds) == Bool
         snpmask = snpinds
@@ -840,8 +857,8 @@ function vgwas(
 
     # storage vectors for SPA if it is set to true
     if (usespa == true) & (analysistype == "singlesnp")
-        tmp = Array{Float64}(undef, fittednullmodel.m)
-        tmp2 = Array{Float64}(undef, fittednullmodel.m)
+        g_norm = Array{Float64}(undef, fittednullmodel.m)
+        tmp_ecgf = similar(g_norm)
     end
     
 
@@ -877,7 +894,7 @@ function vgwas(
 
         SnpArrays.makestream(pvalfile, "w") do io
             if test == :score
-                println(io, "chr,pos,snpid,betapval,taupval,jointpval")
+                println(io, "chr\tpos\tsnpid\tbetapval\ttaupval\tjointpval")
                 if snponly
                     ts = WSVarScoreTestInvariant(fittednullmodel, 1, 1)
                     if usespa
@@ -894,8 +911,8 @@ function vgwas(
                 γ̂τ = Vector{Float64}(undef, q) # effect size for columns being tested
                 pvalsτ = Vector{Float64}(undef, q) # effect size for columns being tested
                 if snponly
-                    println(io, "chr,pos,snpid,betaeffect,betapval,",
-                    "taueffect,taupval")
+                    println(io, "chr\tpos\tsnpid\tbetaeffect\tbetapval\t",
+                    "taueffect\ttaupval")
                     fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
                     sum(union(fittednullmodel.meanformula.rhs, [testformula.rhs])))
                     fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
@@ -905,14 +922,14 @@ function vgwas(
                     sum(union(fittednullmodel.meanformula.rhs, testformula.rhs)))
                     fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
                     sum(union(fittednullmodel.wsvarformula.rhs, testformula.rhs)))
-                    print(io, "chr,pos,snpid,")
+                    print(io, "chr\tpos\tsnpid\t")
                     for j in 1:q
-                        print(io, "betaeffect$j,betapval$j,")
+                        print(io, "betaeffect$j\tbetapval$j\t")
                     end
                     for j in 1:q
-                        print(io, "taueffect$j,taupval$j")
+                        print(io, "taueffect$j\ttaupval$j")
                         if j != q
-                            print(io, ",")
+                            print(io, "\t")
                         end
                     end
                     println(io, "")
@@ -939,8 +956,7 @@ function vgwas(
                         betapval, taupval, jointpval = ps
                         if usespa
                             betapval, taupval, jointpval = spa(snpholder, ts, 
-                                ps, Ks; tmp_g = tmp, tmp_g2 = tmp2,
-                                mode = :none)
+                                ps, Ks; g_norm = g_norm, tmp_ecgf = tmp_ecgf)
                         end
                     else # snp + other terms
                         snptodf!(testdf[!, :snp], @view(gholder[vcfrowinds]), fittednullmodel)
@@ -948,8 +964,8 @@ function vgwas(
                         loadtimevar!(testvec, Z, fittednullmodel)
                         betapval, taupval, jointpval = test!(ts, testvec, testvec)
                     end
-                    println(io, "$(rec_chr[1]),$(rec_pos[1]),$(rec_ids[1][1]),",
-                    "$betapval,$taupval,$jointpval")
+                    println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
+                    "$betapval\t$taupval\t$jointpval")
                 elseif test == :wald
                     if var(@view(gholder[vcfrowinds])) == 0
                         fill!(γ̂β, 0) 
@@ -971,17 +987,17 @@ function vgwas(
                         altmodel.p + fittednullmodel.l + 1, q)
                     end
                     if snponly
-                        println(io, "$(rec_chr[1]),$(rec_pos[1]),$(rec_ids[1][1]),",
-                        "$(γ̂β[1]),$(pvalsβ[1]),$(γ̂τ[1]),$(pvalsτ[1])")
+                        println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
+                        "$(γ̂β[1])\t$(pvalsβ[1])\t$(γ̂τ[1])\t$(pvalsτ[1])")
                     else
-                        print(io, "$(rec_chr[1]),$(rec_pos[1]),$(rec_ids[1][1]),")
+                        print(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t")
                         for j in 1:q
-                            print(io, "$(γ̂β[j]),$(pvalsβ[j]),")
+                            print(io, "$(γ̂β[j])\t$(pvalsβ[j])\t")
                         end
                         for j in 1:q
-                            print(io, "$(γ̂τ[j]),$(pvalsτ[j])")
+                            print(io, "$(γ̂τ[j])\t$(pvalsτ[j])")
                             if j != q
-                                print(io, ",")
+                                print(io, "\t")
                             end
                         end
                         println(io, "") #end line
@@ -1042,8 +1058,8 @@ function vgwas(
             q = setlength
             SnpArrays.makestream(pvalfile, "w") do io
                 if test == :score
-                    println(io, "startchr,startpos,startsnpid,endchr,endpos,",
-                    "endsnpid,betapval,taupval,jointpval")
+                    println(io, "startchr\tstartpos\tstartsnpid\tendchr\tendpos\t",
+                    "endsnpid\tbetapval\ttaupval\tjointpval")
                     ts = WSVarScoreTestInvariant(fittednullmodel, q, q)
                 elseif test == :wald
                     # TODO
@@ -1086,8 +1102,8 @@ function vgwas(
                             copyto!(Z, @view(gholder[vcfrowinds, :]))
                             betapval, taupval, jointpval = test!(ts, Z, Z)
                         end
-                        println(io, "$(rec_chr[1]),$(rec_pos[1]),$(rec_ids[1][1]),",
-                        "$(rec_chr[end]),$(rec_pos[end]),$(rec_ids[end][end]),$betapval,$taupval,$jointpval")
+                        println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
+                        "$(rec_chr[end])\t$(rec_pos[end])\t$(rec_ids[end][end])\t$betapval\t$taupval\t$jointpval")
                     elseif test == :wald
                         # # TODO
                         # copyto!(@view(Xaug[:, (fittednullmodel.model.p+1):end]),
@@ -1115,8 +1131,8 @@ function vgwas(
                 key="DS", impute = true, center = false, scale = false)
             end
             SnpArrays.makestream(pvalfile, "w") do io
-                test == :score ? println(io, "snpsetid,nsnps,betapval,taupval,jointpval") :
-                    println(io, "snpsetid,nsnps,l2normeffect,betapval,taupval,jointpval")
+                test == :score ? println(io, "snpsetid\tnsnps\tbetapval\ttaupval\tjointpval") :
+                    println(io, "snpsetid\tnsnps\tl2normeffect\tbetapval\ttaupval\tjointpval")
                 for j in eachindex(snpset_ids)
                     snpset_id = snpset_ids[j]
                     snpinds = findall(snpsetFile[!, :snpset_id] .== snpset_id)
@@ -1130,7 +1146,7 @@ function vgwas(
                             copyto!(Z, @view(genomat[vcfrowinds, snpinds]))
                             betapval, taupval, jointpval = test!(ts, Z, Z)
                         end
-                        println(io, "$(snpset_id),$q,$betapval,$taupval,$jointpval")
+                        println(io, "$(snpset_id)\t$q\t$betapval\t$taupval\t$jointpval")
                     elseif test == :wald
                         # # TODO
                         # γ̂ = Vector{Float64}(undef, q)
@@ -1224,8 +1240,8 @@ function vgwas(
 
         SnpArrays.makestream(pvalfile, "w") do io
             if test == :score
-                println(io, "chr,pos,snpid,snpeffectnullbeta,",
-                "snpeffectnulltau,betapval,taupval,jointpval")
+                println(io, "chr\tpos\tsnpid\tsnpeffectnullbeta\t",
+                "snpeffectnulltau\tbetapval\ttaupval\tjointpval")
                 # e may be factor - Z should match dimension
                 Z = similar(modelmatrix(FormulaTerm(term(:y), term(Symbol(e))),
                     testdf))
@@ -1238,8 +1254,8 @@ function vgwas(
                 γ̂τ = 0.0 # effect size for tau gxe effect
                 snpeffectbeta = 0.0
                 snpeffecttau = 0.0
-                println(io, "chr,pos,snpid,snpeffectbeta,snpeffecttau,",
-                "GxEeffectbeta,GxEeffecttau,betapval,taupval")
+                println(io, "chr\tpos\tsnpid\tsnpeffectbeta\tsnpeffecttau\t",
+                "GxEeffectbeta\tGxEeffecttau\tbetapval\ttaupval")
             end
             for j in eachindex(snpmask)
                 if vcftype == :GT #genotype
@@ -1276,9 +1292,9 @@ function vgwas(
                         ts = WSVarScoreTest(nm, q, q)
                         betapval, taupval, jointpval = test!(ts, testvec, testvec)
                     end
-                    println(io, "$(rec_chr[1]),$(rec_pos[1]),$(rec_ids[1][1]),",
-                        "$snpeffectnullbeta,$snpeffectnulltau,",
-                        "$betapval,$taupval,$jointpval")
+                    println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
+                        "$snpeffectnullbeta\t$snpeffectnulltau\t",
+                        "$betapval\t$taupval\t$jointpval")
                 elseif test == :wald
                     if var(@view(gholder[vcfrowinds])) == 0
                         betapval, taupval = 1., 1., 1.
@@ -1298,9 +1314,9 @@ function vgwas(
                         betapval = coeftable(fullmod).cols[4][fullmod.p]
                         taupval = coeftable(fullmod).cols[4][end]
                     end
-                    println(io, "$(rec_chr[1]),$(rec_pos[1]),$(rec_ids[1][1]),",
-                        "$snpeffectbeta,$snpeffecttau,$γ̂β,$γ̂τ,",
-                        "$betapval,$taupval")
+                    println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
+                        "$snpeffectbeta\t$snpeffecttau\t$γ̂β\t$γ̂τ\t",
+                        "$betapval\t$taupval")
                 end
             end
         end
@@ -1322,6 +1338,9 @@ function vgwas(
     snpmodel::Union{Val{1}, Val{2}, Val{3}} = ADDITIVE_MODEL,
     snpinds::Union{Nothing, AbstractVector{<:Integer}} = nothing,
     usespa::Bool = true,
+    min_maf::AbstractFloat = NaN,
+    min_hwe_pval::AbstractFloat = NaN,
+    min_info_score::AbstractFloat = NaN,
     bgenrowinds::AbstractVector{<:Integer} = 1:nsamples, # row indices for VCF array
     solver = Ipopt.IpoptSolver(print_level=0, mehrotra_algorithm = "yes",
     warm_start_init_point="yes", max_iter=100),
@@ -1348,13 +1367,23 @@ function vgwas(
         snpmask[snpinds] .= true
     end
 
+    bgenrowmask_UInt16 = zeros(UInt16, n_samples)
+    bgenrowmask_UInt16[bgenrowinds] .= 1 
     # make sure snpmask is same length as iterator
     @assert length(snpmask) == length(bgen_iterator) "Specified variant mask `snpinds` is not the same length as the number of variants in bgen file."
 
+    # create filter iterator
+    bgen_iterator_filter = BGEN.filter(bgen_iterator; min_maf=min_maf, 
+    min_hwe_pval=min_hwe_pval, min_info_score=min_info_score, cmask=snpmask)
+
     # storage vectors for SPA if it is set to true
     if (usespa == true) & (analysistype == "singlesnp")
-        tmp = Array{Float64}(undef, fittednullmodel.m)
-        tmp2 = Array{Float64}(undef, 512)
+        g_norm = Array{Float64}(undef, fittednullmodel.m)
+        cnts = Vector{Int}(undef, 512)
+        cnts2 = Vector{Int}(undef, 512)
+        ref_vals = vcat([i / 255 for i in 0:510], [NaN])
+        vals_norm = similar(ref_vals)
+        tmp_ecgf = similar(ref_vals)
     end
     
 
@@ -1384,7 +1413,7 @@ function vgwas(
         # carry out score or LRT test SNP by SNP
         SnpArrays.makestream(pvalfile, "w") do io
             if test == :score
-                println(io, "chr,pos,snpid,varid,betapval,taupval,jointpval")
+                println(io, "chr\tpos\tsnpid\tvarid\tbetapval\ttaupval\tjointpval")
                 if snponly
                     ts = WSVarScoreTestInvariant(fittednullmodel, 1, 1)
                     if usespa
@@ -1401,8 +1430,8 @@ function vgwas(
                 γ̂τ = Vector{Float64}(undef, q) # effect size for columns being tested
                 pvalsτ = Vector{Float64}(undef, q) # effect size for columns being tested
                 if snponly
-                    println(io, "chr,pos,snpid,varid,betaeffect,betapval,",
-                    "taueffect,taupval")
+                    println(io, "chr\tpos\tsnpid\tvarid\tbetaeffect\tbetapval\t",
+                    "taueffect\ttaupval")
                     fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
                     sum(union(fittednullmodel.meanformula.rhs, [testformula.rhs])))
                     fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
@@ -1412,23 +1441,23 @@ function vgwas(
                     sum(union(fittednullmodel.meanformula.rhs, testformula.rhs)))
                     fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
                     sum(union(fittednullmodel.wsvarformula.rhs, testformula.rhs)))
-                    print(io, "chr,pos,snpid,varid,")
+                    print(io, "chr\tpos\tsnpid\tvarid\t")
                     for j in 1:q
-                        print(io, "betaeffect$j,betapval$j,")
+                        print(io, "betaeffect$j\tbetapval$j\t")
                     end
                     for j in 1:q
-                        print(io, "taueffect$j,taupval$j")
+                        print(io, "taueffect$j\ttaupval$j")
                         if j != q
-                            print(io, ",")
+                            print(io, "\t")
                         end
                     end
                     println(io, "")
                 end
             end
-            @time for (j, variant) in enumerate(bgen_iterator)
-                if !snpmask[j] #skip snp
-                    continue
-                end
+            @time for variant in (bgen_iterator_filter)
+                # if !snpmask[j] #skip snp
+                #     continue
+                # end
                 minor_allele_dosage!(bgendata, variant; 
                     T = Float64, mean_impute = true, data = dosageholder, 
                     decompressed=decompressed)
@@ -1440,9 +1469,17 @@ function vgwas(
                         ps = test!(ts, snpholder, snpholder)
                         betapval, taupval, jointpval = ps
                         if usespa
+                            cnts = counts!(bgendata, variant; rmask=bgenrowmask_UInt16, r=cnts)
+                            if variant.genotypes.minor_idx != 1
+                                cnts2 .= cnts
+                                @inbounds for i in 1:511
+                                    cnts[i] = cnts2[512-i]
+                                end
+                            end
                             betapval, taupval, jointpval = spa(snpholder, ts, 
-                                ps, Ks; tmp_g = tmp, tmp_g2 = tmp2,
-                                mode = :ukbbgen)
+                                ps, Ks; g_norm = g_norm, ref_vals = ref_vals, 
+                                cnts = cnts, vals_norm=vals_norm,
+                                tmp_ecgf = tmp_ecgf)
                         end
                     else # snp + other terms
                         snptodf!(testdf[!, :snp], snpholder, fittednullmodel)
@@ -1450,8 +1487,8 @@ function vgwas(
                         loadtimevar!(testvec, Z, fittednullmodel)
                         betapval, taupval, jointpval = test!(ts, testvec, testvec)
                     end
-                    println(io, "$(variant.chrom),$(variant.pos),$(variant.rsid),",
-                    "$(variant.varid),$betapval,$taupval,$jointpval")
+                    println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
+                    "$(variant.varid)\t$betapval\t$taupval\t$jointpval")
                 elseif test == :wald
                     if var(snpholder) == 0
                         fill!(γ̂β, 0) 
@@ -1473,18 +1510,18 @@ function vgwas(
                         altmodel.p + fittednullmodel.l + 1, q)
                     end
                     if snponly
-                        println(io, "$(variant.chrom),$(variant.pos),$(variant.rsid),",
-                        "$(variant.varid),$(γ̂β[1]),$(pvalsβ[1]),$(γ̂τ[1]),$(pvalsτ[1])")
+                        println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
+                        "$(variant.varid)\t$(γ̂β[1])\t$(pvalsβ[1])\t$(γ̂τ[1])\t$(pvalsτ[1])")
                     else
-                        print(io, "$(variant.chrom),$(variant.pos),$(variant.rsid),",
-                        "$(variant.varid),")
+                        print(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
+                        "$(variant.varid)\t")
                         for j in 1:q
-                            print(io, "$(γ̂β[j]),$(pvalsβ[j]),")
+                            print(io, "$(γ̂β[j])\t$(pvalsβ[j])\t")
                         end
                         for j in 1:q
-                            print(io, "$(γ̂τ[j]),$(pvalsτ[j])")
+                            print(io, "$(γ̂τ[j])\t$(pvalsτ[j])")
                             if j != q
-                                print(io, ",")
+                                print(io, "\t")
                             end
                         end
                         println(io, "") #end line
@@ -1717,8 +1754,8 @@ function vgwas(
 
         SnpArrays.makestream(pvalfile, "w") do io
             if test == :score
-                println(io, "chr,pos,snpid,varid,snpeffectnullbeta,",
-                "snpeffectnulltau,betapval,taupval,jointpval")
+                println(io, "chr\tpos\tsnpid\tvarid\tsnpeffectnullbeta\t",
+                "snpeffectnulltau\tbetapval\ttaupval\tjointpval")
                 # e may be factor - Z should match dimension
                 Z = similar(modelmatrix(FormulaTerm(term(:y), term(Symbol(e))),
                     testdf))
@@ -1731,13 +1768,13 @@ function vgwas(
                 γ̂τ = 0.0 # effect size for tau gxe effect
                 snpeffectbeta = 0.0
                 snpeffecttau = 0.0
-                println(io, "chr,pos,snpid,varid,snpeffectbeta,snpeffecttau,",
-                "GxEeffectbeta,GxEeffecttau,betapval,taupval")
+                println(io, "chr\tpos\tsnpid\tvarid\tsnpeffectbeta\tsnpeffecttau\t",
+                "GxEeffectbeta\tGxEeffecttau\tbetapval\ttaupval")
             end
-            for (j, variant) in enumerate(bgen_iterator)
-                if !snpmask[j] #skip snp
-                    continue
-                end
+            for (variant) in bgen_iterator_filter
+                # if !snpmask[j] #skip snp
+                #     continue
+                # end
                 minor_allele_dosage!(bgendata, variant; 
                     T = Float32, mean_impute = true, data=dosageholder,
                     decompressed=decompressed)
@@ -1765,9 +1802,9 @@ function vgwas(
                         ts = WSVarScoreTest(nm, q, q)
                         betapval, taupval, jointpval = test!(ts, testvec, testvec)
                     end
-                    println(io, "$(variant.chrom),$(variant.pos),$(variant.rsid),",
-                        "$(variant.varid),$snpeffectnullbeta,$snpeffectnulltau,",
-                        "$betapval,$taupval,$jointpval")
+                    println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
+                        "$(variant.varid)\t$snpeffectnullbeta\t$snpeffectnulltau\t",
+                        "$betapval\t$taupval\t$jointpval")
                 elseif test == :wald
                     if var(snpholder) == 0
                         betapval, taupval = 1., 1., 1.
@@ -1787,9 +1824,9 @@ function vgwas(
                         betapval = coeftable(fullmod).cols[4][fullmod.p]
                         taupval = coeftable(fullmod).cols[4][end]
                     end
-                    println(io, "$(variant.chrom),$(variant.pos),$(variant.rsid),",
-                        "$(variant.varid),$snpeffectbeta,$snpeffecttau,$γ̂β,$γ̂τ,",
-                        "$betapval,$taupval")
+                    println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
+                        "$(variant.varid)\t$snpeffectbeta\t$snpeffecttau\t$γ̂β\t$γ̂τ\t",
+                        "$betapval\t$taupval")
                 end
             end
         end

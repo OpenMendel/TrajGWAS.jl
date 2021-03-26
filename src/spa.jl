@@ -4,8 +4,6 @@
 using Interpolations
 import Optim: minimizer, optimize, LBFGS, NelderMead
 
-const bgenlookup = [i / 255 for i in 0:510]
-
 function ecgf(z::AbstractVector; knots::Integer=10000)
 
     range = (-200.0, 200.0)
@@ -58,6 +56,7 @@ struct vGWASEcgfCollection
     K1_βτ
     K2_βτ
 end
+
 function ecgf(st::WSVarScoreTestInvariant)
     K0_β, K1_β, K2_β = ecgf(st.ψ_β1_pre)
     K0_τ, K1_τ, K2_τ = ecgf(st.ψ_τ1_pre)
@@ -65,19 +64,8 @@ function ecgf(st::WSVarScoreTestInvariant)
     vGWASEcgfCollection(K0_β, K1_β, K2_β, K0_τ, K1_τ, K2_τ, K0_βτ, K1_βτ, K2_βτ)
 end
 
-function spa(g::AbstractVector, pre_vec::AbstractVector, p_alt, K0, K1, K2;
-    tmp_g=similar(g), tmp_g2=similar(g, 4), r=2.0, r_var=var(pre_vec))
-    # involves internal normalization
-    m = mean(skipmissing(g))
-    s = std(skipmissing(g))
-    tmp_g .= (g .- m) ./ s
-    s_tau = dot(tmp_g, pre_vec)
-    cutoff = r * sqrt(r_var * sum(x -> x ^ 2, tmp_g))
-    return _get_pval(s_tau, cutoff, p_alt, cnts, vals_norm, K0, K1, K2, tmp_g2)
-end
-
 """
-    spa(g, st, p_alt, Ks; mode, tmp_g, tmp_g2, r)
+    spa(g, st, p_alt, Ks; mode, g_norm, tmp_ecgf, r)
 
 Perform saddlepoint approximation for a single variant. 
 
@@ -92,140 +80,157 @@ function spa(g::AbstractVector,
     st::WSVarScoreTestInvariant,
     p_alt,
     Ks::vGWASEcgfCollection;
-    mode=:bed,
-    tmp_g=similar(g),
-    tmp_g2= mode == :bed ? similar(g, 3) : (mode == :ukbbgen ? similar(g, 512) : similar(g)),
-    r=2.0)
-
+    g_norm=similar(g),
+    cnts=nothing,
+    ref_vals= cnts !== nothing ? similar(g, length(cnts)) : nothing,
+    vals_norm= cnts !== nothing ? similar(g, length(cnts)) : g_norm,
+    tmp_ecgf = cnts !== nothing ? similar(g, length(cnts)) : similar(g),
+    r=2.0
+    )
     # involves internal normalization
     m = mean(skipmissing(g))
     s = std(skipmissing(g))
-    tmp_g .= (g .- m) ./ s
+    g_norm .= (g .- m) ./ s
 
-    s_β = dot(tmp_g, st.ψ_β1_pre)
-    s_τ = dot(tmp_g, st.ψ_τ1_pre)
-    s_βτ = dot(tmp_g, st.ψ_βτ_pre)
-
-    cutoff_factor = sum(x -> x^2, tmp_g)
-    cutoff_β = r * sqrt(st.var_β1_pre * cutoff_factor)
-    cutoff_τ = r * sqrt(st.var_τ1_pre * cutoff_factor)
-    cutoff_βτ = r * sqrt(st.var_βτ_pre * cutoff_factor)
-    if mode == :bed
-        cnts = begin
-            r = zeros(Int, 4)
-            for v in g
-                try
-                    r[convert(Int, round(v)) + 1] += 1
-                catch e
-                    r[4] += 1
-                end
+    if ref_vals !== nothing
+        vals_norm .= (ref_vals .- m) ./ s
+        @inbounds for i in 1:length(vals_norm)
+            if isnan(vals_norm[i])
+                vals_norm[i] = zero(eltype(vals_norm))
             end
-            r
         end
-        #@assert sum(cnts) == length(g) "With genotypes == true, the values in g must be 0, 1, or 2."
-        vals_norm = ([0.0, 1.0, 2.0, m] .- m) ./ s
-        p_β = _get_pval(s_β, cutoff_β, p_alt[1], cnts, vals_norm,
-            Ks.K0_β, Ks.K1_β, Ks.K2_β, tmp_g2)
-        p_τ = _get_pval(s_τ, cutoff_τ, p_alt[2], cnts, vals_norm,
-            Ks.K0_τ, Ks.K1_τ, Ks.K2_τ, tmp_g2)
-        p_βτ = _get_pval(s_βτ, cutoff_βτ, p_alt[3], cnts, vals_norm,
-            Ks.K0_βτ, Ks.K1_βτ, Ks.K2_βτ, tmp_g2)
-    elseif mode == :ukbbgen
-        cnts = begin
-            r = zeros(Int, 512)
-            for v in g
-                try
-                    r[convert(Int, round(v*255)) + 1] += 1
-                catch e
-                    r[512] += 1
-                end
-            end
-            r
-        end
-        vals_norm = vcat((bgenlookup .- m) ./ s, [0])
-        p_β = _get_pval(s_β, cutoff_β, p_alt[1], cnts, vals_norm,
-            Ks.K0_β, Ks.K1_β, Ks.K2_β, tmp_g2)
-        p_τ = _get_pval(s_τ, cutoff_τ, p_alt[2], cnts, vals_norm,
-            Ks.K0_τ, Ks.K1_τ, Ks.K2_τ, tmp_g2)
-        p_βτ = _get_pval(s_βτ, cutoff_βτ, p_alt[3], cnts, vals_norm,
-            Ks.K0_βτ, Ks.K1_βτ, Ks.K2_βτ, tmp_g2)        
-    else
-        vals_norm = (g .- m) ./ s
-        p_β = _get_pval(s_β, cutoff_β, p_alt[1], vals_norm,
-            Ks.K0_β, Ks.K1_β, Ks.K2_β, tmp_g2)
-        p_τ = _get_pval(s_τ, cutoff_τ, p_alt[2], vals_norm,
-            Ks.K0_τ, Ks.K1_τ, Ks.K2_τ, tmp_g2)
-        p_βτ = _get_pval(s_βτ, cutoff_βτ, p_alt[3], vals_norm,
-            Ks.K0_βτ, Ks.K1_βτ, Ks.K2_βτ, tmp_g2)  
     end
+    cutoff_factor = sum(x -> x^2, g_norm)
+    p_β = spa(g_norm, st.ψ_β1_pre, vals_norm,
+        cutoff_factor, r, p_alt[1], Ks.K0_β, Ks.K1_β, Ks.K2_β;
+        cnts=cnts, tmp_ecgf=tmp_ecgf, pre_vec_var=st.var_β1_pre)
+    p_τ = spa(g_norm, st.ψ_τ1_pre, vals_norm,
+        cutoff_factor, r, p_alt[2], Ks.K0_τ, Ks.K1_τ, Ks.K2_τ;
+        cnts=cnts, tmp_ecgf=tmp_ecgf, pre_vec_var=st.var_τ1_pre)
+    p_βτ = spa(g_norm, st.ψ_βτ_pre, vals_norm,
+        cutoff_factor, r, p_alt[3], Ks.K0_βτ, Ks.K1_βτ, Ks.K2_βτ;
+        cnts=cnts, tmp_ecgf=tmp_ecgf, pre_vec_var=st.var_βτ_pre)
+    # s_β = dot(g_norm, st.ψ_β1_pre)
+    # s_τ = dot(g_norm, st.ψ_τ1_pre)
+    # s_βτ = dot(g_norm, st.ψ_βτ_pre)
+
+
+    # cutoff_β = r * sqrt(st.var_β1_pre * cutoff_factor)
+    # cutoff_τ = r * sqrt(st.var_τ1_pre * cutoff_factor)
+    # cutoff_βτ = r * sqrt(st.var_βτ_pre * cutoff_factor)
+    # if mode == :bed
+    #     cnts = begin
+    #         r = zeros(Int, 4)
+    #         for v in g
+    #             try
+    #                 r[convert(Int, round(v)) + 1] += 1
+    #             catch e
+    #                 r[4] += 1
+    #             end
+    #         end
+    #         r
+    #     end
+    #     #@assert sum(cnts) == length(g) "With genotypes == true, the values in g must be 0, 1, or 2."
+    #     vals_norm = ([0.0, 1.0, 2.0, m] .- m) ./ s
+    #     p_β = _get_pval(s_β, cutoff_β, p_alt[1], vals_norm,
+    #         Ks.K0_β, Ks.K1_β, Ks.K2_β, tmp_ecgf; cnts=cnts)
+    #     p_τ = _get_pval(s_τ, cutoff_τ, p_alt[2], vals_norm,
+    #         Ks.K0_τ, Ks.K1_τ, Ks.K2_τ, tmp_ecgf; cnts=cnts)
+    #     p_βτ = _get_pval(s_βτ, cutoff_βτ, p_alt[3], vals_norm,
+    #         Ks.K0_βτ, Ks.K1_βτ, Ks.K2_βτ, tmp_ecgf; cnts=cnts)
+    # elseif mode == :ukbbgen
+    #     cnts = begin
+    #         r = zeros(Int, 512)
+    #         for v in g
+    #             try
+    #                 r[convert(Int, round(v*255)) + 1] += 1
+    #             catch e
+    #                 r[512] += 1
+    #             end
+    #         end
+    #         r
+    #     end
+    #     vals_norm = vcat((bgenlookup .- m) ./ s, [0])
+    #     p_β = _get_pval(s_β, cutoff_β, p_alt[1], vals_norm,
+    #         Ks.K0_β, Ks.K1_β, Ks.K2_β, tmp_ecgf; cnts=cnts)
+    #     p_τ = _get_pval(s_τ, cutoff_τ, p_alt[2], vals_norm,
+    #         Ks.K0_τ, Ks.K1_τ, Ks.K2_τ, tmp_ecgf; cnts=cnts)
+    #     p_βτ = _get_pval(s_βτ, cutoff_βτ, p_alt[3], vals_norm,
+    #         Ks.K0_βτ, Ks.K1_βτ, Ks.K2_βτ, tmp_ecgf; cnts=cnts)        
+    # else
+    #     vals_norm = (g .- m) ./ s
+    #     p_β = _get_pval(s_β, cutoff_β, p_alt[1], vals_norm,
+    #         Ks.K0_β, Ks.K1_β, Ks.K2_β, tmp_ecgf)
+    #     p_τ = _get_pval(s_τ, cutoff_τ, p_alt[2], vals_norm,
+    #         Ks.K0_τ, Ks.K1_τ, Ks.K2_τ, tmp_ecgf)
+    #     p_βτ = _get_pval(s_βτ, cutoff_βτ, p_alt[3], vals_norm,
+    #         Ks.K0_βτ, Ks.K1_βτ, Ks.K2_βτ, tmp_ecgf)  
+    # end
     p_β, p_τ, p_βτ
 end
 
-function _get_pval(s, cutoff, p_alt, cnts, vals_norm, K0, K1, K2, tmp)
-    function K0_(z)
-        @inbounds for i in 1:length(tmp)
-            if cnts[i] != 0
-                tmp[i] = K0(vals_norm[i] * z)
-            end
-        end
-        dot(cnts, tmp)
-    end
-    function K1_(z)
-        for i in 1:length(tmp)
-            if cnts[i] != 0
-                tmp[i] = vals_norm[i] * K1(vals_norm[i] * z)
-            end
-        end
-        dot(cnts, tmp)
-    end
-    function K2_(z)
-        @inbounds for i in 1:length(tmp)
-            if cnts[i] != 0
-                tmp[i] = vals_norm[i] ^ 2 * K2(vals_norm[i] * z)
-            end
-        end
-        dot(cnts, tmp)
-    end
-    f = x -> K0_(x[1]) - x[1] * s
-    function g!(storage, x)
-        storage[1] = K1_(x[1]) - s
-    end
-    function h!(storage, x)
-        storage[1] = K2_(x[1])
-    end
-    if abs(s) < cutoff
-        return p_alt
-    else
-        r = optimize(f, g!, h!, [0.0], LBFGS())
-        zeta = minimizer(r)[1]
-        omega = sign(zeta) * sqrt(max(0, 2 * (zeta * s - K0_(zeta))))
-        nu = zeta * sqrt(K2_(zeta))
-        z2 = omega + 1.0/omega * log(nu / omega)
-    
-        return ccdf(Normal(), abs(z2)) + cdf(Normal(), -abs(z2))
-    end
+function spa(g_norm::AbstractVector, pre_vec::AbstractVector,
+    vals_norm::AbstractVector,
+    cutoff_factor::Real, r::Real, p_alt::Real, K0, K1, K2;
+    cnts=nothing, 
+    tmp_ecgf = g === nothing ? similar(g) : similar(g, length(cnts)), 
+    pre_vec_var::Real=var(pre_vec)
+    )
+    s = dot(g_norm, pre_vec)
+    cutoff = r * sqrt(pre_vec_var * cutoff_factor)
+    return _get_pval(s, cutoff, p_alt, vals_norm, K0, K1, K2, tmp_ecgf; cnts=cnts)
 end
 
-function _get_pval(s, cutoff, p_alt, vals_norm, K0, K1, K2, tmp)
+function _get_pval(s, cutoff, p_alt, vals_norm, K0, K1, K2, tmp_ecgf; cnts=nothing)
     function K0_(z)
-        for i in 1:length(vals_norm)
-            @inbounds tmp[i] = K0(vals_norm[i] * z)
+        if cnts === nothing
+            @inbounds for i in 1:length(vals_norm)
+                tmp_ecgf[i] = K0(vals_norm[i] * z)
+            end
+            return sum(tmp_ecgf)
+        else
+            @inbounds for i in 1:length(tmp_ecgf)
+                if cnts[i] != 0
+                    tmp_ecgf[i] = K0(vals_norm[i] * z)
+                end
+            end
+            return dot(cnts, tmp_ecgf)
         end
-        sum(tmp)
     end
     function K1_(z)
-        for i in 1:length(vals_norm)
-            @inbounds tmp[i] = vals_norm[i] * K1(vals_norm[i] * z)
+        if cnts === nothing
+            @inbounds for i in 1:length(vals_norm)
+                tmp_ecgf[i] = vals_norm[i] * K1(vals_norm[i] * z)
+            end
+            return sum(tmp_ecgf)
+        else
+            @inbounds for i in 1:length(tmp_ecgf)
+                if cnts[i] != 0
+                    tmp_ecgf[i] = vals_norm[i] * K1(vals_norm[i] * z)
+                end
+            end
+            return dot(cnts, tmp_ecgf)
         end
-        sum(tmp)
     end
     function K2_(z)
-        for i in 1:length(vals_norm)
-            @inbounds tmp[i] = vals_norm[i] ^ 2 * K2(vals_norm[i] * z)
+        if cnts === nothing
+            @inbounds for i in 1:length(vals_norm)
+                tmp_ecgf[i] = vals_norm[i] ^ 2 * K2(vals_norm[i] * z)
+            end
+            return sum(tmp_ecgf)
+        else
+            @inbounds for i in 1:length(tmp_ecgf)
+                if cnts[i] != 0
+                    tmp_ecgf[i] = vals_norm[i] ^ 2 * K2(vals_norm[i] * z)
+                end
+            end
+            return dot(cnts, tmp_ecgf)
         end
-        sum(tmp)
     end
-    f = x -> K0_(x[1]) - x[1] * s
+    function f(x)
+        r = K0_(x[1]) - x[1] * s
+        return r
+    end
     function g!(storage, x)
         storage[1] = K1_(x[1]) - s
     end
@@ -238,7 +243,7 @@ function _get_pval(s, cutoff, p_alt, vals_norm, K0, K1, K2, tmp)
         r = optimize(f, g!, h!, [0.0], LBFGS())
         zeta = minimizer(r)[1]
         omega = sign(zeta) * sqrt(max(0, 2 * (zeta * s - K0_(zeta))))
-        nu = zeta * sqrt(K2_(zeta))
+        nu = zeta * sqrt(max(0, K2_(zeta)))
         z2 = omega + 1.0/omega * log(nu / omega)
     
         return ccdf(Normal(), abs(z2)) + cdf(Normal(), -abs(z2))
