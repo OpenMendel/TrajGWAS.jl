@@ -1367,7 +1367,7 @@ function vgwas(
         snpmask[snpinds] .= true
     end
 
-    bgenrowmask_UInt16 = zeros(UInt16, n_samples)
+    bgenrowmask_UInt16 = zeros(UInt16, n_samples(bgendata))
     bgenrowmask_UInt16[bgenrowinds] .= 1 
     # make sure snpmask is same length as iterator
     @assert length(snpmask) == length(bgen_iterator) "Specified variant mask `snpinds` is not the same length as the number of variants in bgen file."
