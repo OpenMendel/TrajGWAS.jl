@@ -4,11 +4,11 @@ using Documenter
 makedocs(;
     modules=[vGWAS],
     authors="Seyoon Ko <syko0507@snu.ac.kr> and contributors",
-    repo="https://github.com/kose-y/vGWAS.jl/blob/{commit}{path}#L{line}",
+    repo="https://github.com/OpenMendel/vGWAS.jl/blob/{commit}{path}#L{line}",
     sitename="vGWAS.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://kose-y.github.io/vGWAS.jl",
+        canonical="https://OpenMendel.github.io/vGWAS.jl",
         assets=String[],
     ),
     pages=[
@@ -17,5 +17,5 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/kose-y/vGWAS.jl",
+    repo="github.com/OpenMendel/vGWAS.jl",
 )

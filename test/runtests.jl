@@ -18,8 +18,8 @@ df_cut = df_cut[!, setdiff(names(df_cut), ["meds", "gender"])];
 X1vec = Matrix{Float64}[]
 W1vec = Matrix{Float64}[]
 for i in unique(df[!, :id])
-    push!(X1vec, convert(Matrix{Float64}, df_cut[df[!, :id] .== i, :]))
-    push!(W1vec, convert(Matrix{Float64}, df_cut[df[!, :id] .== i, :]))
+    push!(X1vec, Matrix{Float64}(df_cut[df[!, :id] .== i, :]))
+    push!(W1vec, Matrix{Float64}(df_cut[df[!, :id] .== i, :]))
 end
 
 @testset "generic" begin
