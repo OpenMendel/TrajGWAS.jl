@@ -1733,15 +1733,20 @@ function vgwas(
                 end
             end
         end
+        
     else #analysistype == "gxe"
         isnothing(e) &&
             @error("GxE analysis indicated but no environmental variable keyword argument: `e` set.")
+
+        # create holder for dosage
+        snpholder = zeros(fittednullmodel.m)
+        dosageholder = Vector{Float32}(undef, n_samples(bgendata))
+        decompressed = Vector{UInt8}(undef, 3 * n_samples(bgendata) + 10)
 
         # extra columns in design matrix to be tested
         testdf = DataFrame(fittednullmodel)
         @assert Symbol(e) in propertynames(testdf) "environmental variable $e not found in dataframe"
         testdf[!, :snp] = zeros(fittednullmodel.nsum)
-        snpholder = zeros(fittednullmodel.m)
 
         snpeffectnullbeta = 0.0
         snpeffectnulltau = 0.0
