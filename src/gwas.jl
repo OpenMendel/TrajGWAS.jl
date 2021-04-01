@@ -1145,7 +1145,7 @@ function vgwas(
                     q = length(snpinds)
                     Z = zeros(fittednullmodel.m, q)
                     if test == :score
-                        if all(var(@view(gholder[vcfrowinds, :]), dims = [1]) .== 0)
+                        if all(var(@view(genomat[vcfrowinds, :]), dims = [1]) .== 0)
                             betapval, taupval, jointpval = 1., 1., 1.
                         else
                             ts = WSVarScoreTestInvariant(fittednullmodel, q, q)
@@ -1186,7 +1186,7 @@ function vgwas(
                 γ̂ = Vector{Float64}(undef, q)
                 Z = zeros(fittednullmodel.m, q)
                 if test == :score
-                    if all(var(@view(gholder[vcfrowinds, :]), dims = [1]) .== 0)
+                    if all(var(@view(genomat[vcfrowinds, :]), dims = [1]) .== 0)
                         betapval, taupval, jointpval = 1., 1., 1.
                     else
                         ts = WSVarScoreTestInvariant(fittednullmodel, q, q)
@@ -1538,6 +1538,8 @@ function vgwas(
     elseif analysistype == "snpset"
         # max size of a snpset length
         maxsnpset = 1
+        dosageholder = Vector{Float32}(undef, n_samples(bgendata))
+        decompressed = Vector{UInt8}(undef, 3 * n_samples(bgendata) + 10)
 
         #determine snpset
         if isa(snpset, Nothing)
@@ -1614,8 +1616,9 @@ function vgwas(
                     for i in 1:q
                         variant = variant_by_index(bgendata, j + i - 1)
                         minor_allele_dosage!(bgendata, variant; 
-                        T = Float64, mean_impute = true)
-                        @views copyto!(Z[:, i], variant.genotypes[1].dose[bgenrowinds])
+                            T = Float64, mean_impute = true, data = dosageholder, 
+                            decompressed = decompressed)
+                        @views copyto!(Z[:, i], dosageholder[bgenrowinds])
                         if i == 1
                             chrstart = variant.chrom
                             posstart = variant.pos
@@ -1636,7 +1639,7 @@ function vgwas(
                             betapval, taupval, jointpval = test!(ts, Z, Z)
                         end
                         println(io, "$chrstart,$posstart,$rsidstart,$varidstart,",
-                        "$chrend,$posend,$rsidend,$varidend,$l2normeffect,$betapval",
+                        "$chrend,$posend,$rsidend,$varidend,$betapval,",
                         "$taupval,$jointpval")
                     elseif test == :wald
                         # # TODO
@@ -1665,8 +1668,9 @@ function vgwas(
                     for i in 1:q
                         variant = variant_by_index(bgendata, snpinds[i])
                         minor_allele_dosage!(bgendata, variant; 
-                            T = Float64, mean_impute = true)
-                        @views copyto!(Z[:, i], variant.genotypes[1].dose[bgenrowinds])
+                            T = Float64, mean_impute = true, data = dosageholder, 
+                            decompressed = decompressed)
+                        @views copyto!(Z[:, i], dosageholder[bgenrowinds])
                     end
                     if test == :score
                         if all(var(Z, dims = [1]) .== 0)
@@ -1702,8 +1706,9 @@ function vgwas(
                 for i in 1:length(snpset)
                     variant = variant_by_index(bgendata, snpset[i])
                     minor_allele_dosage!(bgendata, variant; 
-                        T = Float64, mean_impute = true)
-                    @views copyto!(Z[:, i], variant.genotypes[1].dose[bgenrowinds])
+                    T = Float64, mean_impute = true, data = dosageholder, 
+                    decompressed = decompressed)
+                    @views copyto!(Z[:, i], dosageholder[bgenrowinds])
                 end
                 if test == :score
                     if all(var(Z, dims = [1]) .== 0)
