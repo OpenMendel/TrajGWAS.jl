@@ -110,62 +110,7 @@ function spa(g::AbstractVector,
     p_βτ = spa(g_norm, st.ψ_βτ_pre, vals_norm,
         cutoff_factor, r, p_alt[3], Ks.K0_βτ, Ks.K1_βτ, Ks.K2_βτ;
         cnts=cnts, tmp_ecgf=tmp_ecgf, pre_vec_var=st.var_βτ_pre)
-    # s_β = dot(g_norm, st.ψ_β1_pre)
-    # s_τ = dot(g_norm, st.ψ_τ1_pre)
-    # s_βτ = dot(g_norm, st.ψ_βτ_pre)
 
-
-    # cutoff_β = r * sqrt(st.var_β1_pre * cutoff_factor)
-    # cutoff_τ = r * sqrt(st.var_τ1_pre * cutoff_factor)
-    # cutoff_βτ = r * sqrt(st.var_βτ_pre * cutoff_factor)
-    # if mode == :bed
-    #     cnts = begin
-    #         r = zeros(Int, 4)
-    #         for v in g
-    #             try
-    #                 r[convert(Int, round(v)) + 1] += 1
-    #             catch e
-    #                 r[4] += 1
-    #             end
-    #         end
-    #         r
-    #     end
-    #     #@assert sum(cnts) == length(g) "With genotypes == true, the values in g must be 0, 1, or 2."
-    #     vals_norm = ([0.0, 1.0, 2.0, m] .- m) ./ s
-    #     p_β = _get_pval(s_β, cutoff_β, p_alt[1], vals_norm,
-    #         Ks.K0_β, Ks.K1_β, Ks.K2_β, tmp_ecgf; cnts=cnts)
-    #     p_τ = _get_pval(s_τ, cutoff_τ, p_alt[2], vals_norm,
-    #         Ks.K0_τ, Ks.K1_τ, Ks.K2_τ, tmp_ecgf; cnts=cnts)
-    #     p_βτ = _get_pval(s_βτ, cutoff_βτ, p_alt[3], vals_norm,
-    #         Ks.K0_βτ, Ks.K1_βτ, Ks.K2_βτ, tmp_ecgf; cnts=cnts)
-    # elseif mode == :ukbbgen
-    #     cnts = begin
-    #         r = zeros(Int, 512)
-    #         for v in g
-    #             try
-    #                 r[convert(Int, round(v*255)) + 1] += 1
-    #             catch e
-    #                 r[512] += 1
-    #             end
-    #         end
-    #         r
-    #     end
-    #     vals_norm = vcat((bgenlookup .- m) ./ s, [0])
-    #     p_β = _get_pval(s_β, cutoff_β, p_alt[1], vals_norm,
-    #         Ks.K0_β, Ks.K1_β, Ks.K2_β, tmp_ecgf; cnts=cnts)
-    #     p_τ = _get_pval(s_τ, cutoff_τ, p_alt[2], vals_norm,
-    #         Ks.K0_τ, Ks.K1_τ, Ks.K2_τ, tmp_ecgf; cnts=cnts)
-    #     p_βτ = _get_pval(s_βτ, cutoff_βτ, p_alt[3], vals_norm,
-    #         Ks.K0_βτ, Ks.K1_βτ, Ks.K2_βτ, tmp_ecgf; cnts=cnts)        
-    # else
-    #     vals_norm = (g .- m) ./ s
-    #     p_β = _get_pval(s_β, cutoff_β, p_alt[1], vals_norm,
-    #         Ks.K0_β, Ks.K1_β, Ks.K2_β, tmp_ecgf)
-    #     p_τ = _get_pval(s_τ, cutoff_τ, p_alt[2], vals_norm,
-    #         Ks.K0_τ, Ks.K1_τ, Ks.K2_τ, tmp_ecgf)
-    #     p_βτ = _get_pval(s_βτ, cutoff_βτ, p_alt[3], vals_norm,
-    #         Ks.K0_βτ, Ks.K1_βτ, Ks.K2_βτ, tmp_ecgf)  
-    # end
     p_β, p_τ, p_βτ
 end
 
@@ -173,7 +118,7 @@ function spa(g_norm::AbstractVector, pre_vec::AbstractVector,
     vals_norm::AbstractVector,
     cutoff_factor::Real, r::Real, p_alt::Real, K0, K1, K2;
     cnts=nothing, 
-    tmp_ecgf = g === nothing ? similar(g) : similar(g, length(cnts)), 
+    tmp_ecgf = g_norm === nothing ? similar(g_norm) : similar(g_norm, length(cnts)), 
     pre_vec_var::Real=var(pre_vec)
     )
     s = dot(g_norm, pre_vec)

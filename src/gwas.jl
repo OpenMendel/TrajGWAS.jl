@@ -117,7 +117,7 @@ function vgwas(
         CSV.read(io, DataFrame; types=covtype)
     end
     vgwas(nullmeanformula, reformula, nullwsvarformula, idvar,
-     covrowinds == nothing ? covdf : covdf[covrowinds, :],
+     covrowinds === nothing ? covdf : covdf[covrowinds, :],
         geneticfile; kwargs...)
 end
 
@@ -144,7 +144,7 @@ function vgwas(
     SnpArrays.makestream(nullfile, "w") do io
         show(io, nm)
     end
-    geneticfile == nothing && (return nm)
+    geneticfile === nothing && (return nm)
     vgwas(nm, geneticfile; solver = solver, runs = runs, 
         verbose = verbose, kwargs...)
 end
@@ -1374,7 +1374,7 @@ function vgwas(
 
     # create filter iterator
     bgen_iterator_filter = BGEN.filter(bgen_iterator; min_maf=min_maf, 
-    min_hwe_pval=min_hwe_pval, min_info_score=min_info_score, cmask=snpmask)
+        min_hwe_pval=min_hwe_pval, min_info_score=min_info_score, cmask=snpmask)
 
     # storage vectors for SPA if it is set to true
     if (usespa == true) & (analysistype == "singlesnp")
