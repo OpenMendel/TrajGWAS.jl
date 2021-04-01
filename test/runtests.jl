@@ -18,8 +18,8 @@ df_cut = df_cut[!, setdiff(names(df_cut), ["meds", "gender"])];
 X1vec = Matrix{Float64}[]
 W1vec = Matrix{Float64}[]
 for i in unique(df[!, :id])
-    push!(X1vec, convert(Matrix{Float64}, df_cut[df[!, :id] .== i, :]))
-    push!(W1vec, convert(Matrix{Float64}, df_cut[df[!, :id] .== i, :]))
+    push!(X1vec, Matrix{Float64}(df_cut[df[!, :id] .== i, :]))
+    push!(W1vec, Matrix{Float64}(df_cut[df[!, :id] .== i, :]))
 end
 
 @testset "generic" begin
@@ -192,7 +192,37 @@ end
 end
 
 @testset "vgwas_snpset_plink" begin
-vgwas(@formula(y ~ 1 + sex + onMeds),
+    vgwas(@formula(y ~ 1 + sex + onMeds),
+            @formula(y ~ 1),
+            @formula(y ~ 1 + sex),
+            :id,
+            filepath * "vgwas_plinkex.csv",
+            filepath * "hapmap3",
+            pvalfile = pvalpath,
+            analysistype = "snpset",
+            snpset = 2)
+    results = CSV.read(pvalpath, DataFrame)
+    @test all(isapprox.((mean(results.betapval),
+        mean(results.taupval),
+        mean(results.jointpval)),
+        (0.10426027515117509, 0.08863103713602266, 0.059319604727780056); rtol=1e-5))
+
+    vgwas(@formula(y ~ 1 + sex + onMeds),
+            @formula(y ~ 1),
+            @formula(y ~ 1 + sex),
+            :id,
+            filepath * "vgwas_plinkex.csv",
+            filepath * "hapmap3",
+            pvalfile = pvalpath,
+            analysistype = "snpset",
+            snpset = filepath * "hapmap_snpsetfile.txt")
+    results = CSV.read(pvalpath, DataFrame)
+    @test all(isapprox.((mean(results.betapval),
+        mean(results.taupval),
+        mean(results.jointpval)),
+        (0.08547206177854592, 0.07865194590141143, 0.05873467119799984); rtol=1e-5))
+
+    vgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex),
         :id,
@@ -200,18 +230,52 @@ vgwas(@formula(y ~ 1 + sex + onMeds),
         filepath * "hapmap3",
         pvalfile = pvalpath,
         analysistype = "snpset",
-        snpset = 2)
-results = CSV.read(pvalpath, DataFrame)
-@test all(isapprox.((mean(results.betapval),
-    mean(results.taupval),
-    mean(results.jointpval)),
-    (0.10426027515117509, 0.08863103713602266, 0.059319604727780056); rtol=1e-5))
+        snpset = 1:5)
+    pvalfile = open(pvalpath)
+    pvals = split(readline(pvalfile), r"[, ]")[[end-6,end-3,end]]
+    close(pvalfile)
+    @test all(isapprox.(parse.(Float64, pvals), (9.948443168811026e-6,
+    1.2760805146705195e-13, 3.8612899196708803e-16), rtol=1e-4))
 end
 
 @testset "vgwas_snpset_vcf" begin
-vgwas(@formula(y ~ 1 + sex + onMeds),
+    vgwas(@formula(y ~ 1 + sex + onMeds),
+            @formula(y ~ 1),
+            @formula(y ~ 1 + sex + onMeds),
+            :id,
+            filepath * "vgwas_vcfex.csv",
+            filepath * "test_vcf",
+            pvalfile = pvalpath,
+            geneticformat = "VCF",
+            vcftype = :DS,
+            analysistype = "snpset",
+            snpset = 20)
+    results = CSV.read(pvalpath, DataFrame)
+    @test all(isapprox.((mean(results.betapval),
+        mean(results.taupval),
+        mean(results.jointpval)),
+        (0.25347423101832717, 0.19024751040999272, 0.22966140947913333); rtol=1e-5))
+
+    vgwas(@formula(y ~ 1 + sex + onMeds),
+            @formula(y ~ 1),
+            @formula(y ~ 1 + sex),
+            :id,
+            filepath * "vgwas_vcfex.csv",
+            filepath * "test_vcf",
+            pvalfile = pvalpath,
+            geneticformat = "VCF",
+            vcftype = :DS,
+            analysistype = "snpset",
+            snpset = filepath * "snpsetfile_vcf.txt")
+    results = CSV.read(pvalpath, DataFrame)
+    @test all(isapprox.((mean(results.betapval),
+        mean(results.taupval),
+        mean(results.jointpval)),
+        (0.24940609907211, 0.22513112148296, 0.2375302730128); rtol=1e-5))
+
+    vgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
-        @formula(y ~ 1 + sex + onMeds),
+        @formula(y ~ 1 + sex),
         :id,
         filepath * "vgwas_vcfex.csv",
         filepath * "test_vcf",
@@ -219,12 +283,63 @@ vgwas(@formula(y ~ 1 + sex + onMeds),
         geneticformat = "VCF",
         vcftype = :DS,
         analysistype = "snpset",
+        snpset = 1:5)
+    pvalfile = open(pvalpath)
+    pvals = split(readline(pvalfile), r"[, ]")[[end-6,end-3,end]]
+    close(pvalfile)
+    @test all(isapprox.(parse.(Float64, pvals), (0.079501633468,
+    0.01825642314521, 0.038726941358), rtol=1e-4))
+end
+
+
+@testset "vgwas_snpset_bgen" begin
+    vgwas(@formula(y ~ 1 + sex + onMeds),
+        @formula(y ~ 1),
+        @formula(y ~ 1 + sex + onMeds),
+        :id,
+        filepath * "vgwas_bgen_ex.csv", 
+        filepath * "example.8bits", 
+        geneticformat = "BGEN", 
+        pvalfile = pvalpath,
+        analysistype = "snpset",
         snpset = 20)
-results = CSV.read(pvalpath, DataFrame)
-@test all(isapprox.((mean(results.betapval),
-    mean(results.taupval),
-    mean(results.jointpval)),
-    (0.25347423101832717, 0.19024751040999272, 0.22966140947913333); rtol=1e-5))
+    results = CSV.read(pvalpath, DataFrame)
+    @test all(isapprox.((mean(results.betapval),
+        mean(results.taupval),
+        mean(results.jointpval)),
+        (0.4444189887865223, 0.43837358376815266, 0.475021920284874); rtol=1e-5))
+
+    vgwas(@formula(y ~ 1 + sex + onMeds),
+        @formula(y ~ 1),
+        @formula(y ~ 1 + sex),
+        :id,
+        filepath * "vgwas_bgen_ex.csv", 
+        filepath * "example.8bits", 
+        geneticformat = "BGEN", 
+        pvalfile = pvalpath,
+        analysistype = "snpset",
+        snpset = filepath * "bgen_snpsetfile.txt")
+    results = CSV.read(pvalpath, DataFrame)
+    @test all(isapprox.((mean(results.betapval),
+        mean(results.taupval),
+        mean(results.jointpval)),
+        (0.43077865459266, 0.38136082362710, 0.4265275766982); rtol=1e-5))
+
+    vgwas(@formula(y ~ 1 + sex + onMeds),
+        @formula(y ~ 1),
+        @formula(y ~ 1 + sex),
+        :id,
+        filepath * "vgwas_bgen_ex.csv", 
+        filepath * "example.8bits", 
+        geneticformat = "BGEN", 
+        pvalfile = pvalpath,
+        analysistype = "snpset",
+        snpset = 1:5)
+    pvalfile = open(pvalpath)
+    pvals = split(readline(pvalfile), r"[, ]")[[end-6,end-3,end]]
+    close(pvalfile)
+    @test all(isapprox.(parse.(Float64, pvals), (7.975567153147366e-7,
+    7.722715354932478e-20, 1.1593515582284077e-19), rtol=1e-4))
 end
 
 @testset "vgwas_gxe_plink" begin
@@ -244,6 +359,26 @@ vgwas(@formula(y ~ 1 + sex + onMeds),
         mean(results.jointpval)),
         (0.5924867510209822, 0.40587655481713425, 0.5209862444588567); rtol=1e-5))
 end
+
+@testset "vgwas_gxe_vcf" begin
+    vgwas(@formula(y ~ 1 + sex + onMeds),
+            @formula(y ~ 1),
+            @formula(y ~ 1 + sex + onMeds),
+            :id,
+            filepath * "vgwas_vcfex.csv",
+            filepath * "test_vcf",
+            pvalfile = pvalpath,
+            geneticformat = "VCF",
+            vcftype = :DS,
+            analysistype = "gxe",
+            e = :sex,
+            snpinds = 1:10)
+    results = CSV.read(pvalpath, DataFrame)
+    @test all(isapprox.((mean(results.betapval),
+        mean(results.taupval),
+        mean(results.jointpval)),
+        (0.25347423101832717, 0.19024751040999272, 0.22966140947913333); rtol=1e-5))
+    end
 
 @testset "vgwas_gxe_bgen" begin
     vgwas(@formula(y ~ 1 + sex + onMeds),

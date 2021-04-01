@@ -10,6 +10,7 @@ module vGWAS
     @reexport using Distributions
     export WSVarScoreTest, WSVarScoreTestInvariant, test!
     export vgwas
+    export matchindices
 
     """
         ◺(n::Integer)
