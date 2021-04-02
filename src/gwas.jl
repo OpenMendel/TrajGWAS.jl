@@ -781,9 +781,13 @@ function vgwas(
                             nm = WSVarLmmModel(nullmeanformula,
                                 fittednullmodel.reformula, nullwsvarformula,
                                 :id, testdf)
+                            # start at null model fit
+                            copyparams!(nm, fittednullmodel)
+
                             nm.obswts .= fittednullmodel.obswts
                             @assert nm.ids == fittednullmodel.ids "IDs not matching for GxE."
-                            WiSER.fit!(nm, solver, parallel = parallel, runs = runs)
+                            WiSER.fit!(nm, init = nm, solver, 
+                                parallel = parallel, runs = runs)
                             snpeffectnullbeta = nm.β[end]
                             snpeffectnulltau = nm.τ[end]
                             copyto!(Z, modelmatrix(gxeformula, testdf))
@@ -794,8 +798,12 @@ function vgwas(
                             fullmod = WSVarLmmModel(fullmeanformula,
                                 fittednullmodel.reformula, fullwsvarformula,
                                 :id, testdf)
+                            # start at null model fit
+                            copyparams!(fullmod, fittednullmodel)
+
                             fullmod.obswts .= fittednullmodel.obswts
-                            WiSER.fit!(fullmod, solver, parallel = parallel, runs = runs)
+                            WiSER.fit!(fullmod, solver, init = fullmod,
+                                parallel = parallel, runs = runs)
                             γ̂β = fullmod.β[end]
                             γ̂τ = fullmod.β[end]
                             snpeffectbeta = fullmod.β[end-1]
@@ -1288,9 +1296,12 @@ function vgwas(
                         nm = WSVarLmmModel(nullmeanformula,
                         fittednullmodel.reformula, nullwsvarformula,
                         :id, testdf)
+                        # start at null model fit
+                        copyparams!(nm, fittednullmodel)
                         nm.obswts .= fittednullmodel.obswts
                         @assert nm.ids == fittednullmodel.ids "IDs not matching for GxE."
-                        WiSER.fit!(nm, solver, parallel = parallel, runs = runs)
+                        WiSER.fit!(nm, init = nm, solver, 
+                            parallel = parallel, runs = runs)
                         snpeffectnullbeta = nm.β[end]
                         snpeffectnulltau = nm.τ[end]
                         copyto!(Z, modelmatrix(gxeformula, testdf))
@@ -1310,9 +1321,12 @@ function vgwas(
                         fullmod = WSVarLmmModel(fullmeanformula,
                             fittednullmodel.reformula, fullwsvarformula,
                             :id, testdf)
+                        # start at null model fit
+                        copyparams!(fullmod, fittednullmodel)
+
                         fullmod.obswts .= fittednullmodel.obswts
-                        WiSER.fit!(fullmod, solver, parallel = parallel,
-                            runs = runs)
+                        WiSER.fit!(fullmod, solver, init = fullmod,
+                            parallel = parallel, runs = runs)
                         γ̂β = fullmod.β[end]
                         γ̂τ = fullmod.β[end]
                         snpeffectbeta = fullmod.β[end-1]
@@ -1808,9 +1822,13 @@ function vgwas(
                         nm = WSVarLmmModel(nullmeanformula,
                         fittednullmodel.reformula, nullwsvarformula,
                         :id, testdf)
+                        # start at null model fit
+                        copyparams!(nm, fittednullmodel)
+
                         nm.obswts .= fittednullmodel.obswts
                         @assert nm.ids == fittednullmodel.ids "IDs not matching for GxE."
-                        WiSER.fit!(nm, solver, parallel = parallel, runs = runs)
+                        WiSER.fit!(nm, init = nm, 
+                            solver, parallel = parallel, runs = runs)
                         snpeffectnullbeta = nm.β[end]
                         snpeffectnulltau = nm.τ[end]
                         copyto!(Z, modelmatrix(gxeformula, testdf))
@@ -1830,9 +1848,12 @@ function vgwas(
                         fullmod = WSVarLmmModel(fullmeanformula,
                             fittednullmodel.reformula, fullwsvarformula,
                             :id, testdf)
+                        # start at null model fit
+                        copyparams!(fullmod, fittednullmodel)
+
                         fullmod.obswts .= fittednullmodel.obswts
-                        WiSER.fit!(fullmod, solver, parallel = parallel,
-                            runs = runs)
+                        WiSER.fit!(fullmod, solver, init = fullmod,
+                            parallel = parallel, runs = runs)
                         γ̂β = fullmod.β[end]
                         γ̂τ = fullmod.β[end]
                         snpeffectbeta = fullmod.β[end-1]
@@ -1921,4 +1942,16 @@ function matchindices(meanformula, reformula, wsvarformula, idvar, df, geneticsa
     nm_ids = unique(df[!, idvar])
     geneticrowmask = Int.(indexin(nm_ids, geneticsamples))
     return nmrowmask, geneticrowmask
+end
+
+"""
+Copy parameters from the submodel into the full model, fill rest of β and τ with 0s.
+"""
+function copyparams!(fullmodel::WSVarLmmModel, submodel::WSVarLmmModel)
+    # start at null model fit
+    fill!(fullmodel.β, 0)
+    fill!(fullmodel.τ, 0)
+    copyto!(fullmodel.β, 1, submodel.β, 1, submodel.p)
+    copyto!(fullmodel.τ, 1, submodel.τ, 1, submodel.l)
+    copyto!(fullmodel.Lγ, submodel.Lγ)
 end

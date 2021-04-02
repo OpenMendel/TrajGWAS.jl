@@ -182,9 +182,6 @@ end
         geneticformat = "BGEN", 
         pvalfile = pvalpath)
     results = CSV.read(pvalpath, DataFrame)
-    println(mean(results.betapval))
-    println(mean(results.taupval))
-    println(mean(results.jointpval))
     @test all(isapprox.((mean(results.betapval),
         mean(results.taupval),
         mean(results.jointpval)),
@@ -357,7 +354,7 @@ vgwas(@formula(y ~ 1 + sex + onMeds),
     @test all(isapprox.((mean(results.betapval),
         mean(results.taupval),
         mean(results.jointpval)),
-        (0.5924867510209822, 0.40587655481713425, 0.5209862444588567); rtol=1e-5))
+        (0.5917252588216351, 0.4047112266291169, 0.5208612642169792); rtol=1e-5))
 end
 
 @testset "vgwas_gxe_vcf" begin
@@ -377,7 +374,7 @@ end
     @test all(isapprox.((mean(results.betapval),
         mean(results.taupval),
         mean(results.jointpval)),
-        (0.25347423101832717, 0.19024751040999272, 0.22966140947913333); rtol=1e-5))
+        (0.6296884957250368, 0.711909935890595, 0.685667051551212); rtol=1e-5))
     end
 
 @testset "vgwas_gxe_bgen" begin
@@ -391,18 +388,16 @@ end
         pvalfile = pvalpath,
         analysistype = "gxe",
         e = :sex,
-        snpinds = 1:3)
+        snpinds = 1:5)
     results = CSV.read(pvalpath, DataFrame)
-    println(mean(results.betapval))
-    println(mean(results.taupval))
-    println(mean(results.jointpval))
+
     @test all(isapprox.((mean(results.betapval),
         mean(results.taupval),
         mean(results.jointpval)),
-        (0.5161655222831536, 0.4049021864084856, 0.5439672480147976); rtol=1e-3))
+        (0.6339056748172345, 0.34364220119286115, 0.5320905099085854); rtol=1e-3))
     @test all(isapprox.((mean(results.snpeffectnullbeta),
         mean(results.snpeffectnulltau)),
-        (0.6076516729747372, -0.3486224003739454); rtol=1e-5))
+        (0.4393163590931909, -0.214767624713507); rtol=1e-5))
 end
 
 
