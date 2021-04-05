@@ -24,7 +24,7 @@ end
 
 @testset "generic" begin
 st = vGWAS.WSVarScoreTest(vlmm, 3, 3)
-_, v1, _ = vGWAS.test!(st, X1vec, W1vec)
+_, v1, _, _ = vGWAS.test!(st, X1vec, W1vec)
 @test isapprox(v1, 6.236443105947029e-11)
 
 st = vGWAS.WSVarScoreTest(vlmm, 1, 1);

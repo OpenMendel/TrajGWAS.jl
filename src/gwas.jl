@@ -442,6 +442,15 @@ function vgwas(
                         if maf == 0 # mono-allelic
                             betapval = 1.0
                             taupval = 1.0
+                            betadir = 0
+                            taudir = 0
+                            if snponly
+                                println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
+                                "$maf\t$hwepval\t$betapval\t$betadir\t$taupval\t$taudir")
+                            else
+                                println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
+                                "$maf\t$hwepval\t$betapval\t$taupval")
+                            end
                         else
                             if snponly
                                 copyto!(snpholder, @view(genomat[bedrowinds, j]),
@@ -964,6 +973,14 @@ function vgwas(
                 if test == :score
                     if var(@view(gholder[vcfrowinds])) == 0
                         betapval, taupval = 1., 1.
+                        betadir, taudir = 0, 0
+                        if snponly
+                            println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
+                            "$betapval\t$betadir\t$taupval\t$taudir")
+                        else
+                            println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
+                            "$betapval\t$taupval")
+                        end              
                     elseif snponly
                         copyto!(snpholder, @view(gholder[vcfrowinds]))
                         betapval, taupval, betadir, taudir = test!(ts, snpholder, snpholder)
@@ -1316,7 +1333,7 @@ function vgwas(
                         "$betapval\t$taupval")
                 elseif test == :wald
                     if var(@view(gholder[vcfrowinds])) == 0
-                        betapval, taupval = 1., 1., 1.
+                        betapval, taupval = 1., 1.
                         γ̂β, γ̂τ = 0., 0.
                         snpeffectbeta, snpeffecttau = 0., 0.
                     else
@@ -1488,6 +1505,29 @@ function vgwas(
                 if test == :score
                     if var(snpholder) == 0
                         betapval, taupval = 1., 1.
+                        betadir, taudir = 0, 0
+                        if snponly
+                            hwepval = 9.0
+                            maf = 9.0
+                            infoscore = 9.0
+                            try
+                                hwepval = BGEN.hwe(bgendata, variant; rmask=bgenrowmask_UInt16)
+                            catch e
+                            end
+                            try
+                                maf = BGEN.maf(bgendata, variant; rmask=bgenrowmask_UInt16)
+                            catch e
+                            end
+                            try
+                                infoscore = BGEN.info_score(bgendata, variant; rmask=bgenrowmask_UInt16)
+                            catch e
+                            end
+                            println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
+                            "$(variant.varid)\t$hwepval\t$maf\t$infoscore\t$betapval\t$betadir\t$taupval\t$taudir")
+                        else
+                            println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
+                            "$(variant.varid)\t$betapval\t$taupval")
+                        end
                     elseif snponly
                         betapval, taupval, betadir, taudir = test!(ts, snpholder, snpholder)
                         ps = betapval, taupval
@@ -1505,9 +1545,21 @@ function vgwas(
                                 cnts = cnts, vals_norm=vals_norm,
                                 tmp_ecgf = tmp_ecgf)
                         end
-                        hwepval = BGEN.hwe(bgendata, variant; rmask=bgenrowmask_UInt16)
-                        maf = BGEN.maf(bgendata, variant; rmask=bgenrowmask_UInt16)
-                        infoscore = BGEN.info_score(bgendata, variant; rmask=bgenrowmask_UInt16)
+                        hwepval = 9.0
+                        maf = 9.0
+                        infoscore = 9.0
+                        try
+                            hwepval = BGEN.hwe(bgendata, variant; rmask=bgenrowmask_UInt16)
+                        catch e
+                        end
+                        try
+                            maf = BGEN.maf(bgendata, variant; rmask=bgenrowmask_UInt16)
+                        catch e
+                        end
+                        try
+                            infoscore = BGEN.info_score(bgendata, variant; rmask=bgenrowmask_UInt16)
+                        catch e
+                        end
 
                         println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
                         "$(variant.varid)\t$hwepval\t$maf\t$infoscore\t$betapval\t$betadir\t$taupval\t$taudir")

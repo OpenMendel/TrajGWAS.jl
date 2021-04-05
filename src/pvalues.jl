@@ -37,7 +37,7 @@ function test_statistic!(
     # println("ev^T ψ1: ", tmp_r)
     # v1 = one(T) / sqrt(m) * transpose(eigfact.vectors) * ψ_1
     atol = 1e-8 # tolerance for determining rank
-    # s = convert(Int, sign(tmp_r[1]))
+    s = convert(Int, sign(tmp_r[1]))
     rk = 0 # rank
     ts = zero(T)
     for j in 1:length(ψ_1)
@@ -47,12 +47,11 @@ function test_statistic!(
             rk += 1
         end
     end
-    return ts, rk
-    # if rk == 1
-    #     return ts, s
-    # else
-    #     return ts, rk
-    # end
+    if rk == 1
+        return ts, s
+    else
+        return ts, rk
+    end
 end
 
 function test_statistic_single!(
