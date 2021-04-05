@@ -1,6 +1,7 @@
 *.jl.*.cov
 *.jl.cov
 *.jl.mem
+*.swp
 /docs/build/
 
 .DS_Store
