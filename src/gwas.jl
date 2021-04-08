@@ -1355,8 +1355,10 @@ function vgwas(
     verbose::Bool = false,
     snpset::Union{Nothing, Integer, AbstractString, #for snpset analysis
         AbstractVector{<:Integer}} = nothing,
-    e::Union{Nothing, AbstractString, Symbol} = nothing # for GxE analysis
+    e::Union{Nothing, AbstractString, Symbol} = nothing, # for GxE analysis
+    ref_dosage::Bool = true
     )
+    allele_dosage! = ref_dosage ? ref_allele_dosage! : minor_allele_dosage!
 
     # open BGEN file and get number of SNPs in file
     bgendata = Bgen(bgenfile; sample_path=samplepath)
@@ -1464,7 +1466,7 @@ function vgwas(
                 # if !snpmask[j] #skip snp
                 #     continue
                 # end
-                minor_allele_dosage!(bgendata, variant; 
+                allele_dosage!(bgendata, variant; 
                     T = Float64, mean_impute = true, data = dosageholder, 
                     decompressed=decompressed)
                 @views copyto!(snpholder, dosageholder[bgenrowinds])
@@ -1615,7 +1617,7 @@ function vgwas(
                     end
                     for i in 1:q
                         variant = variant_by_index(bgendata, j + i - 1)
-                        minor_allele_dosage!(bgendata, variant; 
+                        allele_dosage!(bgendata, variant; 
                             T = Float64, mean_impute = true, data = dosageholder, 
                             decompressed = decompressed)
                         @views copyto!(Z[:, i], dosageholder[bgenrowinds])
@@ -1667,7 +1669,7 @@ function vgwas(
                     Z = zeros(fittednullmodel.m, q)
                     for i in 1:q
                         variant = variant_by_index(bgendata, snpinds[i])
-                        minor_allele_dosage!(bgendata, variant; 
+                        allele_dosage!(bgendata, variant; 
                             T = Float64, mean_impute = true, data = dosageholder, 
                             decompressed = decompressed)
                         @views copyto!(Z[:, i], dosageholder[bgenrowinds])
@@ -1705,7 +1707,7 @@ function vgwas(
                 Z = zeros(fittednullmodel.m, q)
                 for i in 1:length(snpset)
                     variant = variant_by_index(bgendata, snpset[i])
-                    minor_allele_dosage!(bgendata, variant; 
+                    allele_dosage!(bgendata, variant; 
                     T = Float64, mean_impute = true, data = dosageholder, 
                     decompressed = decompressed)
                     @views copyto!(Z[:, i], dosageholder[bgenrowinds])
@@ -1791,7 +1793,7 @@ function vgwas(
                 # if !snpmask[j] #skip snp
                 #     continue
                 # end
-                minor_allele_dosage!(bgendata, variant; 
+                allele_dosage!(bgendata, variant; 
                     T = Float32, mean_impute = true, data=dosageholder,
                     decompressed=decompressed)
                 @views copyto!(snpholder, dosageholder[bgenrowinds])

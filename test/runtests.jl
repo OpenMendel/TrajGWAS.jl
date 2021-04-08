@@ -163,7 +163,8 @@ end
         filepath * "example.8bits", 
         usespa = false,
         geneticformat = "BGEN", 
-        pvalfile = pvalpath)
+        pvalfile = pvalpath,
+        ref_dosage=false)
     results = CSV.read(pvalpath, DataFrame)
 
     @test all(isapprox.((mean(results.betapval),
@@ -180,7 +181,8 @@ end
         filepath * "example.8bits", 
         usespa = true,
         geneticformat = "BGEN", 
-        pvalfile = pvalpath)
+        pvalfile = pvalpath,
+        ref_dosage=false)
     results = CSV.read(pvalpath, DataFrame)
     println(mean(results.betapval))
     println(mean(results.taupval))
@@ -302,7 +304,8 @@ end
         geneticformat = "BGEN", 
         pvalfile = pvalpath,
         analysistype = "snpset",
-        snpset = 20)
+        snpset = 20,
+        ref_dosage=false)
     results = CSV.read(pvalpath, DataFrame)
     @test all(isapprox.((mean(results.betapval),
         mean(results.taupval),
@@ -318,7 +321,8 @@ end
         geneticformat = "BGEN", 
         pvalfile = pvalpath,
         analysistype = "snpset",
-        snpset = filepath * "bgen_snpsetfile.txt")
+        snpset = filepath * "bgen_snpsetfile.txt",
+        ref_dosage=false)
     results = CSV.read(pvalpath, DataFrame)
     @test all(isapprox.((mean(results.betapval),
         mean(results.taupval),
@@ -334,7 +338,8 @@ end
         geneticformat = "BGEN", 
         pvalfile = pvalpath,
         analysistype = "snpset",
-        snpset = 1:5)
+        snpset = 1:5,
+        ref_dosage=false)
     pvalfile = open(pvalpath)
     pvals = split(readline(pvalfile), r"[, ]")[[end-6,end-3,end]]
     close(pvalfile)
@@ -391,11 +396,9 @@ end
         pvalfile = pvalpath,
         analysistype = "gxe",
         e = :sex,
-        snpinds = 1:3)
+        snpinds = 1:3,
+        ref_dosage=false)
     results = CSV.read(pvalpath, DataFrame)
-    println(mean(results.betapval))
-    println(mean(results.taupval))
-    println(mean(results.jointpval))
     @test all(isapprox.((mean(results.betapval),
         mean(results.taupval),
         mean(results.jointpval)),
