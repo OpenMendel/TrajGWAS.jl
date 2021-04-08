@@ -1389,14 +1389,23 @@ function vgwas(
     snpset::Union{Nothing, Integer, AbstractString, #for snpset analysis
         AbstractVector{<:Integer}} = nothing,
     e::Union{Nothing, AbstractString, Symbol} = nothing, # for GxE analysis
-    ref_dosage::Bool = true
+    ref_dosage::Bool = true,
+    startidx::Union{<:Integer, Nothing}=nothing,
+    endidx::Union{<:Integer, Nothing}=nothing
     )
     allele_dosage! = ref_dosage ? ref_allele_dosage! : minor_allele_dosage!
 
     # open BGEN file and get number of SNPs in file
     bgendata = Bgen(bgenfile; sample_path=samplepath)
-    nsnps = n_variants(bgendata)
-    bgen_iterator = iterator(bgendata)
+    if startidx === nothing
+        nsnps = n_variants(bgendata)
+        bgen_iterator = iterator(bgendata)
+    elseif startidx !== nothing && endidx !== nothing
+        nsnps = endidx - startidx + 1
+        bgen_iterator = variant_by_index(bgendata, startidx, endidx)
+    else
+        @error("Both `startidx` and `endidx` must be provided")
+    end
 
     # create SNP mask vector
     if snpinds === nothing
