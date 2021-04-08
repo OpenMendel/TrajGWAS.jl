@@ -52,16 +52,12 @@ struct vGWASEcgfCollection
     K0_τ
     K1_τ
     K2_τ
-    K0_βτ
-    K1_βτ
-    K2_βτ
 end
 
 function ecgf(st::WSVarScoreTestInvariant)
     K0_β, K1_β, K2_β = ecgf(st.ψ_β1_pre)
     K0_τ, K1_τ, K2_τ = ecgf(st.ψ_τ1_pre)
-    K0_βτ, K1_βτ, K2_βτ = ecgf(st.ψ_βτ_pre)
-    vGWASEcgfCollection(K0_β, K1_β, K2_β, K0_τ, K1_τ, K2_τ, K0_βτ, K1_βτ, K2_βτ)
+    vGWASEcgfCollection(K0_β, K1_β, K2_β, K0_τ, K1_τ, K2_τ)
 end
 
 """
@@ -79,6 +75,7 @@ Perform saddlepoint approximation for a single variant.
 function spa(g::AbstractVector,
     st::WSVarScoreTestInvariant,
     p_alt,
+    dir_alt,
     Ks::vGWASEcgfCollection;
     g_norm=similar(g),
     cnts=nothing,
@@ -101,35 +98,32 @@ function spa(g::AbstractVector,
         end
     end
     cutoff_factor = sum(x -> x^2, g_norm)
-    p_β = spa(g_norm, st.ψ_β1_pre, vals_norm,
-        cutoff_factor, r, p_alt[1], Ks.K0_β, Ks.K1_β, Ks.K2_β;
+    p_β, dir_β = spa(g_norm, st.ψ_β1_pre, vals_norm,
+        cutoff_factor, r, p_alt[1], dir_alt[1], Ks.K0_β, Ks.K1_β, Ks.K2_β;
         cnts=cnts, tmp_ecgf=tmp_ecgf, pre_vec_var=st.var_β1_pre)
-    p_τ = spa(g_norm, st.ψ_τ1_pre, vals_norm,
-        cutoff_factor, r, p_alt[2], Ks.K0_τ, Ks.K1_τ, Ks.K2_τ;
+    p_τ, dir_τ = spa(g_norm, st.ψ_τ1_pre, vals_norm,
+        cutoff_factor, r, p_alt[2], dir_alt[2], Ks.K0_τ, Ks.K1_τ, Ks.K2_τ;
         cnts=cnts, tmp_ecgf=tmp_ecgf, pre_vec_var=st.var_τ1_pre)
-    p_βτ = spa(g_norm, st.ψ_βτ_pre, vals_norm,
-        cutoff_factor, r, p_alt[3], Ks.K0_βτ, Ks.K1_βτ, Ks.K2_βτ;
-        cnts=cnts, tmp_ecgf=tmp_ecgf, pre_vec_var=st.var_βτ_pre)
 
-    p_β, p_τ, p_βτ
+    p_β, p_τ, dir_β, dir_τ
 end
 
 function spa(g_norm::AbstractVector, pre_vec::AbstractVector,
     vals_norm::AbstractVector,
-    cutoff_factor::Real, r::Real, p_alt::Real, K0, K1, K2;
+    cutoff_factor::Real, r::Real, p_alt::Real, dir_alt, K0, K1, K2;
     cnts=nothing, 
     tmp_ecgf = g_norm === nothing ? similar(g_norm) : similar(g_norm, length(cnts)), 
     pre_vec_var::Real=var(pre_vec)
     )
     s = dot(g_norm, pre_vec)
     cutoff = r * sqrt(pre_vec_var * cutoff_factor)
-    return _get_pval(s, cutoff, p_alt, vals_norm, K0, K1, K2, tmp_ecgf; cnts=cnts)
+    return _get_pval(s, cutoff, p_alt, dir_alt, vals_norm, K0, K1, K2, tmp_ecgf; cnts=cnts)
 end
 
 const normal = Normal()
 const lbfgs = LBFGS()
 const singleton_zero = [0.0]
-function _get_pval(s, cutoff, p_alt, vals_norm, K0, K1, K2, tmp_ecgf; cnts=nothing)
+function _get_pval(s, cutoff, p_alt, dir_alt, vals_norm, K0, K1, K2, tmp_ecgf; cnts=nothing)
     function K0_(z)
         if cnts === nothing
             @inbounds for i in 1:length(vals_norm)
@@ -186,7 +180,7 @@ function _get_pval(s, cutoff, p_alt, vals_norm, K0, K1, K2, tmp_ecgf; cnts=nothi
         storage[1] = K2_(x[1])
     end
     if abs(s) < cutoff
-        return p_alt
+        return p_alt, dir_alt
     else
         r = optimize(f, g!, h!, singleton_zero, lbfgs)
         zeta = minimizer(r)[1]
@@ -194,6 +188,6 @@ function _get_pval(s, cutoff, p_alt, vals_norm, K0, K1, K2, tmp_ecgf; cnts=nothi
         nu = zeta * sqrt(max(0, K2_(zeta)))
         z2 = omega + 1.0/omega * log(nu / omega)
     
-        return ccdf(normal, abs(z2)) + cdf(normal, -abs(z2))
+        return ccdf(normal, abs(z2)) + cdf(normal, -abs(z2)), convert(Int, sign(z2))
     end
 end
