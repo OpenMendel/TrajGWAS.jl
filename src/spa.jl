@@ -188,6 +188,6 @@ function _get_pval(s, cutoff, p_alt, dir_alt, vals_norm, K0, K1, K2, tmp_ecgf; c
         nu = zeta * sqrt(max(0, K2_(zeta)))
         z2 = omega + 1.0/omega * log(nu / omega)
     
-        return ccdf(normal, abs(z2)) + cdf(normal, -abs(z2)), convert(Int, sign(z2))
+        return ccdf(normal, abs(z2)) + cdf(normal, -abs(z2)), isnan(z2) ? 0 : convert(Int, sign(z2))
     end
 end
