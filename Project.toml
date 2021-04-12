@@ -23,6 +23,7 @@ VCFTools = "a620830f-fdd7-5ebc-8d26-3621ab35fbfe"
 WiSER = "2ff19380-1883-49fc-9d10-450face6b90c"
 
 [compat]
+GeneticVariation = "0.4"
 julia = "1.5"
 
 [extras]
