@@ -148,6 +148,6 @@ function pvalues!(st::Union{WSVarScoreTest{T},WSVarScoreTestInvariant{T}}
         p2 = -one(T)
         r2 = 0
     end
-
+    r2 = abs(r2) == 1 ? -r2 : r2
     p1, p2, r1, r2
 end
