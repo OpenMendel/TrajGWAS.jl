@@ -105,7 +105,7 @@ function spa(g::AbstractVector,
         cutoff_factor, r, p_alt[2], dir_alt[2], Ks.K0_τ, Ks.K1_τ, Ks.K2_τ;
         cnts=cnts, tmp_ecgf=tmp_ecgf, pre_vec_var=st.var_τ1_pre)
 
-    p_β, p_τ, dir_β, dir_τ
+    p_β, p_τ, dir_β, -dir_τ
 end
 
 function spa(g_norm::AbstractVector, pre_vec::AbstractVector,
