@@ -165,6 +165,7 @@ function vgwas(
     snpmodel::Union{Val{1}, Val{2}, Val{3}} = ADDITIVE_MODEL,
     snpinds::Union{Nothing, AbstractVector{<:Integer}} = nothing,
     usespa::Bool = true,
+    reportchisq::Bool = false,
     geneticrowinds::Union{Nothing, AbstractVector{<:Integer}} = nothing,
     solver = Ipopt.IpoptSolver(print_level=0, mehrotra_algorithm = "yes",
     warm_start_init_point="yes", max_iter=100),
@@ -272,6 +273,7 @@ function vgwas(
             snpmodel = snpmodel,
             snpinds = snpinds,
             usespa = usespa,
+            reportchisq = reportchisq,
             bedrowinds = rowinds,
             solver = solver,
             parallel = parallel,
@@ -289,6 +291,7 @@ function vgwas(
             snpmodel = snpmodel,
             snpinds = snpinds,
             usespa = usespa,
+            reportchisq = reportchisq,
             vcfrowinds = rowinds,
             solver = solver,
             parallel = parallel,
@@ -307,6 +310,7 @@ function vgwas(
             snpmodel = snpmodel,
             snpinds = snpinds,
             usespa = usespa,
+            reportchisq = reportchisq,
             bgenrowinds = rowinds,
             solver = solver,
             parallel = parallel,
@@ -331,6 +335,7 @@ function vgwas(
     snpmodel::Union{Val{1}, Val{2}, Val{3}} = ADDITIVE_MODEL,
     snpinds::Union{Nothing, AbstractVector{<:Integer}} = nothing,
     usespa::Bool = true,
+    reportchisq::Bool = false,
     bedrowinds::AbstractVector{<:Integer} = 1:bedn, # row indices for SnpArray
     solver = Ipopt.IpoptSolver(print_level=0, mehrotra_algorithm = "yes",
     warm_start_init_point="yes", max_iter=100),
@@ -390,7 +395,11 @@ function vgwas(
         SnpArrays.makestream(pvalfile, "w") do io
             if test == :score
                 if snponly
-                    println(io, "chr\tpos\tsnpid\tmaf\thwepval\tbetapval\tbetadir\ttaupval\ttaudir")
+                    if usespa && reportchisq
+                        println(io, "chr\tpos\tsnpid\tmaf\thwepval\tbetapval\tbetachisqpval\tbetadir\ttaupval\ttauchisqpval\ttaudir")
+                    else
+                        println(io, "chr\tpos\tsnpid\tmaf\thwepval\tbetapval\tbetadir\ttaupval\ttaudir")
+                    end
                     ts = WSVarScoreTestInvariant(fittednullmodel, 1, 1)
                     if usespa
                         Ks = ecgf(ts)
@@ -463,7 +472,7 @@ function vgwas(
                                     cnts[2] = cc[3, j]
                                     cnts[3] = cc[4, j]
                                     cnts[4] = cc[2, j]
-                                    betapval, taupval, betadir, taudir = spa(snpholder, ts, 
+                                    betapval_, taupval_, betadir_, taudir_ = spa(snpholder, ts, 
                                         ps, dirs, Ks; g_norm = g_norm, ref_vals = ref_vals, 
                                         cnts = cnts, vals_norm=vals_norm,
                                         tmp_ecgf = tmp_ecgf)
@@ -471,8 +480,16 @@ function vgwas(
                                     #     ps, Ks; g_norm = g_norm, 
                                     #     tmp_ecgf = tmp_ecgf)
                                 end
-                                println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
-                                "$maf\t$hwepval\t$betapval\t$betadir\t$taupval\t$taudir")
+                                if usespa && reportchisq
+                                    println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
+                                    "$maf\t$hwepval\t$betapval_\t$betapval\t$betadir_\t$taupval_\t$taupval\t$taudir_")
+                                elseif usespa
+                                    println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
+                                    "$maf\t$hwepval\t$betapval_\t$betadir_\t$taupval_\t$taudir_")
+                                else
+                                    println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
+                                    "$maf\t$hwepval\t$betapval\t$betadir\t$taupval\t$taudir")                                    
+                                end
                             else # snp + other terms
                                 copyto!(snpholder, @view(genomat[bedrowinds, j]),
                                     impute=true, model=snpmodel)
@@ -555,6 +572,7 @@ function vgwas(
                 snpmodel = snpmodel,
                 snpinds = snpinds,
                 usespa = usespa,
+                reportchisq = reportchisq,
                 bedrowinds = bedrowinds,
                 solver = solver,
                 parallel = parallel,
@@ -850,6 +868,7 @@ function vgwas(
     snpmodel::Union{Val{1}, Val{2}, Val{3}} = ADDITIVE_MODEL,
     snpinds::Union{Nothing, AbstractVector{<:Integer}} = nothing,
     usespa::Bool = true,
+    reportchisq::Bool = false,
     vcfrowinds::AbstractVector{<:Integer} = 1:nsamples, # row indices for VCF array
     solver = Ipopt.IpoptSolver(print_level=0, mehrotra_algorithm = "yes",
     warm_start_init_point="yes", max_iter=100),
@@ -917,7 +936,11 @@ function vgwas(
         SnpArrays.makestream(pvalfile, "w") do io
             if test == :score
                 if snponly
-                    println(io, "chr\tpos\tsnpid\tbetapval\tbetadir\ttaupval\ttaudir")
+                    if usespa && reportchisq
+                        println(io, "chr\tpos\tsnpid\tbetapval\tbetachisqpval\tbetadir\ttaupval\ttauchisqpval\ttaudir")
+                    else
+                        println(io, "chr\tpos\tsnpid\tbetapval\tbetadir\ttaupval\ttaudir")
+                    end
                     ts = WSVarScoreTestInvariant(fittednullmodel, 1, 1)
                     if usespa
                         Ks = ecgf(ts)
@@ -987,11 +1010,21 @@ function vgwas(
                         ps = betapval, taupval
                         dirs = betadir, taudir
                         if usespa
-                            betapval, taupval, batadir, taudir = spa(snpholder, ts, 
+                            betapval_, taupval_, betadir_, taudir_ = spa(snpholder, ts, 
                                 ps, dirs, Ks; g_norm = g_norm, tmp_ecgf = tmp_ecgf)
                         end
-                        println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
-                        "$betapval\t$betadir\t$taupval\t$taudir")
+                        # println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
+                        # "$betapval\t$betadir\t$taupval\t$taudir")
+                        if usespa && reportchisq
+                            println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
+                            "$betapval_\t$betapval\t$betadir_\t$taupval_\t$taupval\t$taudir_")
+                        elseif usespa
+                            println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
+                            "$betapval_\t$betadir_\t$taupval_\t$taudir_")
+                        else
+                            println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
+                            "$betapval\t$betadir\t$taupval\t$taudir")                                    
+                        end
                     else # snp + other terms
                         snptodf!(testdf[!, :snp], @view(gholder[vcfrowinds]), fittednullmodel)
                         copyto!(Z, modelmatrix(testformula, testdf))
@@ -1377,6 +1410,7 @@ function vgwas(
     snpmodel::Union{Val{1}, Val{2}, Val{3}} = ADDITIVE_MODEL,
     snpinds::Union{Nothing, AbstractVector{<:Integer}} = nothing,
     usespa::Bool = true,
+    reportchisq::Bool = false,
     min_maf::AbstractFloat = NaN,
     min_hwe_pval::AbstractFloat = NaN,
     min_info_score::AbstractFloat = NaN,
@@ -1464,7 +1498,11 @@ function vgwas(
         SnpArrays.makestream(pvalfile, "w") do io
             if test == :score
                 if snponly
-                    println(io, "chr\tpos\tsnpid\tvarid\thwepval\tmaf\tinfoscore\tbetapval\tbetadir\ttaupval\ttaudir")
+                    if usespa && reportchisq
+                        println(io, "chr\tpos\tsnpid\tvarid\thwepval\tmaf\tinfoscore\tbetapval\tbetachisqpval\tbetadir\ttaupval\ttauchisqpval\ttaudir")
+                    else
+                        println(io, "chr\tpos\tsnpid\tvarid\thwepval\tmaf\tinfoscore\tbetapval\tbetadir\ttaupval\ttaudir")
+                    end
                     ts = WSVarScoreTestInvariant(fittednullmodel, 1, 1)
                     if usespa
                         Ks = ecgf(ts)
@@ -1533,6 +1571,7 @@ function vgwas(
                                 infoscore = BGEN.info_score(bgendata, variant; rmask=bgenrowmask_UInt16)
                             catch e
                             end
+                            
                             println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
                             "$(variant.varid)\t$hwepval\t$maf\t$infoscore\t$betapval\t$betadir\t$taupval\t$taudir")
                         else
@@ -1551,7 +1590,7 @@ function vgwas(
                                     cnts[i] = cnts2[512-i]
                                 end
                             end
-                            betapval, taupval, betadir, taudir = spa(snpholder, ts, 
+                            betapval_, taupval_, betadir_, taudir_ = spa(snpholder, ts, 
                                 ps, dirs, Ks; g_norm = g_norm, ref_vals = ref_vals, 
                                 cnts = cnts, vals_norm=vals_norm,
                                 tmp_ecgf = tmp_ecgf)
@@ -1572,8 +1611,18 @@ function vgwas(
                         catch e
                         end
 
-                        println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
-                        "$(variant.varid)\t$hwepval\t$maf\t$infoscore\t$betapval\t$betadir\t$taupval\t$taudir")
+                        # println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
+                        # "$(variant.varid)\t$hwepval\t$maf\t$infoscore\t$betapval\t$betadir\t$taupval\t$taudir")
+                        if usespa && reportchisq
+                            println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
+                            "$(variant.varid)\t$hwepval\t$maf\t$infoscore\t$betapval_\t$betapval\t$betadir_\t$taupval_\t$taupval\t$taudir_")
+                        elseif usespa
+                            println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
+                            "$(variant.varid)\t$hwepval\t$maf\t$infoscore\t$betapval_\t$betadir_\t$taupval_\t$taudir_")
+                        else
+                            println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
+                            "$(variant.varid)\t$hwepval\t$maf\t$infoscore\t$betapval\t$betadir\t$taupval\t$taudir")                                    
+                        end
                     else # snp + other terms
                         snptodf!(testdf[!, :snp], snpholder, fittednullmodel)
                         copyto!(Z, modelmatrix(testformula, testdf))
