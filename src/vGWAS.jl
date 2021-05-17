@@ -11,6 +11,7 @@ module vGWAS
     export WSVarScoreTest, WSVarScoreTestInvariant, test!
     export vgwas
     export matchindices
+    export Adjustor
 
     """
         ◺(n::Integer)

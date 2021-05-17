@@ -82,28 +82,80 @@ function spa(g::AbstractVector,
     ref_vals= cnts !== nothing ? similar(g, length(cnts)) : nothing,
     vals_norm= cnts !== nothing ? similar(g, length(cnts)) : g_norm,
     tmp_ecgf = cnts !== nothing ? similar(g, length(cnts)) : similar(g),
-    r=2.0
+    r=2.0,
+    adjustor::Union{Adjustor, Nothing}=nothing,
+    adj_cutoff::Real=5e-5
     )
     # involves internal normalization
     m = mean(skipmissing(g))
-    s = std(skipmissing(g))
-    g_norm .= (g .- m) ./ s
+    #s = std(skipmissing(g))
 
-    if ref_vals !== nothing
-        vals_norm .= (ref_vals .- m) ./ s
-        @inbounds for i in 1:length(vals_norm)
-            if isnan(vals_norm[i])
-                vals_norm[i] = zero(eltype(vals_norm))
-            end
-        end
+    # screening for β
+    g_norm .= g .- m
+    @inbounds for i in 1:length(g_norm)
+        g_norm[i] = isnan(g_norm[i]) ? 0.0 : g_norm[i]
     end
     cutoff_factor = sum(x -> x^2, g_norm)
-    p_β, dir_β = spa(g_norm, st.ψ_β1_pre, vals_norm,
-        cutoff_factor, r, p_alt[1], dir_alt[1], Ks.K0_β, Ks.K1_β, Ks.K2_β;
-        cnts=cnts, tmp_ecgf=tmp_ecgf, pre_vec_var=st.var_β1_pre)
-    p_τ, dir_τ = spa(g_norm, st.ψ_τ1_pre, vals_norm,
-        cutoff_factor, r, p_alt[2], dir_alt[2], Ks.K0_τ, Ks.K1_τ, Ks.K2_τ;
-        cnts=cnts, tmp_ecgf=tmp_ecgf, pre_vec_var=st.var_τ1_pre)
+    std_β = sqrt(st.var_β1_pre * cutoff_factor)
+    score_β = dot(g_norm, st.ψ_β1_pre)
+    z_β = score_β/std_β
+
+    if abs(z_β) < r
+        p_β = p_alt[1]
+        dir_β = dir_alt[1]
+    else
+        g_norm .= (g .- m) ./ std_β
+        if ref_vals !== nothing
+            vals_norm .= (ref_vals .- m) ./ std_β
+            @inbounds for i in 1:length(vals_norm)
+                if isnan(vals_norm[i])
+                    vals_norm[i] = zero(eltype(vals_norm))
+                end
+            end
+        end
+        p_β, dir_β = spa(g_norm, st.ψ_β1_pre, vals_norm,
+            cutoff_factor, 0.0, p_alt[1], dir_alt[1], Ks.K0_β, Ks.K1_β, Ks.K2_β;
+            cnts=cnts, tmp_ecgf=tmp_ecgf, pre_vec_var=st.var_β1_pre, 
+            adjustor=adjustor, adj_cutoff=adj_cutoff)
+    end
+
+    # screening for τ
+
+    g_norm .= g .- m
+    @inbounds for i in 1:length(g_norm)
+        g_norm[i] = isnan(g_norm[i]) ? 0.0 : g_norm[i]
+    end
+    # cutoff_factor = sum(x -> x^2, g_norm)
+    std_τ = sqrt(st.var_τ1_pre * cutoff_factor)
+    score_τ = dot(g_norm, st.ψ_τ1_pre)
+    z_τ = score_τ/std_τ
+
+    if abs(z_τ) < r
+        p_τ = p_alt[2]
+        dir_τ = dir_alt[2]
+    else
+        g_norm .= (g .- m) ./ std_τ
+        if ref_vals !== nothing
+            vals_norm .= (ref_vals .- m) ./ std_τ
+            @inbounds for i in 1:length(vals_norm)
+                if isnan(vals_norm[i])
+                    vals_norm[i] = zero(eltype(vals_norm))
+                end
+            end
+        end
+        p_τ, dir_τ = spa(g_norm, st.ψ_τ1_pre, vals_norm,
+            cutoff_factor, 0.0, p_alt[2], dir_alt[2], Ks.K0_τ, Ks.K1_τ, Ks.K2_τ;
+            cnts=cnts, tmp_ecgf=tmp_ecgf, pre_vec_var=st.var_τ1_pre, 
+            adjustor=adjustor, adj_cutoff=adj_cutoff)
+    end
+    # p_β, dir_β = spa(g_norm, st.ψ_β1_pre, vals_norm,
+    #     cutoff_factor, r, p_alt[1], dir_alt[1], Ks.K0_β, Ks.K1_β, Ks.K2_β;
+    #     cnts=cnts, tmp_ecgf=tmp_ecgf, pre_vec_var=st.var_β1_pre, 
+    #     adjustor=adjustor, adj_cutoff=adj_cutoff)
+    # p_τ, dir_τ = spa(g_norm, st.ψ_τ1_pre, vals_norm,
+    #     cutoff_factor, r, p_alt[2], dir_alt[2], Ks.K0_τ, Ks.K1_τ, Ks.K2_τ;
+    #     cnts=cnts, tmp_ecgf=tmp_ecgf, pre_vec_var=st.var_τ1_pre,
+    #     adjustor=adjustor, adj_cutoff=adj_cutoff)
 
     p_β, p_τ, dir_β, -dir_τ
 end
@@ -113,11 +165,20 @@ function spa(g_norm::AbstractVector, pre_vec::AbstractVector,
     cutoff_factor::Real, r::Real, p_alt::Real, dir_alt, K0, K1, K2;
     cnts=nothing, 
     tmp_ecgf = g_norm === nothing ? similar(g_norm) : similar(g_norm, length(cnts)), 
-    pre_vec_var::Real=var(pre_vec)
+    pre_vec_var::Real=var(pre_vec), 
+    adjustor::Union{Adjustor, Nothing}=nothing,
+    adj_cutoff::Real=1e-3
     )
     s = dot(g_norm, pre_vec)
     cutoff = r * sqrt(pre_vec_var * cutoff_factor)
-    return _get_pval(s, cutoff, p_alt, dir_alt, vals_norm, K0, K1, K2, tmp_ecgf; cnts=cnts)
+    pval, dir = _get_pval(s, cutoff, p_alt, dir_alt, vals_norm, K0, K1, K2, tmp_ecgf; cnts=cnts)
+    if pval < adj_cutoff && adjustor !== nothing
+        g_norm .= g_norm .- adjustor.X_XtXinv * adjustor.Xt * g_norm
+        g_norm /= sqrt(sum(x -> x^2, g_norm) * pre_vec_var) # renormalization
+        s = dot(g_norm, pre_vec)
+        pval, dir = _get_pval(s, Inf, 0.0, 0, g_norm, K0, K1, K2, tmp_ecgf; cnts=nothing)
+    end
+    return pval, dir
 end
 
 const normal = Normal()

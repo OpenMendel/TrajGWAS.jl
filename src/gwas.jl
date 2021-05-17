@@ -1,3 +1,13 @@
+struct Adjustor
+    X::AbstractMatrix
+    X_XtXinv::AbstractMatrix
+end
+
+function Adjustor(X::AbstractMatrix)
+    X_XtXinv = X * inv(X' * X)
+    Adjustor(X, X_XtXinv)
+end
+
 """
     vgwas(nullmeanformula, reformula, nullwsvarformula, idvar, covfile, geneticfile; kwargs...)
     vgwas(nullmeanformula, reformula, nullwsvarformula, idvar, df, geneticfile; kwargs...)
@@ -344,7 +354,9 @@ function vgwas(
     verbose::Bool = false,
     snpset::Union{Nothing, Integer, AbstractString, #for snpset analysis
         AbstractVector{<:Integer}} = nothing,
-    e::Union{Nothing, AbstractString, Symbol} = nothing # for GxE analysis
+    e::Union{Nothing, AbstractString, Symbol} = nothing, # for GxE analysis
+    adjustor::Union{Adjustor, Nothing}=nothing,
+    adj_cutoff::Real=5e-5
     )
     # create SnpArray
     genomat = SnpArrays.SnpArray(bedfile, bedn)
@@ -475,7 +487,8 @@ function vgwas(
                                     betapval_, taupval_, betadir_, taudir_ = spa(snpholder, ts, 
                                         ps, dirs, Ks; g_norm = g_norm, ref_vals = ref_vals, 
                                         cnts = cnts, vals_norm=vals_norm,
-                                        tmp_ecgf = tmp_ecgf)
+                                        tmp_ecgf = tmp_ecgf, 
+                                        adjustor = adjustor, adj_cutoff=adj_cutoff)
                                     # betapval, taupval, betadir, taudir = spa(snpholder, ts, 
                                     #     ps, Ks; g_norm = g_norm, 
                                     #     tmp_ecgf = tmp_ecgf)
@@ -877,7 +890,9 @@ function vgwas(
     verbose::Bool = false,
     snpset::Union{Nothing, Integer, AbstractString, #for snpset analysis
         AbstractVector{<:Integer}} = nothing,
-    e::Union{Nothing, AbstractString, Symbol} = nothing # for GxE analysis
+    e::Union{Nothing, AbstractString, Symbol} = nothing, # for GxE analysis
+    adjustor::Union{Adjustor, Nothing}=nothing,
+    adj_cutoff::Real=5e-5
     )
 
     # get number of SNPs in file
@@ -1011,7 +1026,8 @@ function vgwas(
                         dirs = betadir, taudir
                         if usespa
                             betapval_, taupval_, betadir_, taudir_ = spa(snpholder, ts, 
-                                ps, dirs, Ks; g_norm = g_norm, tmp_ecgf = tmp_ecgf)
+                                ps, dirs, Ks; g_norm = g_norm, tmp_ecgf = tmp_ecgf,
+                                adjustor = adjustor, adj_cutoff = adj_cutoff)
                         end
                         # println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
                         # "$betapval\t$betadir\t$taupval\t$taudir")
@@ -1425,7 +1441,9 @@ function vgwas(
     e::Union{Nothing, AbstractString, Symbol} = nothing, # for GxE analysis
     ref_dosage::Bool = true,
     startidx::Union{<:Integer, Nothing}=nothing,
-    endidx::Union{<:Integer, Nothing}=nothing
+    endidx::Union{<:Integer, Nothing}=nothing,
+    adjustor::Union{Adjustor, Nothing}=nothing,
+    adj_cutoff::Real=5e-5
     )
     allele_dosage! = ref_dosage ? ref_allele_dosage! : minor_allele_dosage!
 
@@ -1593,7 +1611,8 @@ function vgwas(
                             betapval_, taupval_, betadir_, taudir_ = spa(snpholder, ts, 
                                 ps, dirs, Ks; g_norm = g_norm, ref_vals = ref_vals, 
                                 cnts = cnts, vals_norm=vals_norm,
-                                tmp_ecgf = tmp_ecgf)
+                                tmp_ecgf = tmp_ecgf,
+                                adjustor = adjustor, adj_cutoff = adj_cutoff)
                         end
                         hwepval = 9.0
                         maf = 9.0
