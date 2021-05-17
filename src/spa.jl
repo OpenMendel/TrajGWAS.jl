@@ -173,7 +173,7 @@ function spa(g_norm::AbstractVector, pre_vec::AbstractVector,
     cutoff = r * sqrt(pre_vec_var * cutoff_factor)
     pval, dir = _get_pval(s, cutoff, p_alt, dir_alt, vals_norm, K0, K1, K2, tmp_ecgf; cnts=cnts)
     if pval < adj_cutoff && adjustor !== nothing
-        g_norm .= g_norm .- adjustor.X_XtXinv * adjustor.Xt * g_norm
+        g_norm .= g_norm .- adjustor.X_XtXinv * transpose(adjustor.X) * g_norm
         g_norm /= sqrt(sum(x -> x^2, g_norm) * pre_vec_var) # renormalization
         s = dot(g_norm, pre_vec)
         pval, dir = _get_pval(s, Inf, 0.0, 0, g_norm, K0, K1, K2, tmp_ecgf; cnts=nothing)
