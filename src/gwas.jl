@@ -1602,7 +1602,7 @@ function vgwas(
                         dirs = betadir, taudir
                         if usespa
                             cnts = counts!(bgendata, variant; rmask=bgenrowmask_UInt16, r=cnts)
-                            if variant.genotypes.minor_idx != 1
+                            if !ref_dosage && variant.genotypes.minor_idx != 1
                                 cnts2 .= cnts
                                 @inbounds for i in 1:511
                                     cnts[i] = cnts2[512-i]
