@@ -355,6 +355,7 @@ function vgwas(
     snpset::Union{Nothing, Integer, AbstractString, #for snpset analysis
         AbstractVector{<:Integer}} = nothing,
     e::Union{Nothing, AbstractString, Symbol} = nothing, # for GxE analysis
+    r::Float64=2.0,
     adjustor::Union{Adjustor, Nothing}=nothing,
     adj_cutoff::Real=5e-5
     )
@@ -487,7 +488,7 @@ function vgwas(
                                     betapval_, taupval_, betadir_, taudir_ = spa(snpholder, ts, 
                                         ps, dirs, Ks; g_norm = g_norm, ref_vals = ref_vals, 
                                         cnts = cnts, vals_norm=vals_norm,
-                                        tmp_ecgf = tmp_ecgf, 
+                                        tmp_ecgf = tmp_ecgf, r = r,
                                         adjustor = adjustor, adj_cutoff=adj_cutoff)
                                     # betapval, taupval, betadir, taudir = spa(snpholder, ts, 
                                     #     ps, Ks; g_norm = g_norm, 
@@ -891,6 +892,7 @@ function vgwas(
     snpset::Union{Nothing, Integer, AbstractString, #for snpset analysis
         AbstractVector{<:Integer}} = nothing,
     e::Union{Nothing, AbstractString, Symbol} = nothing, # for GxE analysis
+    r::Float64=2.0,
     adjustor::Union{Adjustor, Nothing}=nothing,
     adj_cutoff::Real=5e-5
     )
@@ -1026,7 +1028,7 @@ function vgwas(
                         dirs = betadir, taudir
                         if usespa
                             betapval_, taupval_, betadir_, taudir_ = spa(snpholder, ts, 
-                                ps, dirs, Ks; g_norm = g_norm, tmp_ecgf = tmp_ecgf,
+                                ps, dirs, Ks; g_norm = g_norm, tmp_ecgf = tmp_ecgf, r = r,
                                 adjustor = adjustor, adj_cutoff = adj_cutoff)
                         end
                         # println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
@@ -1442,6 +1444,7 @@ function vgwas(
     ref_dosage::Bool = true,
     startidx::Union{<:Integer, Nothing}=nothing,
     endidx::Union{<:Integer, Nothing}=nothing,
+    r::Float64=2.0,
     adjustor::Union{Adjustor, Nothing}=nothing,
     adj_cutoff::Real=5e-5
     )
@@ -1611,7 +1614,7 @@ function vgwas(
                             betapval_, taupval_, betadir_, taudir_ = spa(snpholder, ts, 
                                 ps, dirs, Ks; g_norm = g_norm, ref_vals = ref_vals, 
                                 cnts = cnts, vals_norm=vals_norm,
-                                tmp_ecgf = tmp_ecgf,
+                                tmp_ecgf = tmp_ecgf, r = r,
                                 adjustor = adjustor, adj_cutoff = adj_cutoff)
                         end
                         hwepval = 9.0
