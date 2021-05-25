@@ -309,6 +309,7 @@ end
         analysistype = "snpset",
         snpset = filepath * "bgen_snpsetfile.txt",
         ref_dosage=false,
+        r=2.0,
         adjustor=Adjustor(ones(500, 1)))
         #adjustor=Adjustor(ones(500, 1)))
     results = CSV.read(pvalpath, DataFrame)
