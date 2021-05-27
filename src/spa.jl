@@ -192,6 +192,7 @@ function _get_pval(s, cutoff, p_alt, dir_alt, vals_norm, K0, K1, K2, tmp_ecgf; c
             end
             return sum(tmp_ecgf)
         else
+            fill!(tmp_ecgf, 0.0)
             @inbounds for i in 1:length(tmp_ecgf)
                 if cnts[i] != 0
                     tmp_ecgf[i] = K0(vals_norm[i] * z)
@@ -207,6 +208,7 @@ function _get_pval(s, cutoff, p_alt, dir_alt, vals_norm, K0, K1, K2, tmp_ecgf; c
             end
             return sum(tmp_ecgf)
         else
+            fill!(tmp_ecgf, 0.0)            
             @inbounds for i in 1:length(tmp_ecgf)
                 if cnts[i] != 0
                     tmp_ecgf[i] = vals_norm[i] * K1(vals_norm[i] * z)
@@ -222,6 +224,7 @@ function _get_pval(s, cutoff, p_alt, dir_alt, vals_norm, K0, K1, K2, tmp_ecgf; c
             end
             return sum(tmp_ecgf)
         else
+            fill!(tmp_ecgf, 0.0)
             @inbounds for i in 1:length(tmp_ecgf)
                 if cnts[i] != 0
                     tmp_ecgf[i] = vals_norm[i] ^ 2 * K2(vals_norm[i] * z)
