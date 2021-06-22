@@ -177,6 +177,7 @@ end
         usespa = true,
         geneticformat = "BGEN", 
         pvalfile = pvalpath,
+        reportchisq=true,
         ref_dosage=false)#Adjustor(ones(500, 1)))
     results = CSV.read(pvalpath, DataFrame)
     @test all(isapprox.((mean(results.betapval),

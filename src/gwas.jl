@@ -8,6 +8,10 @@ function Adjustor(X::AbstractMatrix)
     Adjustor(X, X_XtXinv)
 end
 
+@inline function hmean(x::Real, y::Real)
+    return 2 * x * y / (x + y)
+end
+
 """
     vgwas(nullmeanformula, reformula, nullwsvarformula, idvar, covfile, geneticfile; kwargs...)
     vgwas(nullmeanformula, reformula, nullwsvarformula, idvar, df, geneticfile; kwargs...)
@@ -409,16 +413,16 @@ function vgwas(
             if test == :score
                 if snponly
                     if usespa && reportchisq
-                        println(io, "chr\tpos\tsnpid\tmaf\thwepval\tbetapval\tbetachisqpval\tbetadir\ttaupval\ttauchisqpval\ttaudir")
+                        println(io, "chr\tpos\tsnpid\tmaf\thwepval\tbetapval\tbetachisqpval\tbetadir\ttaupval\ttauchisqpval\ttaudir\tjointpval")
                     else
-                        println(io, "chr\tpos\tsnpid\tmaf\thwepval\tbetapval\tbetadir\ttaupval\ttaudir")
+                        println(io, "chr\tpos\tsnpid\tmaf\thwepval\tbetapval\tbetadir\ttaupval\ttaudir\tjointpval")
                     end
                     ts = WSVarScoreTestInvariant(fittednullmodel, 1, 1)
                     if usespa
                         Ks = ecgf(ts)
                     end
                 else
-                    println(io, "chr\tpos\tsnpid\tmaf\thwepval\tbetapval\ttaupval")
+                    println(io, "chr\tpos\tsnpid\tmaf\thwepval\tbetapval\ttaupval\tjointpval")
                     ts = WSVarScoreTest(fittednullmodel, q, q)
                     testvec = [Matrix{Float64}(undef, ni, q) for
                     ni in fittednullmodel.nis]
@@ -468,10 +472,10 @@ function vgwas(
                             taudir = 0
                             if snponly
                                 println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
-                                "$maf\t$hwepval\t$betapval\t$betadir\t$taupval\t$taudir")
+                                "$maf\t$hwepval\t$betapval\t$betadir\t$taupval\t$taudir\t$(hmean(betapval, taupval))")
                             else
                                 println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
-                                "$maf\t$hwepval\t$betapval\t$taupval")
+                                "$maf\t$hwepval\t$betapval\t$taupval\t$(hmean(betapval, taupval))")
                             end
                         else
                             if snponly
@@ -496,13 +500,13 @@ function vgwas(
                                 end
                                 if usespa && reportchisq
                                     println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
-                                    "$maf\t$hwepval\t$betapval_\t$betapval\t$betadir_\t$taupval_\t$taupval\t$taudir_")
+                                    "$maf\t$hwepval\t$betapval_\t$betapval\t$betadir_\t$taupval_\t$taupval\t$taudir_\t$(hmean(betapval, taupval))")
                                 elseif usespa
                                     println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
-                                    "$maf\t$hwepval\t$betapval_\t$betadir_\t$taupval_\t$taudir_")
+                                    "$maf\t$hwepval\t$betapval_\t$betadir_\t$taupval_\t$taudir_\t$(hmean(betapval, taupval))")
                                 else
                                     println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
-                                    "$maf\t$hwepval\t$betapval\t$betadir\t$taupval\t$taudir")                                    
+                                    "$maf\t$hwepval\t$betapval\t$betadir\t$taupval\t$taudir\t$(hmean(betapval, taupval))")                                    
                                 end
                             else # snp + other terms
                                 copyto!(snpholder, @view(genomat[bedrowinds, j]),
@@ -512,7 +516,7 @@ function vgwas(
                                 loadtimevar!(testvec, Z, fittednullmodel)
                                 betapval, taupval, _, _ = test!(ts, testvec, testvec)
                                 println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
-                                "$maf\t$hwepval\t$betapval\t$taupval")
+                                "$maf\t$hwepval\t$betapval\t$taupval\t$(hmean(betapval, taupval))")
                             end
                         end
 
@@ -954,16 +958,16 @@ function vgwas(
             if test == :score
                 if snponly
                     if usespa && reportchisq
-                        println(io, "chr\tpos\tsnpid\tbetapval\tbetachisqpval\tbetadir\ttaupval\ttauchisqpval\ttaudir")
+                        println(io, "chr\tpos\tsnpid\tbetapval\tbetachisqpval\tbetadir\ttaupval\ttauchisqpval\ttaudir\tjointpval")
                     else
-                        println(io, "chr\tpos\tsnpid\tbetapval\tbetadir\ttaupval\ttaudir")
+                        println(io, "chr\tpos\tsnpid\tbetapval\tbetadir\ttaupval\ttaudir\tjointpval")
                     end
                     ts = WSVarScoreTestInvariant(fittednullmodel, 1, 1)
                     if usespa
                         Ks = ecgf(ts)
                     end
                 else
-                    println(io, "chr\tpos\tsnpid\tbetapval\ttaupval")
+                    println(io, "chr\tpos\tsnpid\tbetapval\ttaupval\tjointpval")
                     ts = WSVarScoreTest(fittednullmodel, q, q)
                     testvec = [Matrix{Float64}(undef, ni, q) for
                     ni in fittednullmodel.nis]
@@ -1016,10 +1020,10 @@ function vgwas(
                         betadir, taudir = 0, 0
                         if snponly
                             println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
-                            "$betapval\t$betadir\t$taupval\t$taudir")
+                            "$betapval\t$betadir\t$taupval\t$taudir\t$(hmean(betapval, taupval))")
                         else
                             println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
-                            "$betapval\t$taupval")
+                            "$betapval\t$taupval\t$(hmean(betapval, taupval))")
                         end              
                     elseif snponly
                         copyto!(snpholder, @view(gholder[vcfrowinds]))
@@ -1035,13 +1039,13 @@ function vgwas(
                         # "$betapval\t$betadir\t$taupval\t$taudir")
                         if usespa && reportchisq
                             println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
-                            "$betapval_\t$betapval\t$betadir_\t$taupval_\t$taupval\t$taudir_")
+                            "$betapval_\t$betapval\t$betadir_\t$taupval_\t$taupval\t$taudir_\t$(hmean(betapval, taupval))")
                         elseif usespa
                             println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
-                            "$betapval_\t$betadir_\t$taupval_\t$taudir_")
+                            "$betapval_\t$betadir_\t$taupval_\t$taudir_\t$(hmean(betapval, taupval))")
                         else
                             println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
-                            "$betapval\t$betadir\t$taupval\t$taudir")                                    
+                            "$betapval\t$betadir\t$taupval\t$taudir\t$(hmean(betapval, taupval))")                                    
                         end
                     else # snp + other terms
                         snptodf!(testdf[!, :snp], @view(gholder[vcfrowinds]), fittednullmodel)
@@ -1049,7 +1053,7 @@ function vgwas(
                         loadtimevar!(testvec, Z, fittednullmodel)
                         betapval, taupval, _, _ = test!(ts, testvec, testvec)
                         println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
-                        "$betapval\t$taupval")
+                        "$betapval\t$taupval\t$(hmean(betapval, taupval))")
                     end
                 elseif test == :wald
                     if var(@view(gholder[vcfrowinds])) == 0
@@ -1520,16 +1524,16 @@ function vgwas(
             if test == :score
                 if snponly
                     if usespa && reportchisq
-                        println(io, "chr\tpos\tsnpid\tvarid\thwepval\tmaf\tinfoscore\tbetapval\tbetachisqpval\tbetadir\ttaupval\ttauchisqpval\ttaudir")
+                        println(io, "chr\tpos\tsnpid\tvarid\thwepval\tmaf\tinfoscore\tbetapval\tbetachisqpval\tbetadir\ttaupval\ttauchisqpval\ttaudir\tjointpval")
                     else
-                        println(io, "chr\tpos\tsnpid\tvarid\thwepval\tmaf\tinfoscore\tbetapval\tbetadir\ttaupval\ttaudir")
+                        println(io, "chr\tpos\tsnpid\tvarid\thwepval\tmaf\tinfoscore\tbetapval\tbetadir\ttaupval\ttaudir\tjointpval")
                     end
                     ts = WSVarScoreTestInvariant(fittednullmodel, 1, 1)
                     if usespa
                         Ks = ecgf(ts)
                     end
                 else
-                    println(io, "chr\tpos\tsnpid\tvarid\thwepval\tmaf\tinfoscore\tbetapval\ttaupval")
+                    println(io, "chr\tpos\tsnpid\tvarid\thwepval\tmaf\tinfoscore\tbetapval\ttaupval\tjointpval")
                     ts = WSVarScoreTest(fittednullmodel, q, q)
                     testvec = [Matrix{Float64}(undef, ni, q) for
                     ni in fittednullmodel.nis]
@@ -1594,10 +1598,10 @@ function vgwas(
                             end
                             
                             println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
-                            "$(variant.varid)\t$hwepval\t$maf\t$infoscore\t$betapval\t$betadir\t$taupval\t$taudir")
+                            "$(variant.varid)\t$hwepval\t$maf\t$infoscore\t$betapval\t$betadir\t$taupval\t$taudir\t$(hmean(betapval, taupval))")
                         else
                             println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
-                            "$(variant.varid)\t$betapval\t$taupval")
+                            "$(variant.varid)\t$betapval\t$taupval\t$(hmean(betapval, taupval))")
                         end
                     elseif snponly
                         betapval, taupval, betadir, taudir = test!(ts, snpholder, snpholder)
@@ -1637,13 +1641,13 @@ function vgwas(
                         # "$(variant.varid)\t$hwepval\t$maf\t$infoscore\t$betapval\t$betadir\t$taupval\t$taudir")
                         if usespa && reportchisq
                             println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
-                            "$(variant.varid)\t$hwepval\t$maf\t$infoscore\t$betapval_\t$betapval\t$betadir_\t$taupval_\t$taupval\t$taudir_")
+                            "$(variant.varid)\t$hwepval\t$maf\t$infoscore\t$betapval_\t$betapval\t$betadir_\t$taupval_\t$taupval\t$taudir_\t$(hmean(betapval, taupval))")
                         elseif usespa
                             println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
-                            "$(variant.varid)\t$hwepval\t$maf\t$infoscore\t$betapval_\t$betadir_\t$taupval_\t$taudir_")
+                            "$(variant.varid)\t$hwepval\t$maf\t$infoscore\t$betapval_\t$betadir_\t$taupval_\t$taudir_\t$(hmean(betapval, taupval))")
                         else
                             println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
-                            "$(variant.varid)\t$hwepval\t$maf\t$infoscore\t$betapval\t$betadir\t$taupval\t$taudir")                                    
+                            "$(variant.varid)\t$hwepval\t$maf\t$infoscore\t$betapval\t$betadir\t$taupval\t$taudir\t$(hmean(betapval, taupval))")                                    
                         end
                     else # snp + other terms
                         snptodf!(testdf[!, :snp], snpholder, fittednullmodel)
@@ -1651,7 +1655,7 @@ function vgwas(
                         loadtimevar!(testvec, Z, fittednullmodel)
                         betapval, taupval, _, _ = test!(ts, testvec, testvec)
                         println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
-                        "$(variant.varid)\t$betapval\t$taupval")
+                        "$(variant.varid)\t$betapval\t$taupval\t$(hmean(betapval, taupval))")
                     end
 
                 elseif test == :wald
