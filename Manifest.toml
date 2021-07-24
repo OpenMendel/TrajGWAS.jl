@@ -50,11 +50,11 @@ version = "1.0.0"
 
 [[BGEN]]
 deps = ["CodecZlib", "CodecZstd", "Printf", "SIMD", "SQLite", "SpecialFunctions", "Statistics", "Tables", "TranscodingStreams"]
-git-tree-sha1 = "251904a331e57eaf26c436bfe3c836db60e2e565"
+git-tree-sha1 = "3809273134723bcb0474be661b4dd49752bc8e5e"
 repo-rev = "main"
 repo-url = "https://github.com/OpenMendel/BGEN.jl"
 uuid = "6db4b851-9beb-4b83-9d64-eb1cfb37721d"
-version = "0.1.1"
+version = "0.1.2"
 
 [[BGZFStreams]]
 deps = ["CodecZlib", "Test"]
@@ -351,9 +351,9 @@ version = "0.6.5"
 
 [[Ipopt_jll]]
 deps = ["ASL_jll", "Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "MUMPS_seq_jll", "OpenBLAS32_jll", "Pkg"]
-git-tree-sha1 = "610e03d6ff38a70c2a5eca351d83638309f4afb5"
+git-tree-sha1 = "82124f27743f2802c23fcb05febc517d0b15d86e"
 uuid = "9cc047cb-c261-5740-88fc-0cf96f7bdcc7"
-version = "3.13.4+0"
+version = "3.13.4+2"
 
 [[IteratorInterfaceExtensions]]
 git-tree-sha1 = "a3f24677c21f5bbe9d2a714f95dcd58337fb2856"
@@ -812,12 +812,18 @@ version = "1.0.2"
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 
 [[VCFTools]]
-deps = ["CodecZlib", "Dates", "DelimitedFiles", "Distributions", "GeneticVariation", "HypothesisTests", "ProgressMeter", "SpecialFunctions"]
-git-tree-sha1 = "cfaf13fef23a4ccd565ae7717d197831815fa37a"
+deps = ["CodecZlib", "Dates", "DelimitedFiles", "Distributions", "HypothesisTests", "ProgressMeter", "SpecialFunctions", "VariantCallFormat"]
+git-tree-sha1 = "8e42021ff8c380ce554212f58e7f87bff0a64168"
 repo-rev = "master"
 repo-url = "https://github.com/OpenMendel/VCFTools.jl"
 uuid = "a620830f-fdd7-5ebc-8d26-3621ab35fbfe"
-version = "0.2.0"
+version = "0.2.1"
+
+[[VariantCallFormat]]
+deps = ["Automa", "BGZFStreams", "BioCore", "BufferedStreams"]
+git-tree-sha1 = "eb060e20d9d8594112396334eb1e9561a34c964b"
+uuid = "28eba6e3-a997-4ad9-87c6-d933b8bca6c1"
+version = "0.5.1"
 
 [[VectorizationBase]]
 deps = ["ArrayInterface", "Hwloc", "IfElse", "Libdl", "LinearAlgebra", "Static"]

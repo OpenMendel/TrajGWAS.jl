@@ -1,6 +1,6 @@
 module TrajGWAS
     using DataFrames, Tables, LinearAlgebra
-    using Printf, Reexport, Statistics, SnpArrays, VCFTools, GeneticVariation
+    using Printf, Reexport, Statistics, SnpArrays, VCFTools, VariantCallFormat
     using Distributions, CSV, BGEN
     import LinearAlgebra: BlasReal, copytri!
     import DataFrames: DataFrame

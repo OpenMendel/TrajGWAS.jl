@@ -222,7 +222,7 @@ function trajgwas(
         end
         bedn = VCFTools.nsamples(vcffile)
         reader = VCF.Reader(openvcf(vcffile, "r"))
-        bedids = VCF.header(reader).sampleID
+        bedids = header(reader).sampleID
         close(reader)
     elseif lowercase(geneticformat) == "bgen"
         if isfile(geneticfile * ".bgen")
@@ -1518,7 +1518,9 @@ function trajgwas(
         # create holder for dosage
         snpholder = zeros(fittednullmodel.m)
         dosageholder = Vector{Float32}(undef, n_samples(bgendata))
-        decompressed = Vector{UInt8}(undef, 3 * n_samples(bgendata) + 10)
+        decompressed_length, _ = BGEN.check_decompressed_length(
+            bgendata.io, first(bgen_iterator), bgendata.header)
+        decompressed = Vector{UInt8}(undef, decompressed_length)
         # carry out score or LRT test SNP by SNP
         SnpArrays.makestream(pvalfile, "w") do io
             if test == :score
