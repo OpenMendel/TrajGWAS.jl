@@ -1,14 +1,14 @@
-using vGWAS
+using TrajGWAS
 using Documenter
 
 makedocs(;
-    modules=[vGWAS],
+    modules=[TrajGWAS],
     authors="Seyoon Ko <syko0507@snu.ac.kr> and contributors",
-    repo="https://github.com/OpenMendel/vGWAS.jl/blob/{commit}{path}#L{line}",
-    sitename="vGWAS.jl",
+    repo="https://github.com/OpenMendel/TrajGWAS.jl/blob/{commit}{path}#L{line}",
+    sitename="TrajGWAS.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://OpenMendel.github.io/vGWAS.jl",
+        canonical="https://OpenMendel.github.io/TrajGWAS.jl",
         assets=String[],
     ),
     pages=[
@@ -17,5 +17,5 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/OpenMendel/vGWAS.jl",
+    repo="github.com/OpenMendel/TrajGWAS.jl",
 )

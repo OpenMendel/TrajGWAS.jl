@@ -1,4 +1,4 @@
-using SnpArrays, WiSER, vGWAS, Random, DataFrames, CSV, Statistics, Distributions, LinearAlgebra
+using SnpArrays, WiSER, TrajGWAS, Random, DataFrames, CSV, Statistics, Distributions, LinearAlgebra
 using GeneticVariation, VCFTools, BGEN
 
 # Simulate PLINK data 
@@ -100,19 +100,19 @@ nullmodel = WSVarLmmModel(@formula(y ~ 1 + sex + onMeds),
 WiSER.fit!(fullmodel)
 WiSER.fit!(nullmodel)
 
-CSV.write("vgwas_plinkex.csv", df)
+CSV.write("trajgwas_plinkex.csv", df)
 
-vgwas(@formula(y ~ 1 + sex + onMeds),
+trajgwas(@formula(y ~ 1 + sex + onMeds),
 @formula(y ~ 1),
 @formula(y ~ 1 + sex + onMeds),
-:id, "vgwas_plinkex.csv", "hapmap3")
+:id, "trajgwas_plinkex.csv", "hapmap3")
 
 
-vgwas(@formula(y ~ 1 + sex + onMeds),
+trajgwas(@formula(y ~ 1 + sex + onMeds),
        @formula(y ~ 1),
        @formula(y ~ 1 + sex + onMeds),
        :id, 
-       "vgwas_plinkex.csv", 
+       "trajgwas_plinkex.csv", 
        "hapmap3", 
        pvalfile = "snpset.window5.pval.txt", 
        analysistype="snpset", 
@@ -226,17 +226,17 @@ WiSER.fit!(fullmodel)
 WiSER.fit!(nullmodel)
 
 
-CSV.write("vgwas_vcf_ex.csv", df)
+CSV.write("trajgwas_vcf_ex.csv", df)
 
-vgwas(@formula(y ~ 1 + sex + onMeds),
+trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id, 
-        "vgwas_vcf_ex.csv", 
+        "trajgwas_vcf_ex.csv", 
         "test_vcf", 
         geneticformat = "VCF", 
         vcftype = :DS,
-        pvalfile = "vgwas_vcfex.pval.txt")
+        pvalfile = "trajgwas_vcfex.pval.txt")
 
 
 
@@ -332,28 +332,28 @@ nullmodel = WSVarLmmModel(@formula(y ~ 1 + sex + onMeds),
 WiSER.fit!(fullmodel)
 WiSER.fit!(nullmodel)
 
-CSV.write("vgwas_bgen_ex.csv", df)
+CSV.write("trajgwas_bgen_ex.csv", df)
 
-vgwas(@formula(y ~ 1 + sex + onMeds),
+trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id, 
-        "vgwas_bgen_ex.csv", 
+        "trajgwas_bgen_ex.csv", 
         "example.8bits", 
         usespa = false,
         geneticformat = "BGEN", 
-        pvalfile = "vgwas_bgen.pval.txt")
+        pvalfile = "trajgwas_bgen.pval.txt")
 
-vgwas_res = CSV.read("vgwas_bgen.pval.txt", DataFrame)
+trajgwas_res = CSV.read("trajgwas_bgen.pval.txt", DataFrame)
 
-vgwas(@formula(y ~ 1 + sex + onMeds),
+trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id, 
-        "vgwas_bgen_ex.csv", 
+        "trajgwas_bgen_ex.csv", 
         "example.8bits", 
         usespa = true,
         geneticformat = "BGEN", 
-        pvalfile = "vgwas_bgen_spa.pval.txt")
+        pvalfile = "trajgwas_bgen_spa.pval.txt")
 
-vgwas_res_spa = CSV.read("vgwas_bgen_spa.pval.txt", DataFrame)
+trajgwas_res_spa = CSV.read("trajgwas_bgen_spa.pval.txt", DataFrame)

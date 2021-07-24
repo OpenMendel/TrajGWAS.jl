@@ -1,0 +1,26 @@
+
+Within-subject variance estimation by robust regression (WiSER)
+
+Mean Formula:
+y ~ 1 + sex + onMeds
+Random Effects Formula:
+y ~ 1
+Within-Subject Variance Formula:
+y ~ 1 + sex
+
+Number of individuals/clusters: 324
+Total observations: 3240
+
+Fixed-effects parameters:
+────────────────────────────────────────────────────────
+                  Estimate  Std. Error       Z  Pr(>|Z|)
+────────────────────────────────────────────────────────
+β1: (Intercept)  13.2312     0.146179    90.51    <1e-99
+β2: sex          -3.29477    0.209739   -15.71    <1e-54
+β3: onMeds        0.455477   0.0597412    7.62    <1e-13
+τ1: (Intercept)   1.01142    0.0695526   14.54    <1e-47
+τ2: sex          -0.255326   0.0964645   -2.65    0.0081
+────────────────────────────────────────────────────────
+Random effects covariance matrix Σγ:
+ "γ1: (Intercept)"  3.29711
+

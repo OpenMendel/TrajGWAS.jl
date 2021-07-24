@@ -1,4 +1,4 @@
-#Code to do type I error simulation for vGWAS.jl
+#Code to do type I error simulation for TrajGWAS.jl
 # after reworking SPA
 
 using Interpolations
@@ -45,7 +45,7 @@ function ecgf(vs::AbstractVector, zs::AbstractVector)
     return K0_int, K1_int, K2_int
 end
 
-struct vGWASEcgfCollection
+struct TrajGWASEcgfCollection
     K0_β
     K1_β
     K2_β
@@ -57,7 +57,7 @@ end
 function ecgf(st::WSVarScoreTestInvariant)
     K0_β, K1_β, K2_β = ecgf(st.ψ_β1_pre)
     K0_τ, K1_τ, K2_τ = ecgf(st.ψ_τ1_pre)
-    vGWASEcgfCollection(K0_β, K1_β, K2_β, K0_τ, K1_τ, K2_τ)
+    TrajGWASEcgfCollection(K0_β, K1_β, K2_β, K0_τ, K1_τ, K2_τ)
 end
 
 """
@@ -69,14 +69,14 @@ Perform saddlepoint approximation for a single variant.
 - `g`::AbstractVector:  genotype vector
 - `st::WSVarScoreTestInvariant`
 - `p_alt` : alternative p-value if saddlepoint approximation is skipped due to cutoff `r`
-- `Ks::vGWASEcgfCollection`
+- `Ks::TrajGWASEcgfCollection`
 - `mode`: `:bed` for hard calls of 0, 1, 2; `:ukbbgen` for bgen format provided by UK Biobank; anything else for others
 """
 function spa(g::AbstractVector,
     st::WSVarScoreTestInvariant,
     p_alt,
     dir_alt,
-    Ks::vGWASEcgfCollection;
+    Ks::TrajGWASEcgfCollection;
     g_norm=similar(g),
     cnts=nothing,
     ref_vals= cnts !== nothing ? similar(g, length(cnts)) : nothing,

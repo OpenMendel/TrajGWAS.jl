@@ -1,4 +1,4 @@
-using vGWAS
+using TrajGWAS
 using Test
 using CSV, DataFrames, WiSER
 
@@ -23,27 +23,27 @@ for i in unique(df[!, :id])
 end
 
 @testset "generic" begin
-st = vGWAS.WSVarScoreTest(vlmm, 3, 3)
-_, v1, _, _ = vGWAS.test!(st, X1vec, W1vec)
+st = TrajGWAS.WSVarScoreTest(vlmm, 3, 3)
+_, v1, _, _ = TrajGWAS.test!(st, X1vec, W1vec)
 @test isapprox(v1, 6.236443105947029e-11)
 
-st = vGWAS.WSVarScoreTest(vlmm, 1, 1);
+st = TrajGWAS.WSVarScoreTest(vlmm, 1, 1);
 
 # testing for obswt
 X1vec_obswt = map(x -> x[:, 1], X1vec)
-v1, v2, _, _ = vGWAS.test!(st, X1vec_obswt, X1vec_obswt)
+v1, v2, _, _ = TrajGWAS.test!(st, X1vec_obswt, X1vec_obswt)
 @test all(isapprox.((v1, v2),
     (0.4409730648525017, 0.7156750808059059)))
 
 # testing for gender
 X1vec_gender = map(x -> x[:, 2], X1vec)
-v1, v2, _, _ = vGWAS.test!(st, X1vec_gender, X1vec_gender)
+v1, v2, _, _ = TrajGWAS.test!(st, X1vec_gender, X1vec_gender)
 @test isapprox(v2, 0.8535798925691855)
 
 # testing for meds. meds is already included in the null model.
-st = vGWAS.WSVarScoreTest(vlmm, 0, 1)
+st = TrajGWAS.WSVarScoreTest(vlmm, 0, 1)
 X1vec_meds = map(x -> x[:, 3], X1vec)
-v1, v2, _, _ = vGWAS.test!(st, nothing, X1vec_meds)
+v1, v2, _, _ = TrajGWAS.test!(st, nothing, X1vec_meds)
 @test all(isapprox.((v1, v2),
     (-1.0, 1.3935485985991808e-12)))
 
@@ -61,37 +61,37 @@ for i in 1:length(X1vec)
 end
 W1 = copy(X1);
 
-st_i = vGWAS.WSVarScoreTestInvariant(vlmm, 3, 3)
-_, v1, _, _ = vGWAS.test!(st_i, X1, W1)
+st_i = TrajGWAS.WSVarScoreTestInvariant(vlmm, 3, 3)
+_, v1, _, _ = TrajGWAS.test!(st_i, X1, W1)
 @test isapprox(v1, 6.236443105947029e-11)
 
-st_i = vGWAS.WSVarScoreTestInvariant(vlmm, 1, 1);
+st_i = TrajGWAS.WSVarScoreTestInvariant(vlmm, 1, 1);
 # obswt
-v1, v2, _, _ = vGWAS.test!(st_i, X1[:, 1], W1[:, 1])
+v1, v2, _, _ = TrajGWAS.test!(st_i, X1[:, 1], W1[:, 1])
 @test all(isapprox.((v1, v2),
     (0.4409730648525017, 0.7156750808059059)))
 
 # testing for gender
-v1, v2, _, _ = vGWAS.test!(st_i, X1[:, 2], W1[:, 2])
+v1, v2, _, _ = TrajGWAS.test!(st_i, X1[:, 2], W1[:, 2])
 @test isapprox(v2, 0.8535798925691855)
 
 # testing for meds. meds is already included in the null model.
 # meds
-st_i = vGWAS.WSVarScoreTestInvariant(vlmm, 0, 1);
-v1, v2, _, _ = vGWAS.test!(st_i, nothing, W1[:, 3])
+st_i = TrajGWAS.WSVarScoreTestInvariant(vlmm, 0, 1);
+v1, v2, _, _ = TrajGWAS.test!(st_i, nothing, W1[:, 3])
 @test all(isapprox.((v1, v2),
     (-1.0, 1.3935485985991808e-12)))
 end
 
-filepath = joinpath(dirname(pathof(vGWAS)), "../data/")
+filepath = joinpath(dirname(pathof(TrajGWAS)), "../data/")
 
 pvalpath = "testpval"
-@testset "vgwas_singlesnp_plink" begin
-vgwas(@formula(y ~ 1 + sex + onMeds),
+@testset "trajgwas_singlesnp_plink" begin
+trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
-        filepath * "vgwas_plinkex.csv",
+        filepath * "trajgwas_plinkex.csv",
         filepath * "hapmap3",
         pvalfile = pvalpath,
         usespa = false)
@@ -101,11 +101,11 @@ results = CSV.read(pvalpath, DataFrame)
     (0.20892290777343045, 0.1905578803635017)))
 
 #spa 
-vgwas(@formula(y ~ 1 + sex + onMeds),
+trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
-        filepath * "vgwas_plinkex.csv",
+        filepath * "trajgwas_plinkex.csv",
         filepath * "hapmap3",
         pvalfile = pvalpath,
         usespa = true)
@@ -116,12 +116,12 @@ results = CSV.read(pvalpath, DataFrame)
     (0.20841900621550116, 0.18913803849088423); rtol=1e-5))
 end
 
-@testset "vgwas_singlesnp_vcf" begin
-    vgwas(@formula(y ~ 1 + sex + onMeds),
+@testset "trajgwas_singlesnp_vcf" begin
+    trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
-        filepath * "vgwas_vcfex.csv",
+        filepath * "trajgwas_vcfex.csv",
         filepath * "test_vcf",
         pvalfile = pvalpath,
         geneticformat = "VCF",
@@ -133,11 +133,11 @@ end
         (0.47580382024875084, 0.4752535666464088); rtol=1e-5))
 
     #spa version
-    vgwas(@formula(y ~ 1 + sex + onMeds),
+    trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
-        filepath * "vgwas_vcfex.csv",
+        filepath * "trajgwas_vcfex.csv",
         filepath * "test_vcf",
         pvalfile = pvalpath,
         geneticformat = "VCF",
@@ -150,12 +150,12 @@ end
         (0.4709957279235137, 0.4691934843663542); rtol=1e-5))
 end
 
-@testset "vgwas_singlesnp_bgen" begin
-    vgwas(@formula(y ~ 1 + sex + onMeds),
+@testset "trajgwas_singlesnp_bgen" begin
+    trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id, 
-        filepath * "vgwas_bgen_ex.csv", 
+        filepath * "trajgwas_bgen_ex.csv", 
         filepath * "example.8bits", 
         usespa = false,
         geneticformat = "BGEN", 
@@ -168,11 +168,11 @@ end
         (0.46429181963000665, 0.4931759050587741); rtol=1e-5))
 
     #spa version
-    vgwas(@formula(y ~ 1 + sex + onMeds),
+    trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id, 
-        filepath * "vgwas_bgen_ex.csv", 
+        filepath * "trajgwas_bgen_ex.csv", 
         filepath * "example.8bits", 
         usespa = true,
         geneticformat = "BGEN", 
@@ -185,12 +185,12 @@ end
         (0.46428062017147764, 0.49230409589144597); rtol=1e-3))
 end
 
-@testset "vgwas_snpset_plink" begin
-    vgwas(@formula(y ~ 1 + sex + onMeds),
+@testset "trajgwas_snpset_plink" begin
+    trajgwas(@formula(y ~ 1 + sex + onMeds),
             @formula(y ~ 1),
             @formula(y ~ 1 + sex),
             :id,
-            filepath * "vgwas_plinkex.csv",
+            filepath * "trajgwas_plinkex.csv",
             filepath * "hapmap3",
             pvalfile = pvalpath,
             analysistype = "snpset",
@@ -200,11 +200,11 @@ end
         mean(results.taupval)),
         (0.10426027515117509, 0.08863103713602266); rtol=1e-5))
 
-    vgwas(@formula(y ~ 1 + sex + onMeds),
+    trajgwas(@formula(y ~ 1 + sex + onMeds),
             @formula(y ~ 1),
             @formula(y ~ 1 + sex),
             :id,
-            filepath * "vgwas_plinkex.csv",
+            filepath * "trajgwas_plinkex.csv",
             filepath * "hapmap3",
             pvalfile = pvalpath,
             analysistype = "snpset",
@@ -214,11 +214,11 @@ end
         mean(results.taupval)),
         (0.08547206177854592, 0.07865194590141143); rtol=1e-5))
 
-    vgwas(@formula(y ~ 1 + sex + onMeds),
+    trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex),
         :id,
-        filepath * "vgwas_plinkex.csv",
+        filepath * "trajgwas_plinkex.csv",
         filepath * "hapmap3",
         pvalfile = pvalpath,
         analysistype = "snpset",
@@ -230,12 +230,12 @@ end
     1.2760805146705195e-13, 3.8612899196708803e-16), rtol=1e-4))
 end
 
-@testset "vgwas_snpset_vcf" begin
-    vgwas(@formula(y ~ 1 + sex + onMeds),
+@testset "trajgwas_snpset_vcf" begin
+    trajgwas(@formula(y ~ 1 + sex + onMeds),
             @formula(y ~ 1),
             @formula(y ~ 1 + sex + onMeds),
             :id,
-            filepath * "vgwas_vcfex.csv",
+            filepath * "trajgwas_vcfex.csv",
             filepath * "test_vcf",
             pvalfile = pvalpath,
             geneticformat = "VCF",
@@ -247,11 +247,11 @@ end
         mean(results.taupval)),
         (0.25347423101832717, 0.19024751040999272); rtol=1e-5))
 
-    vgwas(@formula(y ~ 1 + sex + onMeds),
+    trajgwas(@formula(y ~ 1 + sex + onMeds),
             @formula(y ~ 1),
             @formula(y ~ 1 + sex),
             :id,
-            filepath * "vgwas_vcfex.csv",
+            filepath * "trajgwas_vcfex.csv",
             filepath * "test_vcf",
             pvalfile = pvalpath,
             geneticformat = "VCF",
@@ -263,11 +263,11 @@ end
         mean(results.taupval)),
         (0.24940609907211, 0.22513112148296); rtol=1e-5))
 
-    vgwas(@formula(y ~ 1 + sex + onMeds),
+    trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex),
         :id,
-        filepath * "vgwas_vcfex.csv",
+        filepath * "trajgwas_vcfex.csv",
         filepath * "test_vcf",
         pvalfile = pvalpath,
         geneticformat = "VCF",
@@ -282,12 +282,12 @@ end
 end
 
 
-@testset "vgwas_snpset_bgen" begin
-    vgwas(@formula(y ~ 1 + sex + onMeds),
+@testset "trajgwas_snpset_bgen" begin
+    trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
-        filepath * "vgwas_bgen_ex.csv", 
+        filepath * "trajgwas_bgen_ex.csv", 
         filepath * "example.8bits", 
         geneticformat = "BGEN", 
         pvalfile = pvalpath,
@@ -299,11 +299,11 @@ end
         mean(results.taupval)),
         (0.4444189887865223, 0.43837358376815266); rtol=1e-5))
 
-    vgwas(@formula(y ~ 1 + sex + onMeds),
+    trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex),
         :id,
-        filepath * "vgwas_bgen_ex.csv", 
+        filepath * "trajgwas_bgen_ex.csv", 
         filepath * "example.8bits", 
         geneticformat = "BGEN", 
         pvalfile = pvalpath,
@@ -318,11 +318,11 @@ end
         mean(results.taupval)),
         (0.43077865459266, 0.38136082362710); rtol=1e-5))
 
-    vgwas(@formula(y ~ 1 + sex + onMeds),
+    trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex),
         :id,
-        filepath * "vgwas_bgen_ex.csv", 
+        filepath * "trajgwas_bgen_ex.csv", 
         filepath * "example.8bits", 
         geneticformat = "BGEN", 
         pvalfile = pvalpath,
@@ -336,12 +336,12 @@ end
     7.722715354932478e-20, 1.1593515582284077e-19), rtol=1e-4))
 end
 
-@testset "vgwas_gxe_plink" begin
-vgwas(@formula(y ~ 1 + sex + onMeds),
+@testset "trajgwas_gxe_plink" begin
+trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
-        filepath * "vgwas_plinkex.csv",
+        filepath * "trajgwas_plinkex.csv",
         filepath * "hapmap3",
         pvalfile = pvalpath,
         analysistype = "gxe",
@@ -353,12 +353,12 @@ vgwas(@formula(y ~ 1 + sex + onMeds),
         (0.5917252588216351, 0.4047112266291169); rtol=1e-5))
 end
 
-@testset "vgwas_gxe_vcf" begin
-    vgwas(@formula(y ~ 1 + sex + onMeds),
+@testset "trajgwas_gxe_vcf" begin
+    trajgwas(@formula(y ~ 1 + sex + onMeds),
             @formula(y ~ 1),
             @formula(y ~ 1 + sex + onMeds),
             :id,
-            filepath * "vgwas_vcfex.csv",
+            filepath * "trajgwas_vcfex.csv",
             filepath * "test_vcf",
             pvalfile = pvalpath,
             geneticformat = "VCF",
@@ -372,12 +372,12 @@ end
         (0.6296884957250368, 0.711909935890595); rtol=1e-5))
     end
 
-@testset "vgwas_gxe_bgen" begin
-    vgwas(@formula(y ~ 1 + sex + onMeds),
+@testset "trajgwas_gxe_bgen" begin
+    trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id, 
-        filepath * "vgwas_bgen_ex.csv", 
+        filepath * "trajgwas_bgen_ex.csv", 
         filepath * "example.8bits", 
         geneticformat = "BGEN", 
         pvalfile = pvalpath,
@@ -397,4 +397,4 @@ end
 
 
 rm(pvalpath)
-rm("vgwas.null.txt")
+rm("trajgwas.null.txt")

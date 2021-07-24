@@ -1,4 +1,4 @@
-name = "vGWAS"
+name = "TrajGWAS"
 uuid = "9514c204-b736-47c9-8157-11c3e9e5ab30"
 authors = ["Seyoon Ko <syko0507@snu.ac.kr> and contributors"]
 version = "0.1.0"

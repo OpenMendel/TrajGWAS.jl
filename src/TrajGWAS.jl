@@ -1,4 +1,4 @@
-module vGWAS
+module TrajGWAS
     using DataFrames, Tables, LinearAlgebra
     using Printf, Reexport, Statistics, SnpArrays, VCFTools, GeneticVariation
     using Distributions, CSV, BGEN
@@ -9,7 +9,7 @@ module vGWAS
     @reexport using StatsModels
     @reexport using Distributions
     export WSVarScoreTest, WSVarScoreTestInvariant, test!
-    export vgwas
+    export trajgwas
     export matchindices
     export Adjustor
 

@@ -13,12 +13,12 @@ end
 end
 
 """
-    vgwas(nullmeanformula, reformula, nullwsvarformula, idvar, covfile, geneticfile; kwargs...)
-    vgwas(nullmeanformula, reformula, nullwsvarformula, idvar, df, geneticfile; kwargs...)
-    vgwas(fittednullmodel, geneticfile; kwargs...)
-    vgwas(fittednullmodel, bedfile, bimfile, bedn; kwargs...)
-    vgwas(fittednullmodel, vcffile, nsamples, vcftype; kwargs...)
-    vgwas(fittednullmodel, bgenfile, nsamples; kwargs...)
+    trajgwas(nullmeanformula, reformula, nullwsvarformula, idvar, covfile, geneticfile; kwargs...)
+    trajgwas(nullmeanformula, reformula, nullwsvarformula, idvar, df, geneticfile; kwargs...)
+    trajgwas(fittednullmodel, geneticfile; kwargs...)
+    trajgwas(fittednullmodel, bedfile, bimfile, bedn; kwargs...)
+    trajgwas(fittednullmodel, vcffile, nsamples, vcftype; kwargs...)
+    trajgwas(fittednullmodel, bgenfile, nsamples; kwargs...)
 
 # Positional arguments
 - `nullmeanformula::FormulaTerm`: mean formula (β) for the null model.
@@ -37,7 +37,7 @@ end
     make sure to use the `geneticformat = "VCF"` keyword option, and specificy dosage (:DS) or
     genotype (:GT) data with the `vcftype` command.
 - `fittednullmodel::StatsModels.TableRegressionModel`: the fitted null model
-    output from `vgwas(nullformula, covfile)` or `vgwas(nullformula, df)`.
+    output from `trajgwas(nullformula, covfile)` or `trajgwas(nullformula, df)`.
     **NOTE** If the nullmodel is passed in with the `bedfile, bimfile, bedn` or 
     `vcffile, nsamples, vcftype` arguments, the IDs/data in the null model must match the
     order of the IDs in the PLINK/VCF file.  
@@ -50,9 +50,9 @@ end
 - `geneticformat`::AbstractString: Type of file used for the genetic analysis. `"PLINK"` and `"VCF"` are currently supported. Default is PLINK.
 - `vcftype`::Union{Symbol, Nothing}: Data to extract from the VCF file for the GWAS analysis. `:DS` for dosage or `:GT` for genotypes. Default is nothing.
 - `nullfile::Union{AbstractString, IOStream}`: output file for the fitted null model;
-    default is `vgwas.null.txt`.
+    default is `trajgwas.null.txt`.
 - `pvalfile::Union{AbstractString, IOStream}`: output file for the gwas p-values; default is
-    `vgwas.pval.txt`.
+    `trajgwas.pval.txt`.
 - `covtype::Vector{DataType}`: type information for `covfile`. This is useful
     when `CSV.read(covarfile)` has parsing errors.
 - `covrowinds::Union{Nothing,AbstractVector{<:Integer}}`: sample indices for covariate file.
@@ -88,34 +88,34 @@ The following is an example of basic GWAS with PLINK files:
 ```julia
 plinkfile = "plinkexample"
 covfile = "covexample"
-vgwas(@formula(trait ~ sex), covfile, plkfile)
+trajgwas(@formula(trait ~ sex), covfile, plkfile)
 ```
 
 The following is an example of basic GWAS with a VCF file using dosages then genotypes:
 ```julia
 vcffile = "vcfexample"
 covfile = "covexample"
-vgwas(@formula(trait ~ sex), covfile, vcffile;
+trajgwas(@formula(trait ~ sex), covfile, vcffile;
     geneticfile = "VCF", vcftype = :DS)
 
-vgwas(@formula(trait ~ sex), covfile, vcffile;
+trajgwas(@formula(trait ~ sex), covfile, vcffile;
     geneticfile = "VCF", vcftype = :GT)
 ```
 
 The following is an example of snpset GWAS (every 50 snps). For more types of snpset analyses see documentation:
 ```julia
-vgwas(@formula(trait ~ sex), covfile, plkfile;
+trajgwas(@formula(trait ~ sex), covfile, plkfile;
     analysistype = "snpset", snpset = 50)
 ```
 
 The following is an example of GxE GWAS testing the interaction effect:
 ```julia
-vgwas(@formula(trait ~ sex), covfile, plkfile;
+trajgwas(@formula(trait ~ sex), covfile, plkfile;
     analysistype = "gxe", e = :sex)
 ```
 
 """
-function vgwas(
+function trajgwas(
     # positional arguments
     nullmeanformula::FormulaTerm,
     reformula::FormulaTerm,
@@ -131,19 +131,19 @@ function vgwas(
     covdf = SnpArrays.makestream(covfile) do io
         CSV.read(io, DataFrame; types=covtype)
     end
-    vgwas(nullmeanformula, reformula, nullwsvarformula, idvar,
+    trajgwas(nullmeanformula, reformula, nullwsvarformula, idvar,
      covrowinds === nothing ? covdf : covdf[covrowinds, :],
         geneticfile; kwargs...)
 end
 
-function vgwas(
+function trajgwas(
     nullmeanformula::FormulaTerm,
     reformula::FormulaTerm,
     nullwsvarformula::FormulaTerm,
     idvar::Union{String, Symbol},
     nulldf::DataFrame,
     geneticfile::Union{Nothing, AbstractString} = nothing;
-    nullfile::Union{AbstractString, IOStream} = "vgwas.null.txt",
+    nullfile::Union{AbstractString, IOStream} = "trajgwas.null.txt",
     solver = Ipopt.IpoptSolver(print_level=0, mehrotra_algorithm = "yes",
     warm_start_init_point="yes", max_iter=100),
     parallel::Bool = false,
@@ -160,11 +160,11 @@ function vgwas(
         show(io, nm)
     end
     geneticfile === nothing && (return nm)
-    vgwas(nm, geneticfile; solver = solver, runs = runs, 
+    trajgwas(nm, geneticfile; solver = solver, runs = runs, 
         verbose = verbose, kwargs...)
 end
 
-function vgwas(
+function trajgwas(
     # positional arguments
     fittednullmodel::WSVarLmmModel,
     geneticfile::AbstractString;
@@ -175,7 +175,7 @@ function vgwas(
     samplepath::Union{AbstractString, Nothing} = nothing,
     testformula::FormulaTerm = fittednullmodel.meanformula.lhs ~ Term(:snp),
     test::Symbol = :score,
-    pvalfile::Union{AbstractString, IOStream} = "vgwas.pval.txt",
+    pvalfile::Union{AbstractString, IOStream} = "trajgwas.pval.txt",
     snpmodel::Union{Val{1}, Val{2}, Val{3}} = ADDITIVE_MODEL,
     snpinds::Union{Nothing, AbstractVector{<:Integer}} = nothing,
     usespa::Bool = true,
@@ -279,7 +279,7 @@ function vgwas(
 
     # gwas
     if lowercase(geneticformat) == "plink" #plink
-        vgwas(fittednullmodel, bedfile, bimfile, bedn;
+        trajgwas(fittednullmodel, bedfile, bimfile, bedn;
             analysistype = analysistype,
             testformula = testformula,
             test = test,
@@ -297,7 +297,7 @@ function vgwas(
             e = e,
             kwargs...)
     elseif lowercase(geneticformat) == "vcf" #vcf
-        vgwas(fittednullmodel, vcffile, bedn, vcftype;
+        trajgwas(fittednullmodel, vcffile, bedn, vcftype;
             analysistype = analysistype,
             testformula = testformula,
             test = test,
@@ -315,7 +315,7 @@ function vgwas(
             e = e,
             kwargs...)
     else #bgen
-        vgwas(fittednullmodel, bgenfile, bedn;
+        trajgwas(fittednullmodel, bgenfile, bedn;
             analysistype = analysistype,
             samplepath = samplepath,
             testformula = testformula,
@@ -337,7 +337,7 @@ function vgwas(
 end
 
 # For PLINK Analysis
-function vgwas(
+function trajgwas(
     fittednullmodel::WSVarLmmModel,
     bedfile::Union{AbstractString, IOStream}, # full path and bed file name
     bimfile::Union{AbstractString, IOStream}, # full path and bim file name
@@ -345,7 +345,7 @@ function vgwas(
     analysistype::AbstractString = "singlesnp",
     testformula::FormulaTerm = fittednullmodel.meanformula.lhs ~ Term(:snp),
     test::Symbol = :score,
-    pvalfile::Union{AbstractString, IOStream} = "vgwas.pval.txt",
+    pvalfile::Union{AbstractString, IOStream} = "trajgwas.pval.txt",
     snpmodel::Union{Val{1}, Val{2}, Val{3}} = ADDITIVE_MODEL,
     snpinds::Union{Nothing, AbstractVector{<:Integer}} = nothing,
     usespa::Bool = true,
@@ -583,7 +583,7 @@ function vgwas(
             if snpset == 1
                 println("SNP-set length `snpset = 1`, a single-SNP analysis will be run.")
                 # single-snp analysis
-                vgwas(fittednullmodel, bedfile, bimfile, bedn;
+                trajgwas(fittednullmodel, bedfile, bimfile, bedn;
                 analysistype = "singlesnp",
                 test = test,
                 pvalfile = pvalfile,
@@ -874,7 +874,7 @@ end
 
 
 # For VCF Analysis
-function vgwas(
+function trajgwas(
     fittednullmodel::WSVarLmmModel,
     vcffile::Union{AbstractString, IOStream}, # full path and vcf file name
     nsamples::Integer,          # number of samples in bed file
@@ -882,7 +882,7 @@ function vgwas(
     analysistype::AbstractString = "singlesnp",
     testformula::FormulaTerm = fittednullmodel.meanformula.lhs ~ Term(:snp),
     test::Symbol = :score,
-    pvalfile::Union{AbstractString, IOStream} = "vgwas.pval.txt",
+    pvalfile::Union{AbstractString, IOStream} = "trajgwas.pval.txt",
     snpmodel::Union{Val{1}, Val{2}, Val{3}} = ADDITIVE_MODEL,
     snpinds::Union{Nothing, AbstractVector{<:Integer}} = nothing,
     usespa::Bool = true,
@@ -1116,7 +1116,7 @@ function vgwas(
             if snpset == 1
                 println("SNP-set length `snpset = 1`, a single-SNP analysis will be run.")
                 # single-snp analysis
-                vgwas(fittednullmodel, vcffile, nsamples, vcftype;
+                trajgwas(fittednullmodel, vcffile, nsamples, vcftype;
                 analysistype = "singlesnp",
                 test = test,
                 pvalfile = pvalfile,
@@ -1420,7 +1420,7 @@ function vgwas(
 end
 
 # For BGEN Analysis
-function vgwas(
+function trajgwas(
     fittednullmodel::WSVarLmmModel,
     bgenfile::Union{AbstractString, IOStream}, # full path and vcf file name
     nsamples::Integer;         # number of samples in bed file
@@ -1428,7 +1428,7 @@ function vgwas(
     analysistype::AbstractString = "singlesnp",
     testformula::FormulaTerm = fittednullmodel.meanformula.lhs ~ Term(:snp),
     test::Symbol = :score,
-    pvalfile::Union{AbstractString, IOStream} = "vgwas.pval.txt",
+    pvalfile::Union{AbstractString, IOStream} = "trajgwas.pval.txt",
     snpmodel::Union{Val{1}, Val{2}, Val{3}} = ADDITIVE_MODEL,
     snpinds::Union{Nothing, AbstractVector{<:Integer}} = nothing,
     usespa::Bool = true,
@@ -1722,7 +1722,7 @@ function vgwas(
             if snpset == 1
                 println("SNP-set length `snpset = 1`, a single-SNP analysis will be run.")
                 # single-snp analysis
-                vgwas(fittednullmodel, bgenfile, nsamples;
+                trajgwas(fittednullmodel, bgenfile, nsamples;
                 analysistype = "singlesnp",
                 test = test,
                 pvalfile = pvalfile,
