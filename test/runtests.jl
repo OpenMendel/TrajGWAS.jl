@@ -224,10 +224,10 @@ end
         analysistype = "snpset",
         snpset = 1:5)
     pvalfile = open(pvalpath)
-    pvals = split(readline(pvalfile), r"[, ]")[[end-6,end-3,end]]
+    pvals = split(readline(pvalfile), r"[, ]")[[end-3, end]]
     close(pvalfile)
     @test all(isapprox.(parse.(Float64, pvals), (9.948443168811026e-6,
-    1.2760805146705195e-13, 3.8612899196708803e-16), rtol=1e-4))
+    1.2760805146705195e-13), rtol=1e-4))
 end
 
 @testset "trajgwas_snpset_vcf" begin
@@ -275,10 +275,10 @@ end
         analysistype = "snpset",
         snpset = 1:5)
     pvalfile = open(pvalpath)
-    pvals = split(readline(pvalfile), r"[, ]")[[end-6,end-3,end]]
+    pvals = split(readline(pvalfile), r"[, ]")[[end-3, end]]
     close(pvalfile)
     @test all(isapprox.(parse.(Float64, pvals), (0.079501633468,
-    0.01825642314521, 0.038726941358), rtol=1e-4))
+    0.01825642314521), rtol=1e-4))
 end
 
 
@@ -330,10 +330,10 @@ end
         snpset = 1:5,
         ref_dosage=false)
     pvalfile = open(pvalpath)
-    pvals = split(readline(pvalfile), r"[, ]")[[end-6,end-3,end]]
+    pvals = split(readline(pvalfile), r"[, ]")[[end-3, end]]
     close(pvalfile)
     @test all(isapprox.(parse.(Float64, pvals), (7.975567153147366e-7,
-    7.722715354932478e-20, 1.1593515582284077e-19), rtol=1e-4))
+    7.722715354932478e-20), rtol=1e-4))
 end
 
 @testset "trajgwas_gxe_plink" begin
@@ -391,10 +391,8 @@ end
         (0.6339056748172345, 0.34364220119286115); rtol=1e-3))
     @test all(isapprox.((mean(results.snpeffectnullbeta),
         mean(results.snpeffectnulltau)),
-        (0.4393163590931909, -0.214767624713507); rtol=1e-5))
+        (-0.0144768768325708, 0.005777868071713646); rtol=1e-5))
 end
-
-
 
 rm(pvalpath)
 rm("trajgwas.null.txt")

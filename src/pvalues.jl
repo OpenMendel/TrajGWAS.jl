@@ -48,9 +48,9 @@ function test_statistic!(
         end
     end
     if rk == 1
-        return ts, s
+        return ts, s == 0 ? 1 : s
     else
-        return ts, rk
+        return ts, max(rk, 1)
     end
 end
 

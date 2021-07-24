@@ -724,7 +724,7 @@ function trajgwas(
                     betapval = 1.0
                     taupval = 1.0
                     l2normeffect = 0.0
-                    test == :score ? println(io, "The joint pvalue of snps indexed",
+                    test == :score ? println(io, "The pvalue of snps indexed",
                     " at $(snpset) is $pval") : println(io, "The l2norm of the effect size vector",
                     " is $l2normeffect and joint pvalue of snps indexed",
                     " at $(snpset) is $pval")
@@ -737,7 +737,7 @@ function trajgwas(
                         copyto!(Z, @view(genomat[bedrowinds, snpset]), impute=true, model=snpmodel)
                         betapval, taupval, _, _ = test!(ts, Z, Z)
                         ### CHANGE TO WSVAR score test
-                        println(io, "The joint pvalue of snps indexed",
+                        println(io, "The pvalue of snps indexed",
                          " at $(snpset) is betapval: $betapval, taupval: $taupval")
                     elseif test == :wald
                         # TODO
@@ -1276,7 +1276,7 @@ function trajgwas(
                         copyto!(Z, @view(genomat[vcfrowinds, snpset]))
                         betapval, taupval, _, _ = test!(ts, Z, Z)
                     end
-                    println(io, "The joint pvalue of snps indexed",
+                    println(io, "The pvalue of snps indexed",
                      " at $(snpset) is betapval: $betapval, taupval: $taupval")
                 elseif test == :wald
                     # #TODO
