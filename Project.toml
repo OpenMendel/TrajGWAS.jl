@@ -23,6 +23,7 @@ VariantCallFormat = "28eba6e3-a997-4ad9-87c6-d933b8bca6c1"
 WiSER = "2ff19380-1883-49fc-9d10-450face6b90c"
 
 [compat]
+VariantCallFormat = "0.5"
 julia = "1.5"
 
 [extras]
