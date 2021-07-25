@@ -1,19 +1,26 @@
-# vGWAS.jl
+# TrajGWAS.jl
 
-vGWAS.jl is a Julia package for performing genome-wide association studies (GWAS) for continuous longitudinal phenotypes using a modified linear mixed effects model. It builds upon the [within-subject variance estimation by robust regression (WiSER) model estimation](https://github.com/OpenMendel/WiSER.jl) and can be used to identify variants associated with changes in the mean and within-subject variability of the longitduinal trait. The estimation procedure is robust to both distributional misspecifications of the random effects and the response. A saddlepoint approximation (SPA) option is implemented in order to provide improved power and decreased type I error for rare variants. 
+TrajGWAS.jl is a Julia package for performing genome-wide association studies (GWAS) for continuous longitudinal phenotypes using a modified linear mixed effects model. It builds upon the [within-subject variance estimation by robust regression (WiSER) model estimation](https://github.com/OpenMendel/WiSER.jl) and can be used to identify variants associated with changes in the mean and within-subject variability of the longitduinal trait. The estimation procedure is robust to both distributional misspecifications of the random effects and the response. A saddlepoint approximation (SPA) option is implemented in order to provide improved power and decreased type I error for rare variants. 
 
 
-vGWAS.jl currently supports [PLINK](https://zzz.bwh.harvard.edu/plink/), [VCF](https://en.wikipedia.org/wiki/Variant_Call_Format) (both dosage and genotype data) file formats, and [BGEN](https://www.well.ox.ac.uk/~gav/bgen_format/) file formats. We plan to add [PGEN](https://www.cog-genomics.org/plink/2.0/formats#pgen) support in the future. 
+TrajGWAS.jl currently supports [PLINK](https://zzz.bwh.harvard.edu/plink/), [VCF](https://en.wikipedia.org/wiki/Variant_Call_Format) (both dosage and genotype data) file formats, and [BGEN](https://www.well.ox.ac.uk/~gav/bgen_format/) file formats. We plan to add [PGEN](https://www.cog-genomics.org/plink/2.0/formats#pgen) support in the future. 
 
 ## Installation
 
-This package requires Julia v1.5 or later and four other unregistered packages SnpArrays.jl, VCFTools.jl, BGEN.jl, and WiSER.jl. The package has not yet been registered and must be installed using the repository location. Start julia and use the ] key to switch to the package manager REPL and run:
+This package requires Julia v1.5 or later and four other unregistered packages SnpArrays.jl, VCFTools.jl, BGEN.jl, and WiSER.jl. The package has not yet been registered and must be installed using the repository location. Execute the following code to install the package:
+
 ```julia
-(@v1.5) pkg> add https://github.com/OpenMendel/SnpArrays.jl
-(@v1.5) pkg> add https://github.com/OpenMendel/VCFTools.jl
-(@v1.5) pkg> add https://github.com/OpenMendel/BGEN.jl
-(@v1.5) pkg> add https://github.com/OpenMendel/WiSER.jl
-(@v1.5) pkg> add https://github.com/OpenMendel/vGWAS.jl
+using Pkg
+pkg"add https://github.com/OpenMendel/SnpArrays.jl"
+pkg"add https://github.com/OpenMendel/VCFTools.jl"
+pkg"add https://github.com/OpenMendel/BGEN.jl"
+pkg"add https://github.com/OpenMendel/WiSER.jl"
+pkg"add https://github.com/OpenMendel/TrajGWAS.jl" 
+```
+
+To run the code in this document, the packages installed by the following command are also necessary:
+```julia
+pkg"add BenchmarkTools CSV Glob"
 ```
 
 
@@ -22,27 +29,25 @@ This package requires Julia v1.5 or later and four other unregistered packages S
 versioninfo()
 ```
 
-    Julia Version 1.5.3
-    Commit 788b2c77c1 (2020-11-09 13:37 UTC)
+    Julia Version 1.6.2
+    Commit 1b93d53fc4 (2021-07-14 15:36 UTC)
     Platform Info:
       OS: macOS (x86_64-apple-darwin18.7.0)
-      CPU: Intel(R) Core(TM) i7-4850HQ CPU @ 2.30GHz
+      CPU: Intel(R) Core(TM) i7-7820HQ CPU @ 2.90GHz
       WORD_SIZE: 64
       LIBM: libopenlibm
-      LLVM: libLLVM-9.0.1 (ORCJIT, haswell)
-    Environment:
-      JULIA_NUM_THREADS = 4
+      LLVM: libLLVM-11.0.1 (ORCJIT, skylake)
 
 
 
 ```julia
 # for use in this tutorial
 ENV["COLUMNS"] = 250
-using BenchmarkTools, CSV, Glob, SnpArrays, vGWAS
+using BenchmarkTools, CSV, Glob, SnpArrays, TrajGWAS
 ```
 
-    ┌ Info: Precompiling vGWAS [9514c204-b736-47c9-8157-11c3e9e5ab30]
-    └ @ Base loading.jl:1278
+    ┌ Info: Precompiling TrajGWAS [9514c204-b736-47c9-8157-11c3e9e5ab30]
+    └ @ Base loading.jl:1342
 
 
 ## Example data sets
@@ -51,16 +56,16 @@ The `data` folder of the package contains the example data sets for use with PLI
 
 
 ```julia
-using vGWAS
-pvalpath = "vgwas.pval.txt"
-nullpath = "vgwas.null.txt"
-const datadir = normpath(joinpath(dirname(pathof(vGWAS)), "../data/"))
+using TrajGWAS
+pvalpath = "trajgwas.pval.txt"
+nullpath = "trajgwas.null.txt"
+const datadir = normpath(joinpath(dirname(pathof(TrajGWAS)), "../data/"))
 ```
 
 
 
 
-    "/Users/christophergerman/.julia/dev/vGWAS/data/"
+    "/Users/kose/.julia/dev/TrajGWAS/data/"
 
 
 
@@ -73,27 +78,29 @@ readdir(glob"*.*", datadir)
 
 
 
-    12-element Array{String,1}:
-     "/Users/christophergerman/.julia/dev/vGWAS/data/example.8bits.bgen"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/example.8bits.bgen.bgi"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.bed"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.bim"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.fam"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap_snpsetfile.txt"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/sim_data.jl"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/snpsetfile_vcf.txt"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/test_vcf.vcf.gz"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/vgwas_bgen_ex.csv"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/vgwas_plinkex.csv"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/vgwas_vcfex.csv"
+    14-element Vector{String}:
+     "/Users/kose/.julia/dev/TrajGWAS/data/bgen_snpsetfile.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/covariate.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/example.8bits.bgen"
+     "/Users/kose/.julia/dev/TrajGWAS/data/example.8bits.bgen.bgi"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.bed"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.bim"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.fam"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap_snpsetfile.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/sim_data.jl"
+     "/Users/kose/.julia/dev/TrajGWAS/data/snpsetfile_vcf.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/test_vcf.vcf.gz"
+     "/Users/kose/.julia/dev/TrajGWAS/data/trajgwas_bgen_ex.csv"
+     "/Users/kose/.julia/dev/TrajGWAS/data/trajgwas_plinkex.csv"
+     "/Users/kose/.julia/dev/TrajGWAS/data/trajgwas_vcfex.csv"
 
 
 
-The `hapmap3` files `vgwas_plinkex.csv` file correspond to data examples using PLINK formatted files (.bed, .bim, .fam). 
+The `hapmap3` files `trajgwas_plinkex.csv` file correspond to data examples using PLINK formatted files (.bed, .bim, .fam). 
 
-The `test_vcf.vcf.gz` and `vgwas_vcfex.csv` files are for an example analysis using VCF formatted files. 
+The `test_vcf.vcf.gz` and `trajgwas_vcfex.csv` files are for an example analysis using VCF formatted files. 
 
-The `example.8bits.bgen` and `vgwas_bgen_ex.csv` files are for an example analysis using VCF formatted files. 
+The `example.8bits.bgen` and `trajgwas_bgen_ex.csv` files are for an example analysis using VCF formatted files. 
 
 
 ## Basic usage
@@ -104,18 +111,25 @@ The default type of GWAS performed is a single-snp significance genome-wide scan
 
 
 ```julia
-vgwas(@formula(y ~ 1 + sex + onMeds),
+trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
-        datadir * "vgwas_plinkex.csv",
+        datadir * "trajgwas_plinkex.csv",
         datadir * "hapmap3",
         pvalfile = pvalpath,
         nullfile = nullpath)
 ```
 
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.153256
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.140690
+    
+    ******************************************************************************
+    This program contains Ipopt, a library for large-scale nonlinear optimization.
+     Ipopt is released as open source code under the Eclipse Public License (EPL).
+             For more information visit https://github.com/coin-or/Ipopt
+    ******************************************************************************
+    
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.239220
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.054824
 
 
 
@@ -152,9 +166,9 @@ vgwas(@formula(y ~ 1 + sex + onMeds),
 
 
 
-For documentation of the `vgwas` function, type `?vgwas` in Julia REPL.
+For documentation of the `trajgwas` function, type `?trajgwas` in Julia REPL.
 ```@docs
-vgwas
+trajgwas
 ```
 
 ### Formula for null model
@@ -170,15 +184,15 @@ The first three arguments specify the null model without SNP effects. The fourth
 
 ### Input files
 
-`vgwas` expects two input files: one for responses plus covariates (fifth argument), the other the genetic file(s) for dosages/genotypes (sixth argument).
+`trajgwas` expects two input files: one for responses plus covariates (fifth argument), the other the genetic file(s) for dosages/genotypes (sixth argument).
 
 #### Covariate and trait file
 
-Covariates and phenotype are provided in a csv file, e.g., `vgwas_plinkex.csv`, which has one header line for variable names. In this example, variable `y` is continuous variable with repeated measures on individuals specified by `id`. We want to include variable `sex` and `onMeds` as covariates for GWAS.
+Covariates and phenotype are provided in a csv file, e.g., `trajgwas_plinkex.csv`, which has one header line for variable names. In this example, variable `y` is continuous variable with repeated measures on individuals specified by `id`. We want to include variable `sex` and `onMeds` as covariates for GWAS.
 
 
 ```julia
-run(`head $(datadir)vgwas_plinkex.csv`);
+run(`head $(datadir)trajgwas_plinkex.csv`);
 ```
 
     sex,onMeds,snp1,snp2,snp3,snp4,y,id
@@ -195,17 +209,17 @@ run(`head $(datadir)vgwas_plinkex.csv`);
 
 #### Genetic file(s)
 
-vGWAS supports PLINK files, VCF files, and BGEN files.
+TrajGWAS supports PLINK files, VCF files, and BGEN files.
 
 - Genotype data is available as binary PLINK files.
 
-- vGWAS can use dosage or genotype data from VCF files. 
+- TrajGWAS can use dosage or genotype data from VCF files. 
 
-- vGWAS uses dosage data from BGEN files.
+- TrajGWAS uses dosage data from BGEN files.
 
 !!! note
 
-    By default, vGWAS assumes a set of PLINK files will be used. When using a VCF File, VCF file and type of data (dosage, genotype) must be specified by the `geneticformat` and `vcftype` options (as shown later). Similarly, BGEN must be specified as the `geneticformat` if using a BGEN file. 
+    By default, TrajGWAS assumes a set of PLINK files will be used. When using a VCF File, VCF file and type of data (dosage, genotype) must be specified by the `geneticformat` and `vcftype` options (as shown later). Similarly, BGEN must be specified as the `geneticformat` if using a BGEN file. 
 
 
 ```julia
@@ -215,10 +229,10 @@ readdir(glob"hapmap3.*", datadir)
 
 
 
-    3-element Array{String,1}:
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.bed"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.bim"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.fam"
+    3-element Vector{String}:
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.bed"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.bim"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.fam"
 
 
 
@@ -238,11 +252,11 @@ size(SnpArray(datadir * "hapmap3.bed"))
 
 Compressed PLINK and VCF files are supported. For example, if Plink files are `hapmap3.bed.gz`, `hapmap3.bim.gz` and `hapmap3.fam.gz`, the same command
 ```julia
-vgwas(@formula(y ~ 1 + sex + onMeds),
+trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
-        datadir * "vgwas_plinkex.csv",
+        datadir * "trajgwas_plinkex.csv",
         datadir * "hapmap3",
         pvalfile = pvalpath,
         nullfile = nullpath)
@@ -257,7 +271,7 @@ SnpArrays.ALLOWED_FORMAT
 
 
 
-    6-element Array{String,1}:
+    6-element Vector{String}:
      "gz"
      "zlib"
      "zz"
@@ -269,13 +283,13 @@ SnpArrays.ALLOWED_FORMAT
 
 ### Output files
 
-`vgwas` outputs two files: `vgwas.null.txt` and `vgwas.pval.txt`. 
+`trajgwas` outputs two files: `trajgwas.null.txt` and `trajgwas.pval.txt`. 
 
-* `vgwas.null.txt` lists the estimated null model (without SNPs). 
+* `trajgwas.null.txt` lists the estimated null model (without SNPs). 
 
 
 ```julia
-run(`cat vgwas.null.txt`);
+run(`cat trajgwas.null.txt`);
 ```
 
     
@@ -307,32 +321,32 @@ run(`cat vgwas.null.txt`);
     
 
 
-* `vgwas.pval.txt` tallies the SNPs, their pvalues, and relevant information on each SNP.
+* `trajgwas.pval.txt` tallies the SNPs, their pvalues, and relevant information on each SNP.
     - betapval represents the p-value of the SNP's effect on the mean of the trait. If `spa=true` (default), then this is the SPA p-value. If `spa=false`, then this is the score test beta p-value. 
     - taupval represents the p-value of the SNP's effect on the within-subject variability of the trait. If `spa=true` (default), then this is the SPA p-value. If `spa=false`, then this is the score test tau p-value. 
     - jointpval represents a joint p-value of the SNP's effect on both the mean and variance. By default `spa=true` this is the harmonic mean of the saddlepoint approximated p-values for beta and tau. If `spa=false`, this is the joint score test p-value.
 
 
 ```julia
-first(CSV.read("vgwas.pval.txt", DataFrame), 8)
+first(CSV.read("trajgwas.pval.txt", DataFrame), 8)
 ```
 
 
 
 
-<table class="data-frame"><thead><tr><th></th><th>chr</th><th>pos</th><th>snpid</th><th>maf</th><th>hwepval</th><th>betapval</th><th>taupval</th><th>jointpval</th></tr><tr><th></th><th>Int64</th><th>Int64</th><th>String</th><th>Float64</th><th>Float64</th><th>Float64</th><th>Float64</th><th>Float64</th></tr></thead><tbody><p>8 rows × 8 columns</p><tr><th>1</th><td>1</td><td>554484</td><td>rs10458597</td><td>0.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td></tr><tr><th>2</th><td>1</td><td>758311</td><td>rs12562034</td><td>0.0776398</td><td>0.409876</td><td>0.38939</td><td>0.922822</td><td>0.689845</td></tr><tr><th>3</th><td>1</td><td>967643</td><td>rs2710875</td><td>0.324074</td><td>4.07625e-7</td><td>5.83856e-6</td><td>3.35408e-6</td><td>1.1501e-6</td></tr><tr><th>4</th><td>1</td><td>1168108</td><td>rs11260566</td><td>0.191589</td><td>0.128568</td><td>0.000850889</td><td>0.0559055</td><td>0.000739637</td></tr><tr><th>5</th><td>1</td><td>1375074</td><td>rs1312568</td><td>0.441358</td><td>2.5376e-19</td><td>0.000171683</td><td>1.84811e-13</td><td>4.62603e-14</td></tr><tr><th>6</th><td>1</td><td>1588771</td><td>rs35154105</td><td>0.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td></tr><tr><th>7</th><td>1</td><td>1789051</td><td>rs16824508</td><td>0.00462963</td><td>0.933278</td><td>0.295035</td><td>0.304109</td><td>0.260174</td></tr><tr><th>8</th><td>1</td><td>1990452</td><td>rs2678939</td><td>0.453704</td><td>5.07696e-11</td><td>1.27871e-7</td><td>7.73809e-9</td><td>1.56973e-9</td></tr></tbody></table>
+<table class="data-frame"><thead><tr><th></th><th>chr</th><th>pos</th><th>snpid</th><th>maf</th><th>hwepval</th><th>betapval</th><th>betadir</th><th>taupval</th><th>taudir</th><th>jointpval</th></tr><tr><th></th><th>Int64</th><th>Int64</th><th>String</th><th>Float64</th><th>Float64</th><th>Float64</th><th>Int64</th><th>Float64</th><th>Int64</th><th>Float64</th></tr></thead><tbody><p>8 rows × 10 columns</p><tr><th>1</th><td>1</td><td>554484</td><td>rs10458597</td><td>0.0</td><td>1.0</td><td>1.0</td><td>0</td><td>1.0</td><td>0</td><td>1.0</td></tr><tr><th>2</th><td>1</td><td>758311</td><td>rs12562034</td><td>0.0776398</td><td>0.409876</td><td>0.38939</td><td>-1</td><td>0.922822</td><td>-1</td><td>0.547682</td></tr><tr><th>3</th><td>1</td><td>967643</td><td>rs2710875</td><td>0.324074</td><td>4.07625e-7</td><td>5.83856e-6</td><td>1</td><td>3.35408e-6</td><td>-1</td><td>4.93598e-7</td></tr><tr><th>4</th><td>1</td><td>1168108</td><td>rs11260566</td><td>0.191589</td><td>0.128568</td><td>0.000850889</td><td>1</td><td>0.0559055</td><td>1</td><td>0.00101827</td></tr><tr><th>5</th><td>1</td><td>1375074</td><td>rs1312568</td><td>0.441358</td><td>2.5376e-19</td><td>0.000171683</td><td>-1</td><td>1.84811e-13</td><td>1</td><td>2.07091e-15</td></tr><tr><th>6</th><td>1</td><td>1588771</td><td>rs35154105</td><td>0.0</td><td>1.0</td><td>1.0</td><td>0</td><td>1.0</td><td>0</td><td>1.0</td></tr><tr><th>7</th><td>1</td><td>1789051</td><td>rs16824508</td><td>0.00462963</td><td>0.933278</td><td>0.295035</td><td>1</td><td>0.304109</td><td>1</td><td>0.299504</td></tr><tr><th>8</th><td>1</td><td>1990452</td><td>rs2678939</td><td>0.453704</td><td>5.07696e-11</td><td>1.27871e-7</td><td>1</td><td>7.73809e-9</td><td>-1</td><td>3.3986e-9</td></tr></tbody></table>
 
 
 
 Output file names can be changed by the `nullfile` and `pvalfile` keywords respectively. For example, 
 ```julia
-vgwas(@formula(y ~ 1 + sex + onMeds),
+trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
-        datadir * "vgwas_plinkex.csv",
+        datadir * "trajgwas_plinkex.csv",
         datadir * "hapmap3",
-        pvalfile = "vgwas.pval.txt.gz",
+        pvalfile = "trajgwas.pval.txt.gz",
         nullfile = nullpath)
 
 ```
@@ -342,7 +356,7 @@ will output the p-value file in compressed gz format.
 
 Use the keyword `covrowinds` to specify selected samples in the covarite file. Use the keyword `geneticrowinds` to specify selected samples in the Plink (.bed), VCF, or BGEN file. For example, to use the first 300 samples in both covariate and bed file:
 ```julia
-vgwas(@formula(trait ~ 1+ sex), 
+trajgwas(@formula(trait ~ 1+ sex), 
     @formula(trait ~ 1), 
     @formula(trait ~ 1 + sex), 
     :id,
@@ -355,9 +369,9 @@ vgwas(@formula(trait ~ 1+ sex),
 
 ### Input non-genetic data as DataFrame
 
-Internally `vgwas` parses the covariate file as a DataFrame by `df = CSV.read(covfile, DataFrame)`. For covariate file of other formats, or for specifying default levels of categorical variables, users can parse their datafile as a DataFrame and then input the DataFrame to `vgwas` directly.
+Internally `trajgwas` parses the covariate file as a DataFrame by `df = CSV.read(covfile, DataFrame)`. For covariate file of other formats, or for specifying default levels of categorical variables, users can parse their datafile as a DataFrame and then input the DataFrame to `trajgwas` directly.
 ```julia
-vgwas(@formula(trait ~ 1+ sex), 
+trajgwas(@formula(trait ~ 1+ sex), 
     @formula(trait ~ 1), 
     @formula(trait ~ 1 + sex),
     :id,
@@ -367,13 +381,13 @@ vgwas(@formula(trait ~ 1+ sex),
 
     Users should always make sure that individuals in covariate file or DataFrame match those in Plink fam file/VCF File/BGEN file. 
 
-For example, following code checks that the first 2 columns of the `covariate.txt` file match the first 2 columns of the `hapmap3.fam` file exactly.
+For example, following code checks that the subject ID of the `covariate.txt` file match that of the `hapmap3.fam` file exactly.
 
 
 ```julia
-covdf = CSV.read(datadir * "covariate.txt")
-plkfam = CSV.read(datadir * "hapmap3.fam", header=0, delim=' ')
-all(covdf[!, 1] .== plkfam[!, 1]) && all(covdf[!, 2] .== plkfam[!, 2])
+covdf = CSV.read(datadir * "covariate.txt", DataFrame)
+plkfam = CSV.read(datadir * "hapmap3.fam", DataFrame, header=0, delim=' ')
+all(covdf[!, 2] .== plkfam[!, 2])
 ```
 
 
@@ -383,64 +397,92 @@ all(covdf[!, 1] .== plkfam[!, 1]) && all(covdf[!, 2] .== plkfam[!, 2])
 
 
 
-### Timing
 
-For this moderate-sized data set, `vgwas` takes around 1 second without applying SPA. With SPA, it takes a little longer. 
+```julia
+covdf
+```
+
+
+
+
+<table class="data-frame"><thead><tr><th></th><th>famid</th><th>perid</th><th>faid</th><th>moid</th><th>sex</th><th>trait</th></tr><tr><th></th><th>String</th><th>String</th><th>Int64</th><th>Int64</th><th>Int64</th><th>Int64</th></tr></thead><tbody><p>324 rows × 6 columns</p><tr><th>1</th><td>2431</td><td>NA19916</td><td>0</td><td>0</td><td>1</td><td>4</td></tr><tr><th>2</th><td>2424</td><td>NA19835</td><td>0</td><td>0</td><td>2</td><td>4</td></tr><tr><th>3</th><td>2469</td><td>NA20282</td><td>0</td><td>0</td><td>2</td><td>4</td></tr><tr><th>4</th><td>2368</td><td>NA19703</td><td>0</td><td>0</td><td>1</td><td>3</td></tr><tr><th>5</th><td>2425</td><td>NA19901</td><td>0</td><td>0</td><td>2</td><td>3</td></tr><tr><th>6</th><td>2427</td><td>NA19908</td><td>0</td><td>0</td><td>1</td><td>4</td></tr><tr><th>7</th><td>2430</td><td>NA19914</td><td>0</td><td>0</td><td>2</td><td>4</td></tr><tr><th>8</th><td>2470</td><td>NA20287</td><td>0</td><td>0</td><td>2</td><td>1</td></tr><tr><th>9</th><td>2436</td><td>NA19713</td><td>0</td><td>0</td><td>2</td><td>3</td></tr><tr><th>10</th><td>2426</td><td>NA19904</td><td>0</td><td>0</td><td>1</td><td>1</td></tr><tr><th>11</th><td>2431</td><td>NA19917</td><td>0</td><td>0</td><td>2</td><td>1</td></tr><tr><th>12</th><td>2436</td><td>NA19982</td><td>0</td><td>0</td><td>1</td><td>2</td></tr><tr><th>13</th><td>2487</td><td>NA20340</td><td>0</td><td>0</td><td>1</td><td>4</td></tr><tr><th>14</th><td>2427</td><td>NA19909</td><td>0</td><td>0</td><td>2</td><td>4</td></tr><tr><th>15</th><td>2424</td><td>NA19834</td><td>0</td><td>0</td><td>1</td><td>4</td></tr><tr><th>16</th><td>2480</td><td>NA20317</td><td>0</td><td>0</td><td>2</td><td>4</td></tr><tr><th>17</th><td>2418</td><td>NA19818</td><td>0</td><td>0</td><td>1</td><td>1</td></tr><tr><th>18</th><td>2490</td><td>NA20346</td><td>0</td><td>0</td><td>1</td><td>2</td></tr><tr><th>19</th><td>2433</td><td>NA19921</td><td>0</td><td>0</td><td>2</td><td>4</td></tr><tr><th>20</th><td>2469</td><td>NA20281</td><td>0</td><td>0</td><td>1</td><td>4</td></tr><tr><th>21</th><td>2495</td><td>NA20359</td><td>0</td><td>0</td><td>2</td><td>4</td></tr><tr><th>22</th><td>2477</td><td>NA20301</td><td>0</td><td>0</td><td>2</td><td>2</td></tr><tr><th>23</th><td>2492</td><td>NA20349</td><td>0</td><td>0</td><td>1</td><td>3</td></tr><tr><th>24</th><td>2474</td><td>NA20294</td><td>0</td><td>0</td><td>2</td><td>4</td></tr><tr><th>25</th><td>2494</td><td>NA20357</td><td>0</td><td>0</td><td>2</td><td>3</td></tr><tr><th>26</th><td>2425</td><td>NA19900</td><td>0</td><td>0</td><td>1</td><td>4</td></tr><tr><th>27</th><td>2491</td><td>NA20348</td><td>0</td><td>0</td><td>1</td><td>4</td></tr><tr><th>28</th><td>2471</td><td>NA20289</td><td>0</td><td>0</td><td>2</td><td>4</td></tr><tr><th>29</th><td>2489</td><td>NA20344</td><td>0</td><td>0</td><td>2</td><td>4</td></tr><tr><th>30</th><td>2418</td><td>NA19819</td><td>0</td><td>0</td><td>2</td><td>4</td></tr><tr><th>&vellip;</th><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td></tr></tbody></table>
+
+
 
 
 ```julia
-@btime(vgwas(@formula(y ~ 1 + sex + onMeds),
+plkfam
+```
+
+
+
+
+<table class="data-frame"><thead><tr><th></th><th>Column1</th><th>Column2</th><th>Column3</th><th>Column4</th><th>Column5</th><th>Column6</th></tr><tr><th></th><th>String</th><th>String</th><th>Int64</th><th>Int64</th><th>Int64</th><th>Int64</th></tr></thead><tbody><p>324 rows × 6 columns</p><tr><th>1</th><td>A1</td><td>NA19916</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>2</th><td>2</td><td>NA19835</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>3</th><td>3</td><td>NA20282</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>4</th><td>4</td><td>NA19703</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>5</th><td>5</td><td>NA19901</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>6</th><td>6</td><td>NA19908</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>7</th><td>7</td><td>NA19914</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>8</th><td>8</td><td>NA20287</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>9</th><td>9</td><td>NA19713</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>10</th><td>10</td><td>NA19904</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>11</th><td>11</td><td>NA19917</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>12</th><td>12</td><td>NA19982</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>13</th><td>13</td><td>NA20340</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>14</th><td>14</td><td>NA19909</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>15</th><td>15</td><td>NA19834</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>16</th><td>16</td><td>NA20317</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>17</th><td>17</td><td>NA19818</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>18</th><td>18</td><td>NA20346</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>19</th><td>19</td><td>NA19921</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>20</th><td>20</td><td>NA20281</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>21</th><td>21</td><td>NA20359</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>22</th><td>22</td><td>NA20301</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>23</th><td>23</td><td>NA20349</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>24</th><td>24</td><td>NA20294</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>25</th><td>25</td><td>NA20357</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>26</th><td>26</td><td>NA19900</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>27</th><td>27</td><td>NA20348</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>28</th><td>28</td><td>NA20289</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>29</th><td>29</td><td>NA20344</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>30</th><td>30</td><td>NA19819</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>&vellip;</th><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td></tr></tbody></table>
+
+
+
+### Timing
+
+For this moderate-sized data set, `trajgwas` takes around 1 second without applying SPA. With SPA, it takes a little longer. 
+
+
+```julia
+@btime(trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
-        datadir * "vgwas_plinkex.csv",
+        datadir * "trajgwas_plinkex.csv",
         datadir * "hapmap3",
         pvalfile = pvalpath,
         nullfile = nullpath, 
         usespa = false));
 ```
 
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.159280
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.149766
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.152873
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.126264
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.149566
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.130830
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.141506
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.127524
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.148520
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.130201
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.143576
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.127183
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.144576
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.128221
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.142490
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.127983
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.143693
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.135728
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.141163
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.132183
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.142592
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.133999
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.149729
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.133083
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.147808
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.133049
-      1.056 s (2452221 allocations: 193.22 MiB)
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.102985
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.078291
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.055025
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.050613
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.123091
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.078134
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.068625
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.067248
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.070044
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.102371
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.150750
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.108042
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.184594
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.114657
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.124640
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.360089
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.077955
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.064086
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.075142
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.072641
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.090420
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.076298
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.072322
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.062422
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.082881
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.057534
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.092499
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.078647
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.062309
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.071147
+      656.411 ms (1451182 allocations: 134.65 MiB)
 
 
 
 ```julia
 # clean up
-rm("vgwas.null.txt", force=true)
-rm("vgwas.pval.txt", force=true)
+rm("trajgwas.null.txt", force=true)
+rm("trajgwas.pval.txt", force=true)
 ```
 
 ## VCF Formatted Files
 
-By default, vGWAS.jl will assume you are using PLINK files. It also supports VCF (and BGEN) Files. `vcf.gz` files are supported as well. To use vcf files in any of the analysis options detailed in this documentation, you simply need to add two keyword options to the `vgwas` function:
+By default, TrajGWAS.jl will assume you are using PLINK files. It also supports VCF (and BGEN) Files. `vcf.gz` files are supported as well. To use vcf files in any of the analysis options detailed in this documentation, you simply need to add two keyword options to the `trajgwas` function:
 * `geneticformat`: Choices are "VCF" or "PLINK". If you are using a VCF file, use `geneticformat = "VCF"`.
-* `vcftype`: Choices are :GT (for genotypes) or :DS (for dosages). This tells vGWAS which type of data to extract from the VCF file.
+* `vcftype`: Choices are :GT (for genotypes) or :DS (for dosages). This tells TrajGWAS which type of data to extract from the VCF file.
 
 Using a VCF File does not output minor allele frequency or hardy weinberg equillibrium p-values for each SNP tested since they may be dosages. 
 
@@ -448,19 +490,19 @@ The following shows how to run an analysis with a VCF file using the dosage info
 
 
 ```julia
-vgwas(@formula(y ~ 1 + sex + onMeds),
+trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
-        datadir * "vgwas_vcfex.csv",
+        datadir * "trajgwas_vcfex.csv",
         datadir * "test_vcf",
         pvalfile = pvalpath,
         geneticformat = "VCF",
         vcftype = :DS)
 ```
 
-    run = 1, ‖Δβ‖ = 0.003459, ‖Δτ‖ = 0.421747, ‖ΔL‖ = 0.002492, status = Optimal, time(s) = 0.067161
-    run = 2, ‖Δβ‖ = 0.001369, ‖Δτ‖ = 0.015998, ‖ΔL‖ = 0.003244, status = Optimal, time(s) = 0.057506
+    run = 1, ‖Δβ‖ = 0.003459, ‖Δτ‖ = 0.421747, ‖ΔL‖ = 0.002492, status = Optimal, time(s) = 0.025821
+    run = 2, ‖Δβ‖ = 0.001369, ‖Δτ‖ = 0.015998, ‖ΔL‖ = 0.003244, status = Optimal, time(s) = 0.023562
 
 
 
@@ -487,7 +529,7 @@ vgwas(@formula(y ~ 1 + sex + onMeds),
     β2: sex          -3.41012    0.253155   -13.47    <1e-40
     β3: onMeds        0.485447   0.0701423    6.92    <1e-11
     τ1: (Intercept)   0.774299   0.0849867    9.11    <1e-19
-    τ2: sex          -0.524117   0.106719    -4.91    <1e-6
+    τ2: sex          -0.524117   0.106719    -4.91    <1e-06
     τ3: onMeds        0.633337   0.0814974    7.77    <1e-14
     ────────────────────────────────────────────────────────
     Random effects covariance matrix Σγ:
@@ -499,19 +541,19 @@ vgwas(@formula(y ~ 1 + sex + onMeds),
 
 
 ```julia
-first(CSV.read("vgwas.pval.txt", DataFrame), 8)
+first(CSV.read("trajgwas.pval.txt", DataFrame), 8)
 ```
 
 
 
 
-<table class="data-frame"><thead><tr><th></th><th>chr</th><th>pos</th><th>snpid</th><th>betapval</th><th>taupval</th><th>jointpval</th></tr><tr><th></th><th>Int64</th><th>Int64</th><th>String</th><th>Float64</th><th>Float64</th><th>Float64</th></tr></thead><tbody><p>8 rows × 6 columns</p><tr><th>1</th><td>22</td><td>20000086</td><td>rs138720731</td><td>0.322684</td><td>0.61956</td><td>0.593855</td></tr><tr><th>2</th><td>22</td><td>20000146</td><td>rs73387790</td><td>1.0</td><td>1.0</td><td>1.0</td></tr><tr><th>3</th><td>22</td><td>20000199</td><td>rs183293480</td><td>0.214207</td><td>0.190785</td><td>0.424942</td></tr><tr><th>4</th><td>22</td><td>20000291</td><td>rs185807825</td><td>0.292231</td><td>0.200029</td><td>0.387984</td></tr><tr><th>5</th><td>22</td><td>20000428</td><td>rs55902548</td><td>0.0140114</td><td>0.00369005</td><td>0.0059257</td></tr><tr><th>6</th><td>22</td><td>20000683</td><td>rs142720028</td><td>1.0</td><td>1.0</td><td>1.0</td></tr><tr><th>7</th><td>22</td><td>20000771</td><td>rs114690707</td><td>0.536406</td><td>0.145113</td><td>0.239854</td></tr><tr><th>8</th><td>22</td><td>20000793</td><td>rs189842693</td><td>0.161414</td><td>0.757017</td><td>0.271893</td></tr></tbody></table>
+<table class="data-frame"><thead><tr><th></th><th>chr</th><th>pos</th><th>snpid</th><th>betapval</th><th>betadir</th><th>taupval</th><th>taudir</th><th>jointpval</th></tr><tr><th></th><th>Int64</th><th>Int64</th><th>String</th><th>Float64</th><th>Int64</th><th>Float64</th><th>Int64</th><th>Float64</th></tr></thead><tbody><p>8 rows × 8 columns</p><tr><th>1</th><td>22</td><td>20000086</td><td>rs138720731</td><td>0.322684</td><td>-1</td><td>0.61956</td><td>-1</td><td>0.424353</td></tr><tr><th>2</th><td>22</td><td>20000146</td><td>rs73387790</td><td>1.0</td><td>0</td><td>1.0</td><td>0</td><td>1.0</td></tr><tr><th>3</th><td>22</td><td>20000199</td><td>rs183293480</td><td>0.214207</td><td>1</td><td>0.190785</td><td>1</td><td>0.201819</td></tr><tr><th>4</th><td>22</td><td>20000291</td><td>rs185807825</td><td>0.292231</td><td>1</td><td>0.200029</td><td>1</td><td>0.237495</td></tr><tr><th>5</th><td>22</td><td>20000428</td><td>rs55902548</td><td>0.0140114</td><td>1</td><td>0.00369005</td><td>1</td><td>0.00576184</td></tr><tr><th>6</th><td>22</td><td>20000683</td><td>rs142720028</td><td>1.0</td><td>0</td><td>1.0</td><td>0</td><td>1.0</td></tr><tr><th>7</th><td>22</td><td>20000771</td><td>rs114690707</td><td>0.536406</td><td>-1</td><td>0.145113</td><td>1</td><td>0.22843</td></tr><tr><th>8</th><td>22</td><td>20000793</td><td>rs189842693</td><td>0.161414</td><td>-1</td><td>0.757017</td><td>1</td><td>0.266091</td></tr></tbody></table>
 
 
 
 ## BGEN Formatted Files
 
-By default, vGWAS.jl will assume you are using PLINK files. It also supports BGEN Files. To use BGEN files in any of the analysis options detailed in this documentation, you simply need to add the following keyword option to the `vgwas` function:
+By default, TrajGWAS.jl will assume you are using PLINK files. It also supports BGEN Files. To use BGEN files in any of the analysis options detailed in this documentation, you simply need to add the following keyword option to the `trajgwas` function:
 * `geneticformat`: Choices are "VCF" or "PLINK" or "BGEN". If you are using a BGEN file, use `geneticformat = "BGEN"`.
 
 Using a BGEN File does not output minor allele frequency or hardy weinberg equillibrium p-values for each SNP tested.
@@ -520,24 +562,24 @@ Some features, such as SNP-set analyses, are only available when there's an inde
 
 !!! note
 
-    BGEN files can contain an optional index file (`.bgi` file) that allows the variants to be specified in order of position. vGWAS will automatically look for a file in the same directory as the `BGENFILENAME` with the name `BGENFILENAME.bgi`. The BGEN file is read either in the `.bgi` file order if `BGENFILENAME.bgi` is supplied in the same directory as the BGEN file, otherwise it will use the order in the BGEN file. This is important in analyses specifying `snpinds` as well as annotation groupings. You must make sure this matches the way the BGEN file will be read in. 
+    BGEN files can contain an optional index file (`.bgi` file) that allows the variants to be specified in order of position. TrajGWAS will automatically look for a file in the same directory as the `BGENFILENAME` with the name `BGENFILENAME.bgi`. The BGEN file is read either in the `.bgi` file order if `BGENFILENAME.bgi` is supplied in the same directory as the BGEN file, otherwise it will use the order in the BGEN file. This is important in analyses specifying `snpinds` as well as annotation groupings. You must make sure this matches the way the BGEN file will be read in. 
 
 The following shows how to run an analysis with a BGEN file using the dosage information. 
 
 
 ```julia
-vgwas(@formula(y ~ 1 + sex + onMeds),
+trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id, 
-        datadir * "vgwas_bgen_ex.csv", 
+        datadir * "trajgwas_bgen_ex.csv", 
         datadir * "example.8bits", 
         geneticformat = "BGEN", 
         pvalfile = pvalpath)
 ```
 
-    run = 1, ‖Δβ‖ = 0.096578, ‖Δτ‖ = 0.162563, ‖ΔL‖ = 0.007625, status = Optimal, time(s) = 0.195432
-    run = 2, ‖Δβ‖ = 0.003173, ‖Δτ‖ = 0.005584, ‖ΔL‖ = 0.001468, status = Optimal, time(s) = 0.145392
+    run = 1, ‖Δβ‖ = 0.096578, ‖Δτ‖ = 0.162563, ‖ΔL‖ = 0.007625, status = Optimal, time(s) = 0.131960
+    run = 2, ‖Δβ‖ = 0.003173, ‖Δτ‖ = 0.005584, ‖ΔL‖ = 0.001468, status = Optimal, time(s) = 0.108087
 
 
 
@@ -576,13 +618,13 @@ vgwas(@formula(y ~ 1 + sex + onMeds),
 
 
 ```julia
-first(CSV.read("vgwas.pval.txt", DataFrame), 8)
+first(CSV.read("trajgwas.pval.txt", DataFrame), 8)
 ```
 
 
 
 
-<table class="data-frame"><thead><tr><th></th><th>chr</th><th>pos</th><th>snpid</th><th>varid</th><th>betapval</th><th>taupval</th><th>jointpval</th></tr><tr><th></th><th>Int64</th><th>Int64</th><th>String</th><th>String</th><th>Float64</th><th>Float64</th><th>Float64</th></tr></thead><tbody><p>8 rows × 7 columns</p><tr><th>1</th><td>1</td><td>1001</td><td>RSID_101</td><td>SNPID_101</td><td>0.510629</td><td>0.425112</td><td>0.601078</td></tr><tr><th>2</th><td>1</td><td>2000</td><td>RSID_2</td><td>SNPID_2</td><td>4.61579e-10</td><td>1.52897e-21</td><td>1.70132e-24</td></tr><tr><th>3</th><td>1</td><td>2001</td><td>RSID_102</td><td>SNPID_102</td><td>4.49315e-10</td><td>1.8004e-21</td><td>2.00297e-24</td></tr><tr><th>4</th><td>1</td><td>3000</td><td>RSID_3</td><td>SNPID_3</td><td>0.0721822</td><td>0.600949</td><td>0.188409</td></tr><tr><th>5</th><td>1</td><td>3001</td><td>RSID_103</td><td>SNPID_103</td><td>0.0721821</td><td>0.600949</td><td>0.188409</td></tr><tr><th>6</th><td>1</td><td>4000</td><td>RSID_4</td><td>SNPID_4</td><td>0.112472</td><td>0.133752</td><td>0.078067</td></tr><tr><th>7</th><td>1</td><td>4001</td><td>RSID_104</td><td>SNPID_104</td><td>0.112471</td><td>0.133752</td><td>0.078067</td></tr><tr><th>8</th><td>1</td><td>5000</td><td>RSID_5</td><td>SNPID_5</td><td>0.526325</td><td>0.542332</td><td>0.675825</td></tr></tbody></table>
+<table class="data-frame"><thead><tr><th></th><th>chr</th><th>pos</th><th>snpid</th><th>varid</th><th>hwepval</th><th>maf</th><th>infoscore</th><th>betapval</th><th>betadir</th><th>taupval</th><th>taudir</th><th>jointpval</th></tr><tr><th></th><th>Int64</th><th>Int64</th><th>String</th><th>String</th><th>Float64</th><th>Float64</th><th>Float64</th><th>Float64</th><th>Int64</th><th>Float64</th><th>Int64</th><th>Float64</th></tr></thead><tbody><p>8 rows × 12 columns</p><tr><th>1</th><td>1</td><td>1001</td><td>RSID_101</td><td>SNPID_101</td><td>0.86274</td><td>0.416977</td><td>0.984639</td><td>0.510629</td><td>-1</td><td>0.425112</td><td>-1</td><td>0.463963</td></tr><tr><th>2</th><td>1</td><td>2000</td><td>RSID_2</td><td>SNPID_2</td><td>0.192181</td><td>0.19751</td><td>9.0</td><td>4.5062e-10</td><td>1</td><td>1.40173e-21</td><td>-1</td><td>6.67473e-21</td></tr><tr><th>3</th><td>1</td><td>2001</td><td>RSID_102</td><td>SNPID_102</td><td>0.1844</td><td>0.197667</td><td>0.727309</td><td>4.47847e-10</td><td>-1</td><td>1.79121e-21</td><td>1</td><td>8.45783e-21</td></tr><tr><th>4</th><td>1</td><td>3000</td><td>RSID_3</td><td>SNPID_3</td><td>0.965354</td><td>0.483396</td><td>0.955355</td><td>0.0721822</td><td>-1</td><td>0.600949</td><td>-1</td><td>0.128884</td></tr><tr><th>5</th><td>1</td><td>3001</td><td>RSID_103</td><td>SNPID_103</td><td>0.965354</td><td>0.483396</td><td>0.955355</td><td>0.0721821</td><td>1</td><td>0.600949</td><td>1</td><td>0.128884</td></tr><tr><th>6</th><td>1</td><td>4000</td><td>RSID_4</td><td>SNPID_4</td><td>0.371927</td><td>0.21671</td><td>0.991768</td><td>0.112472</td><td>-1</td><td>0.133752</td><td>-1</td><td>0.122192</td></tr><tr><th>7</th><td>1</td><td>4001</td><td>RSID_104</td><td>SNPID_104</td><td>0.371928</td><td>0.21671</td><td>0.991768</td><td>0.112471</td><td>1</td><td>0.133752</td><td>1</td><td>0.122192</td></tr><tr><th>8</th><td>1</td><td>5000</td><td>RSID_5</td><td>SNPID_5</td><td>0.587013</td><td>0.388082</td><td>0.968258</td><td>0.526325</td><td>-1</td><td>0.542332</td><td>-1</td><td>0.534209</td></tr></tbody></table>
 
 
 
@@ -599,13 +641,13 @@ Genotypes are translated into numeric values according to different genetic mode
 
 !!! note
 
-    `vgwas` imputes missing genotypes according to minor allele frequencies. 
+    `trajgwas` imputes missing genotypes according to minor allele frequencies. 
     
 Users are advised to impute genotypes using more sophiscated methods before GWAS.
 
 ## SNP and/or sample masks
 
-In practice, we often perform GWAS on selected SNPs and/or selected samples. They can be specified by the `snpinds`, `covrowinds` and `geneticrowinds` keywords of `vGWAS` function. 
+In practice, we often perform GWAS on selected SNPs and/or selected samples. They can be specified by the `snpinds`, `covrowinds` and `geneticrowinds` keywords of `trajgwas` function. 
 
 For example, to perform GWAS on SNPs with minor allele frequency (MAF) above 0.05
 
@@ -614,19 +656,19 @@ For example, to perform GWAS on SNPs with minor allele frequency (MAF) above 0.0
 # create SNP mask
 snpinds = maf(SnpArray("../data/hapmap3.bed")) .≥ 0.05
 # GWAS on selected SNPs
-@time vgwas(@formula(y ~ 1 + sex + onMeds),
+@time trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
-        datadir * "vgwas_plinkex.csv",
+        datadir * "trajgwas_plinkex.csv",
         datadir * "hapmap3",
         pvalfile = "commonvariant.pval.txt",
         snpinds = snpinds)
 ```
 
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.194672
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.155585
-     14.356801 seconds (28.98 M allocations: 1.466 GiB, 5.11% gc time)
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.080004
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.070494
+      3.581692 seconds (6.49 M allocations: 441.203 MiB, 4.48% gc time, 48.18% compilation time)
 
 
 
@@ -668,16 +710,16 @@ snpinds = maf(SnpArray("../data/hapmap3.bed")) .≥ 0.05
 run(`head commonvariant.pval.txt`);
 ```
 
-    chr	pos	snpid	maf	hwepval	betapval	taupval	jointpval
-    1	758311	rs12562034	0.07763975155279501	0.4098763332666681	0.38938987159564675	0.9228220976232299	0.689844925654112
-    1	967643	rs2710875	0.32407407407407407	4.076249100705747e-7	5.838562452891218e-6	3.354075049151564e-6	1.150102626573041e-6
-    1	1168108	rs11260566	0.19158878504672894	0.1285682279446898	0.000850889425950933	0.05590549977468809	0.0007396374017787817
-    1	1375074	rs1312568	0.441358024691358	2.5376019650614977e-19	0.00017168324418138272	1.8481146312335492e-13	4.626028588457252e-14
-    1	1990452	rs2678939	0.4537037037037037	5.07695957708431e-11	1.2787095295892262e-7	7.738089147582373e-9	1.5697329864658462e-9
-    1	2194615	rs7553178	0.22685185185185186	0.17056143157457776	0.07404001756947043	0.00023109048716815853	0.00015039840819071202
-    1	2396747	rs13376356	0.1448598130841121	0.9053079215078139	0.4897208868010412	0.6595593862223351	0.7352162221637434
-    1	2823603	rs1563468	0.4830246913580247	4.23065537243926e-9	2.581476982676445e-7	1.1700736777037784e-8	2.3113980131157045e-9
-    1	3025087	rs6690373	0.2538699690402477	9.238641887192776e-8	3.111965106232477e-5	2.0479935907553838e-7	7.847732200707722e-8
+    chr	pos	snpid	maf	hwepval	betapval	betadir	taupval	taudir	jointpval
+    1	758311	rs12562034	0.07763975155279501	0.4098763332666681	0.38938987159522687	-1	0.9228220976232072	-1	0.5476822137398479
+    1	967643	rs2710875	0.32407407407407407	4.076249100705747e-7	5.838562452864651e-6	1	3.354075049151666e-6	-1	4.935983727867444e-7
+    1	1168108	rs11260566	0.19158878504672894	0.1285682279446898	0.0008508894259509042	1	0.055905499774689345	1	0.0010182674469333265
+    1	1375074	rs1312568	0.441358024691358	2.5376019650614977e-19	0.00017168324418138014	-1	1.8481146312336014e-13	1	2.0709090755361968e-15
+    1	1990452	rs2678939	0.4537037037037037	5.07695957708431e-11	1.278709529589261e-7	1	7.7380891475822e-9	-1	3.3986012947082215e-9
+    1	2194615	rs7553178	0.22685185185185186	0.17056143157457776	0.07404001756940146	-1	0.00023109048716816823	1	0.00010021413726889936
+    1	2396747	rs13376356	0.1448598130841121	0.9053079215078139	0.48972088680069503	-1	0.6595593862223496	1	0.5620909278620404
+    1	2823603	rs1563468	0.4830246913580247	4.23065537243926e-9	2.581476982676523e-7	-1	1.1700736777037956e-8	1	6.367979793593832e-8
+    1	3025087	rs6690373	0.2538699690402477	9.238641887192776e-8	3.111965106232366e-5	1	2.0479935907554532e-7	-1	2.1230949377453417e-5
 
 
 
@@ -696,7 +738,7 @@ countlines("commonvariant.pval.txt"), count(snpinds)
 
 ```julia
 # clean up
-rm("vgwas.null.txt", force=true)
+rm("trajgwas.null.txt", force=true)
 rm("commonvariant.pval.txt", force=true)
 ```
 
@@ -704,32 +746,32 @@ rm("commonvariant.pval.txt", force=true)
 
 ## Estimating Effect Sizes (Wald)
 
-By default, `vgwas` calculates p-value for each SNP using SPA/score test. Score test is fast because it doesn't require fitting alternative model for each SNP. User can request the Wald p-values and the estimated effect size of each SNP using keyword `test=:wald`. Wald is much slower but will give you estimated effect sizes from the WiSER model.
+By default, `trajgwas` calculates p-value for each SNP using SPA/score test. Score test is fast because it doesn't require fitting alternative model for each SNP. User can request the Wald p-values and the estimated effect size of each SNP using keyword `test=:wald`. Wald is much slower but will give you estimated effect sizes from the WiSER model.
 
 
 ```julia
-@time vgwas(@formula(y ~ 1 + sex + onMeds),
+@time trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
-        datadir * "vgwas_plinkex.csv",
+        datadir * "trajgwas_plinkex.csv",
         datadir * "hapmap3",
         pvalfile = "wald.pval.txt",
         snpinds = 1:5,
         test = :wald)
 ```
 
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.161760
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.135861
-    run = 1, ‖Δβ‖ = 0.033243, ‖Δτ‖ = 0.146511, ‖ΔL‖ = 0.005476, status = Optimal, time(s) = 0.206452
-    run = 2, ‖Δβ‖ = 0.005774, ‖Δτ‖ = 0.042246, ‖ΔL‖ = 0.001784, status = Optimal, time(s) = 0.192730
-    run = 1, ‖Δβ‖ = 0.013090, ‖Δτ‖ = 0.130781, ‖ΔL‖ = 0.005011, status = Optimal, time(s) = 0.214504
-    run = 2, ‖Δβ‖ = 0.003913, ‖Δτ‖ = 0.037309, ‖ΔL‖ = 0.001516, status = Optimal, time(s) = 0.193909
-    run = 1, ‖Δβ‖ = 0.022159, ‖Δτ‖ = 0.141135, ‖ΔL‖ = 0.005554, status = Optimal, time(s) = 0.181490
-    run = 2, ‖Δβ‖ = 0.001482, ‖Δτ‖ = 0.021700, ‖ΔL‖ = 0.001435, status = Optimal, time(s) = 0.166887
-    run = 1, ‖Δβ‖ = 0.026764, ‖Δτ‖ = 0.368620, ‖ΔL‖ = 0.000317, status = Optimal, time(s) = 0.166970
-    run = 2, ‖Δβ‖ = 0.003023, ‖Δτ‖ = 0.030938, ‖ΔL‖ = 0.003568, status = Optimal, time(s) = 0.169333
-      2.035903 seconds (456.79 k allocations: 44.250 MiB)
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.109312
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.098217
+    run = 1, ‖Δβ‖ = 0.033243, ‖Δτ‖ = 0.146511, ‖ΔL‖ = 0.005476, status = Optimal, time(s) = 0.076823
+    run = 2, ‖Δβ‖ = 0.005774, ‖Δτ‖ = 0.042246, ‖ΔL‖ = 0.001784, status = Optimal, time(s) = 0.054227
+    run = 1, ‖Δβ‖ = 0.013090, ‖Δτ‖ = 0.130781, ‖ΔL‖ = 0.005011, status = Optimal, time(s) = 0.063897
+    run = 2, ‖Δβ‖ = 0.003913, ‖Δτ‖ = 0.037309, ‖ΔL‖ = 0.001516, status = Optimal, time(s) = 0.062758
+    run = 1, ‖Δβ‖ = 0.022159, ‖Δτ‖ = 0.141135, ‖ΔL‖ = 0.005554, status = Optimal, time(s) = 0.056063
+    run = 2, ‖Δβ‖ = 0.001482, ‖Δτ‖ = 0.021700, ‖ΔL‖ = 0.001435, status = Optimal, time(s) = 0.063122
+    run = 1, ‖Δβ‖ = 0.026764, ‖Δτ‖ = 0.368620, ‖ΔL‖ = 0.000317, status = Optimal, time(s) = 0.060078
+    run = 2, ‖Δβ‖ = 0.003023, ‖Δτ‖ = 0.030938, ‖ΔL‖ = 0.003568, status = Optimal, time(s) = 0.062703
+      5.098836 seconds (5.25 M allocations: 354.066 MiB, 2.78% gc time, 83.67% compilation time)
 
 
 
@@ -773,23 +815,19 @@ Note the extra `effect` column in pvalfile, which is the effect size (regression
 run(`head wald.pval.txt`);
 ```
 
-    chr,pos,snpid,maf,hwepval,effect,pval
-    1,554484,rs10458597,0.0,1.0,0.0,1.0
-    1,758311,rs12562034,0.07763975155279501,0.4098763332666681,-1.005783371954433,0.0019185836579805327
-    1,967643,rs2710875,0.32407407407407407,4.076249100705747e-7,-0.648856056629187,1.805050556976241e-5
-    1,1168108,rs11260566,0.19158878504672894,0.1285682279446898,-0.9157225669357901,5.8733847126869666e-6
-    1,1375074,rs1312568,0.441358024691358,2.5376019650614977e-19,-0.3318136652577225,0.008081022577828709
-    1,1588771,rs35154105,0.0,1.0,0.0,1.0
-    1,1789051,rs16824508,0.00462962962962965,0.9332783156468178,-0.7338026388700143,0.5169027130145593
-    1,1990452,rs2678939,0.4537037037037037,5.07695957708431e-11,-0.1358649923181975,0.2994640220091515
-    1,2194615,rs7553178,0.22685185185185186,0.17056143157457776,-0.2512075640440123,0.1615106909444108
+    chr	pos	snpid	maf	hwepval	betaeffect	betapval	taueffect	taupval
+    1	554484	rs10458597	0.0	1.0	0.0	1.0	0.0	1.0
+    1	758311	rs12562034	0.07763975155279501	0.4098763332666681	-0.231072479332816	0.3929844692486013	0.01340575997086949	0.9216488777690096
+    1	967643	rs2710875	0.32407407407407407	4.076249100705747e-7	0.6406954913590558	8.824209286611495e-7	-0.34763283794106525	1.0836367479719384e-11
+    1	1168108	rs11260566	0.19158878504672894	0.1285682279446898	0.6188250819875118	0.0002537468407208455	-0.14748437551458396	0.0502802758129169
+    1	1375074	rs1312568	0.441358024691358	2.5376019650614977e-19	-0.4560323801786057	0.00016592110001810087	0.4964521486169327	1.177346561221082e-36
 
 
 
 ```julia
 # clean up
 rm("wald.pval.txt", force=true)
-rm("vgwas.null.txt", force=true)
+rm("trajgwas.null.txt", force=true)
 ```
 
 ## Score test for screening, Wald for effect size estimates 
@@ -800,18 +838,18 @@ For large data sets, a practical solution is to perform the score test first acr
 
 
 ```julia
-@time vgwas(@formula(y ~ 1 + sex + onMeds),
+@time trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
-        datadir * "vgwas_plinkex.csv",
+        datadir * "trajgwas_plinkex.csv",
         datadir * "hapmap3",
         pvalfile = "score.pval.txt")
 ```
 
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.176625
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.138581
-      2.666877 seconds (7.11 M allocations: 461.688 MiB, 4.68% gc time)
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.075440
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.053689
+      1.562202 seconds (4.00 M allocations: 288.273 MiB, 10.27% gc time)
 
 
 
@@ -856,7 +894,7 @@ first(CSV.read("score.pval.txt", DataFrame), 8)
 
 
 
-<table class="data-frame"><thead><tr><th></th><th>chr</th><th>pos</th><th>snpid</th><th>maf</th><th>hwepval</th><th>betapval</th><th>taupval</th><th>jointpval</th></tr><tr><th></th><th>Int64</th><th>Int64</th><th>String</th><th>Float64</th><th>Float64</th><th>Float64</th><th>Float64</th><th>Float64</th></tr></thead><tbody><p>8 rows × 8 columns</p><tr><th>1</th><td>1</td><td>554484</td><td>rs10458597</td><td>0.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td></tr><tr><th>2</th><td>1</td><td>758311</td><td>rs12562034</td><td>0.0776398</td><td>0.409876</td><td>0.38939</td><td>0.922822</td><td>0.689845</td></tr><tr><th>3</th><td>1</td><td>967643</td><td>rs2710875</td><td>0.324074</td><td>4.07625e-7</td><td>5.83856e-6</td><td>3.35408e-6</td><td>1.1501e-6</td></tr><tr><th>4</th><td>1</td><td>1168108</td><td>rs11260566</td><td>0.191589</td><td>0.128568</td><td>0.000850889</td><td>0.0559055</td><td>0.000739637</td></tr><tr><th>5</th><td>1</td><td>1375074</td><td>rs1312568</td><td>0.441358</td><td>2.5376e-19</td><td>0.000171683</td><td>1.84811e-13</td><td>4.62603e-14</td></tr><tr><th>6</th><td>1</td><td>1588771</td><td>rs35154105</td><td>0.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td></tr><tr><th>7</th><td>1</td><td>1789051</td><td>rs16824508</td><td>0.00462963</td><td>0.933278</td><td>0.295035</td><td>0.304109</td><td>0.260174</td></tr><tr><th>8</th><td>1</td><td>1990452</td><td>rs2678939</td><td>0.453704</td><td>5.07696e-11</td><td>1.27871e-7</td><td>7.73809e-9</td><td>1.56973e-9</td></tr></tbody></table>
+<table class="data-frame"><thead><tr><th></th><th>chr</th><th>pos</th><th>snpid</th><th>maf</th><th>hwepval</th><th>betapval</th><th>betadir</th><th>taupval</th><th>taudir</th><th>jointpval</th></tr><tr><th></th><th>Int64</th><th>Int64</th><th>String</th><th>Float64</th><th>Float64</th><th>Float64</th><th>Int64</th><th>Float64</th><th>Int64</th><th>Float64</th></tr></thead><tbody><p>8 rows × 10 columns</p><tr><th>1</th><td>1</td><td>554484</td><td>rs10458597</td><td>0.0</td><td>1.0</td><td>1.0</td><td>0</td><td>1.0</td><td>0</td><td>1.0</td></tr><tr><th>2</th><td>1</td><td>758311</td><td>rs12562034</td><td>0.0776398</td><td>0.409876</td><td>0.38939</td><td>-1</td><td>0.922822</td><td>-1</td><td>0.547682</td></tr><tr><th>3</th><td>1</td><td>967643</td><td>rs2710875</td><td>0.324074</td><td>4.07625e-7</td><td>5.83856e-6</td><td>1</td><td>3.35408e-6</td><td>-1</td><td>4.93598e-7</td></tr><tr><th>4</th><td>1</td><td>1168108</td><td>rs11260566</td><td>0.191589</td><td>0.128568</td><td>0.000850889</td><td>1</td><td>0.0559055</td><td>1</td><td>0.00101827</td></tr><tr><th>5</th><td>1</td><td>1375074</td><td>rs1312568</td><td>0.441358</td><td>2.5376e-19</td><td>0.000171683</td><td>-1</td><td>1.84811e-13</td><td>1</td><td>2.07091e-15</td></tr><tr><th>6</th><td>1</td><td>1588771</td><td>rs35154105</td><td>0.0</td><td>1.0</td><td>1.0</td><td>0</td><td>1.0</td><td>0</td><td>1.0</td></tr><tr><th>7</th><td>1</td><td>1789051</td><td>rs16824508</td><td>0.00462963</td><td>0.933278</td><td>0.295035</td><td>1</td><td>0.304109</td><td>1</td><td>0.299504</td></tr><tr><th>8</th><td>1</td><td>1990452</td><td>rs2678939</td><td>0.453704</td><td>5.07696e-11</td><td>1.27871e-7</td><td>1</td><td>7.73809e-9</td><td>-1</td><td>3.3986e-9</td></tr></tbody></table>
 
 
 
@@ -872,17 +910,17 @@ scorepvals[tophits] # smallest 10 p-values
 
 
 
-    10-element Array{Float64,1}:
+    10-element Vector{Float64}:
      7.872202557706978e-17
-     1.8481146312335492e-13
-     1.4978681413694476e-12
-     9.730062616490623e-12
+     1.8481146312336014e-13
+     1.497868141369434e-12
+     9.730062616490452e-12
      1.2892059340654512e-11
-     1.484463866022607e-11
-     1.5167114834216833e-11
-     1.876125621826194e-11
-     2.349135295865958e-11
-     2.6075629334507774e-11
+     1.4844638660225815e-11
+     1.5167114834215392e-11
+     1.8761256218261456e-11
+     2.3491352960094672e-11
+     2.6075629334507108e-11
 
 
 
@@ -890,40 +928,40 @@ scorepvals[tophits] # smallest 10 p-values
 
 
 ```julia
-@time vgwas(@formula(y ~ 1 + sex + onMeds),
+@time trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
-        datadir * "vgwas_plinkex.csv",
+        datadir * "trajgwas_plinkex.csv",
         datadir * "hapmap3",
         pvalfile = "wald.pval.txt",
         snpinds = tophits,
         test = :wald)
 ```
 
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.185237
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.141060
-    run = 1, ‖Δβ‖ = 0.026764, ‖Δτ‖ = 0.368620, ‖ΔL‖ = 0.000317, status = Optimal, time(s) = 0.205915
-    run = 2, ‖Δβ‖ = 0.003023, ‖Δτ‖ = 0.030938, ‖ΔL‖ = 0.003568, status = Optimal, time(s) = 0.166922
-    run = 1, ‖Δβ‖ = 0.039946, ‖Δτ‖ = 0.185049, ‖ΔL‖ = 0.005690, status = Optimal, time(s) = 0.179834
-    run = 2, ‖Δβ‖ = 0.001640, ‖Δτ‖ = 0.029639, ‖ΔL‖ = 0.002028, status = Optimal, time(s) = 0.172222
-    run = 1, ‖Δβ‖ = 0.040207, ‖Δτ‖ = 0.407863, ‖ΔL‖ = 0.001924, status = Optimal, time(s) = 0.172358
-    run = 2, ‖Δβ‖ = 0.002632, ‖Δτ‖ = 0.039609, ‖ΔL‖ = 0.005131, status = Optimal, time(s) = 0.176678
-    run = 1, ‖Δβ‖ = 0.052372, ‖Δτ‖ = 0.828946, ‖ΔL‖ = 0.001277, status = Optimal, time(s) = 0.214144
-    run = 2, ‖Δβ‖ = 0.013694, ‖Δτ‖ = 0.185493, ‖ΔL‖ = 0.007118, status = Optimal, time(s) = 0.182617
-    run = 1, ‖Δβ‖ = 0.032435, ‖Δτ‖ = 0.199659, ‖ΔL‖ = 0.004973, status = Optimal, time(s) = 0.172768
-    run = 2, ‖Δβ‖ = 0.002847, ‖Δτ‖ = 0.032438, ‖ΔL‖ = 0.002941, status = Optimal, time(s) = 0.182617
-    run = 1, ‖Δβ‖ = 0.009362, ‖Δτ‖ = 0.625969, ‖ΔL‖ = 0.002237, status = Optimal, time(s) = 0.210145
-    run = 2, ‖Δβ‖ = 0.005893, ‖Δτ‖ = 0.176417, ‖ΔL‖ = 0.005017, status = Optimal, time(s) = 0.203217
-    run = 1, ‖Δβ‖ = 0.012805, ‖Δτ‖ = 0.243313, ‖ΔL‖ = 0.006289, status = Optimal, time(s) = 0.203942
-    run = 2, ‖Δβ‖ = 0.002636, ‖Δτ‖ = 0.044210, ‖ΔL‖ = 0.003312, status = Optimal, time(s) = 0.201795
-    run = 1, ‖Δβ‖ = 0.014062, ‖Δτ‖ = 0.225841, ‖ΔL‖ = 0.003899, status = Optimal, time(s) = 0.200849
-    run = 2, ‖Δβ‖ = 0.002112, ‖Δτ‖ = 0.030955, ‖ΔL‖ = 0.003860, status = Optimal, time(s) = 0.190436
-    run = 1, ‖Δβ‖ = 0.026425, ‖Δτ‖ = 0.258805, ‖ΔL‖ = 0.004204, status = Optimal, time(s) = 0.209731
-    run = 2, ‖Δβ‖ = 0.001090, ‖Δτ‖ = 0.051281, ‖ΔL‖ = 0.003822, status = Optimal, time(s) = 0.197667
-    run = 1, ‖Δβ‖ = 0.035737, ‖Δτ‖ = 0.174702, ‖ΔL‖ = 0.001439, status = Optimal, time(s) = 0.199694
-    run = 2, ‖Δβ‖ = 0.004776, ‖Δτ‖ = 0.019790, ‖ΔL‖ = 0.001867, status = Optimal, time(s) = 0.184595
-      4.680844 seconds (938.18 k allocations: 93.700 MiB, 0.77% gc time)
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.052046
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.047623
+    run = 1, ‖Δβ‖ = 0.026764, ‖Δτ‖ = 0.368620, ‖ΔL‖ = 0.000317, status = Optimal, time(s) = 0.178894
+    run = 2, ‖Δβ‖ = 0.003023, ‖Δτ‖ = 0.030938, ‖ΔL‖ = 0.003568, status = Optimal, time(s) = 0.087401
+    run = 1, ‖Δβ‖ = 0.039946, ‖Δτ‖ = 0.185049, ‖ΔL‖ = 0.005690, status = Optimal, time(s) = 0.093839
+    run = 2, ‖Δβ‖ = 0.001640, ‖Δτ‖ = 0.029639, ‖ΔL‖ = 0.002028, status = Optimal, time(s) = 0.080043
+    run = 1, ‖Δβ‖ = 0.040207, ‖Δτ‖ = 0.407863, ‖ΔL‖ = 0.001924, status = Optimal, time(s) = 0.059805
+    run = 2, ‖Δβ‖ = 0.002632, ‖Δτ‖ = 0.039609, ‖ΔL‖ = 0.005131, status = Optimal, time(s) = 0.083707
+    run = 1, ‖Δβ‖ = 0.052372, ‖Δτ‖ = 0.828946, ‖ΔL‖ = 0.001277, status = Optimal, time(s) = 0.113953
+    run = 2, ‖Δβ‖ = 0.013694, ‖Δτ‖ = 0.185493, ‖ΔL‖ = 0.007118, status = Optimal, time(s) = 0.085475
+    run = 1, ‖Δβ‖ = 0.032435, ‖Δτ‖ = 0.199659, ‖ΔL‖ = 0.004973, status = Optimal, time(s) = 0.079442
+    run = 2, ‖Δβ‖ = 0.002847, ‖Δτ‖ = 0.032438, ‖ΔL‖ = 0.002941, status = Optimal, time(s) = 0.090233
+    run = 1, ‖Δβ‖ = 0.009362, ‖Δτ‖ = 0.625969, ‖ΔL‖ = 0.002237, status = Optimal, time(s) = 0.117881
+    run = 2, ‖Δβ‖ = 0.005893, ‖Δτ‖ = 0.176417, ‖ΔL‖ = 0.005017, status = Optimal, time(s) = 0.084735
+    run = 1, ‖Δβ‖ = 0.012805, ‖Δτ‖ = 0.243313, ‖ΔL‖ = 0.006289, status = Optimal, time(s) = 0.100312
+    run = 2, ‖Δβ‖ = 0.002636, ‖Δτ‖ = 0.044210, ‖ΔL‖ = 0.003312, status = Optimal, time(s) = 0.079899
+    run = 1, ‖Δβ‖ = 0.014062, ‖Δτ‖ = 0.225841, ‖ΔL‖ = 0.003899, status = Optimal, time(s) = 0.069697
+    run = 2, ‖Δβ‖ = 0.002112, ‖Δτ‖ = 0.030955, ‖ΔL‖ = 0.003860, status = Optimal, time(s) = 0.085498
+    run = 1, ‖Δβ‖ = 0.026425, ‖Δτ‖ = 0.258805, ‖ΔL‖ = 0.004204, status = Optimal, time(s) = 0.092286
+    run = 2, ‖Δβ‖ = 0.001090, ‖Δτ‖ = 0.051281, ‖ΔL‖ = 0.003822, status = Optimal, time(s) = 0.092316
+    run = 1, ‖Δβ‖ = 0.035737, ‖Δτ‖ = 0.174702, ‖ΔL‖ = 0.001439, status = Optimal, time(s) = 0.088946
+    run = 2, ‖Δβ‖ = 0.004776, ‖Δτ‖ = 0.019790, ‖ΔL‖ = 0.001867, status = Optimal, time(s) = 0.086960
+      3.838459 seconds (3.73 M allocations: 275.740 MiB, 6.23% gc time, 37.24% compilation time)
 
 
 
@@ -975,8 +1013,8 @@ CSV.read("wald.pval.txt", DataFrame)
 
 ```julia
 # clean up
-rm("vgwas.null.txt", force=true)
-rm("vgwas.pval.txt", force=true)
+rm("trajgwas.null.txt", force=true)
+rm("trajgwas.pval.txt", force=true)
 rm("score.pval.txt", force=true)
 rm("wald.pval.txt", force=true)
 ```
@@ -987,22 +1025,22 @@ rm("wald.pval.txt", force=true)
 
 In many applications, we want to test SNP effect and/or its interaction with other terms. `testformula` keyword specifies the test unit **besides** the covariates in `nullformula`. 
 
-In following example, keyword `testformula=@formula(trait ~ snp + snp & sex)` instructs `vgwas` to test joint effect of `snp` and `snp & sex` interaction.
+In following example, keyword `testformula=@formula(trait ~ snp + snp & sex)` instructs `trajgwas` to test joint effect of `snp` and `snp & sex` interaction.
 
 
 ```julia
-vgwas(@formula(y ~ 1 + sex + onMeds),
+trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
-        datadir * "vgwas_plinkex.csv",
+        datadir * "trajgwas_plinkex.csv",
         datadir * "hapmap3",
         pvalfile = "GxE.pval.txt",
         testformula=@formula(trait ~ snp + snp & sex))
 ```
 
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.149586
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.134007
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.054097
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.053644
 
 
 
@@ -1047,29 +1085,29 @@ first(CSV.read("GxE.pval.txt", DataFrame), 5)
 
 
 
-<table class="data-frame"><thead><tr><th></th><th>chr</th><th>pos</th><th>snpid</th><th>maf</th><th>hwepval</th><th>betapval</th><th>taupval</th><th>jointpval</th></tr><tr><th></th><th>Int64</th><th>Int64</th><th>String</th><th>Float64</th><th>Float64</th><th>Float64</th><th>Float64</th><th>Float64</th></tr></thead><tbody><p>5 rows × 8 columns</p><tr><th>1</th><td>1</td><td>554484</td><td>rs10458597</td><td>0.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td></tr><tr><th>2</th><td>1</td><td>758311</td><td>rs12562034</td><td>0.0776398</td><td>0.409876</td><td>0.383</td><td>0.33511</td><td>0.473632</td></tr><tr><th>3</th><td>1</td><td>967643</td><td>rs2710875</td><td>0.324074</td><td>4.07625e-7</td><td>9.98217e-6</td><td>5.73202e-7</td><td>9.96764e-11</td></tr><tr><th>4</th><td>1</td><td>1168108</td><td>rs11260566</td><td>0.191589</td><td>0.128568</td><td>0.00225789</td><td>0.105482</td><td>0.00342268</td></tr><tr><th>5</th><td>1</td><td>1375074</td><td>rs1312568</td><td>0.441358</td><td>2.5376e-19</td><td>0.000928728</td><td>3.48807e-15</td><td>7.51335e-16</td></tr></tbody></table>
+<table class="data-frame"><thead><tr><th></th><th>chr</th><th>pos</th><th>snpid</th><th>maf</th><th>hwepval</th><th>betapval</th><th>taupval</th><th>jointpval</th></tr><tr><th></th><th>Int64</th><th>Int64</th><th>String</th><th>Float64</th><th>Float64</th><th>Float64</th><th>Float64</th><th>Float64</th></tr></thead><tbody><p>5 rows × 8 columns</p><tr><th>1</th><td>1</td><td>554484</td><td>rs10458597</td><td>0.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td></tr><tr><th>2</th><td>1</td><td>758311</td><td>rs12562034</td><td>0.0776398</td><td>0.409876</td><td>0.383</td><td>0.33511</td><td>0.357458</td></tr><tr><th>3</th><td>1</td><td>967643</td><td>rs2710875</td><td>0.324074</td><td>4.07625e-7</td><td>9.98217e-6</td><td>5.73202e-7</td><td>1.08415e-6</td></tr><tr><th>4</th><td>1</td><td>1168108</td><td>rs11260566</td><td>0.191589</td><td>0.128568</td><td>0.00225789</td><td>0.105482</td><td>0.00442114</td></tr><tr><th>5</th><td>1</td><td>1375074</td><td>rs1312568</td><td>0.441358</td><td>2.5376e-19</td><td>0.000928728</td><td>3.48807e-15</td><td>6.97615e-15</td></tr></tbody></table>
 
 
 
 
 ```julia
 # clean up
-rm("vgwas.null.txt", force=true)
+rm("trajgwas.null.txt", force=true)
 rm("GxE.pval.txt",  force=true)
 ```
 
 ### Testing only GxE interaction term
 
-For some applications, the user may want to simply test the GxE interaction effect. This requires fitting the SNP in the null model and is much slower, but the command `vgwas()` with keyword `analysistype = "gxe"` can be used test the interaction effect.
+For some applications, the user may want to simply test the GxE interaction effect. This requires fitting the SNP in the null model and is much slower, but the command `trajgwas()` with keyword `analysistype = "gxe"` can be used test the interaction effect.
 The environmental variable must be specified in the command using the keyword argument `e`, either as a symbol, such as `:age` or as a string `"age"`. 
 
 
 ```julia
-vgwas(@formula(y ~ 1 + sex + onMeds),
+trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
-        datadir * "vgwas_plinkex.csv",
+        datadir * "trajgwas_plinkex.csv",
         datadir * "hapmap3",
         pvalfile = "gxe_snp.pval.txt", 
         analysistype = "gxe",
@@ -1078,16 +1116,16 @@ vgwas(@formula(y ~ 1 + sex + onMeds),
 
 ```
 
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.156353
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.152398
-    run = 1, ‖Δβ‖ = 0.033243, ‖Δτ‖ = 0.146511, ‖ΔL‖ = 0.005476, status = Optimal, time(s) = 0.192186
-    run = 2, ‖Δβ‖ = 0.005774, ‖Δτ‖ = 0.042246, ‖ΔL‖ = 0.001784, status = Optimal, time(s) = 0.178301
-    run = 1, ‖Δβ‖ = 0.013090, ‖Δτ‖ = 0.130781, ‖ΔL‖ = 0.005011, status = Optimal, time(s) = 0.214996
-    run = 2, ‖Δβ‖ = 0.003913, ‖Δτ‖ = 0.037309, ‖ΔL‖ = 0.001516, status = Optimal, time(s) = 0.208225
-    run = 1, ‖Δβ‖ = 0.022159, ‖Δτ‖ = 0.141135, ‖ΔL‖ = 0.005554, status = Optimal, time(s) = 0.177371
-    run = 2, ‖Δβ‖ = 0.001482, ‖Δτ‖ = 0.021700, ‖ΔL‖ = 0.001435, status = Optimal, time(s) = 0.155733
-    run = 1, ‖Δβ‖ = 0.026764, ‖Δτ‖ = 0.368620, ‖ΔL‖ = 0.000317, status = Optimal, time(s) = 0.171832
-    run = 2, ‖Δβ‖ = 0.003023, ‖Δτ‖ = 0.030938, ‖ΔL‖ = 0.003568, status = Optimal, time(s) = 0.161345
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.050356
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.045895
+    run = 1, ‖Δβ‖ = 0.480377, ‖Δτ‖ = 0.023510, ‖ΔL‖ = 0.001822, status = Optimal, time(s) = 0.065444
+    run = 2, ‖Δβ‖ = 0.000323, ‖Δτ‖ = 0.002136, ‖ΔL‖ = 0.000025, status = Optimal, time(s) = 0.069212
+    run = 1, ‖Δβ‖ = 1.059989, ‖Δτ‖ = 0.458239, ‖ΔL‖ = 0.063093, status = Optimal, time(s) = 0.066830
+    run = 2, ‖Δβ‖ = 0.009118, ‖Δτ‖ = 0.105352, ‖ΔL‖ = 0.000056, status = Optimal, time(s) = 0.072717
+    run = 1, ‖Δβ‖ = 1.144781, ‖Δτ‖ = 0.251459, ‖ΔL‖ = 0.034318, status = Optimal, time(s) = 0.074359
+    run = 2, ‖Δβ‖ = 0.000830, ‖Δτ‖ = 0.025631, ‖ΔL‖ = 0.000042, status = Optimal, time(s) = 0.075501
+    run = 1, ‖Δβ‖ = 0.683108, ‖Δτ‖ = 0.773919, ‖ΔL‖ = 0.042397, status = Optimal, time(s) = 0.066544
+    run = 2, ‖Δβ‖ = 0.008159, ‖Δτ‖ = 0.069178, ‖ΔL‖ = 0.003574, status = Optimal, time(s) = 0.069834
 
 
 
@@ -1132,14 +1170,14 @@ CSV.read("gxe_snp.pval.txt", DataFrame)
 
 
 
-<table class="data-frame"><thead><tr><th></th><th>chr</th><th>pos</th><th>snpid</th><th>maf</th><th>hwepval</th><th>snpeffectnullbeta</th><th>snpeffectnulltau</th><th>betapval</th><th>taupval</th><th>jointpval</th></tr><tr><th></th><th>Int64</th><th>Int64</th><th>String</th><th>Float64</th><th>Float64</th><th>Float64</th><th>Float64</th><th>Float64</th><th>Float64</th><th>Float64</th></tr></thead><tbody><p>5 rows × 10 columns</p><tr><th>1</th><td>1</td><td>554484</td><td>rs10458597</td><td>0.0</td><td>1.0</td><td>0.0</td><td>0.0</td><td>1.0</td><td>1.0</td><td>1.0</td></tr><tr><th>2</th><td>1</td><td>758311</td><td>rs12562034</td><td>0.0776398</td><td>0.409876</td><td>-0.231072</td><td>0.0134058</td><td>0.449093</td><td>0.147252</td><td>0.272065</td></tr><tr><th>3</th><td>1</td><td>967643</td><td>rs2710875</td><td>0.324074</td><td>4.07625e-7</td><td>0.640695</td><td>-0.347633</td><td>0.295171</td><td>0.12668</td><td>0.138741</td></tr><tr><th>4</th><td>1</td><td>1168108</td><td>rs11260566</td><td>0.191589</td><td>0.128568</td><td>0.618825</td><td>-0.147484</td><td>0.590334</td><td>0.270161</td><td>0.48269</td></tr><tr><th>5</th><td>1</td><td>1375074</td><td>rs1312568</td><td>0.441358</td><td>2.5376e-19</td><td>-0.456032</td><td>0.496452</td><td>0.574465</td><td>0.251019</td><td>0.463303</td></tr></tbody></table>
+<table class="data-frame"><thead><tr><th></th><th>chr</th><th>pos</th><th>snpid</th><th>maf</th><th>hwepval</th><th>snpeffectnullbeta</th><th>snpeffectnulltau</th><th>betapval</th><th>taupval</th></tr><tr><th></th><th>Int64</th><th>Int64</th><th>String</th><th>Float64</th><th>Float64</th><th>Float64</th><th>Float64</th><th>Float64</th><th>Float64</th></tr></thead><tbody><p>5 rows × 9 columns</p><tr><th>1</th><td>1</td><td>554484</td><td>rs10458597</td><td>0.0</td><td>1.0</td><td>0.0</td><td>0.0</td><td>1.0</td><td>1.0</td></tr><tr><th>2</th><td>1</td><td>758311</td><td>rs12562034</td><td>0.0776398</td><td>0.409876</td><td>-0.230593</td><td>0.0102355</td><td>0.448376</td><td>0.149797</td></tr><tr><th>3</th><td>1</td><td>967643</td><td>rs2710875</td><td>0.324074</td><td>4.07625e-7</td><td>0.639871</td><td>-0.338815</td><td>0.293876</td><td>0.119916</td></tr><tr><th>4</th><td>1</td><td>1168108</td><td>rs11260566</td><td>0.191589</td><td>0.128568</td><td>0.618855</td><td>-0.146819</td><td>0.590189</td><td>0.262791</td></tr><tr><th>5</th><td>1</td><td>1375074</td><td>rs1312568</td><td>0.441358</td><td>2.5376e-19</td><td>-0.456003</td><td>0.492582</td><td>0.574737</td><td>0.250501</td></tr></tbody></table>
 
 
 
 
 ```julia
 # clean up
-rm("vgwas.null.txt", force=true)
+rm("trajgwas.null.txt", force=true)
 rm("gxe_snp.pval.txt", force=true)
 ```
 
@@ -1158,19 +1196,19 @@ In the following example, we perform a SNP-set test on the 50th to 55th snps.
 
 
 ```julia
-vgwas(@formula(y ~ 1 + sex + onMeds),
+trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
-        datadir * "vgwas_plinkex.csv",
+        datadir * "trajgwas_plinkex.csv",
         datadir * "hapmap3",
         pvalfile = "snpset.pval.txt", 
         analysistype = "snpset",
         snpset = 50:55)
 ```
 
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.153645
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.142342
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.067989
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.066793
 
 
 
@@ -1212,14 +1250,14 @@ vgwas(@formula(y ~ 1 + sex + onMeds),
 run(`head snpset.pval.txt`);
 ```
 
-    The joint pvalue of snps indexed at 50:55 is betapval: 2.3156171211970728e-5, taupval: 3.972993706372347e-10, jointpval: 3.987431210288368e-12
+    The pvalue of snps indexed at 50:55 is betapval: 2.3156171211965083e-5, taupval: 3.9729937063719077e-10
 
 
 
 ```julia
 # clean up
 rm("snpset.pval.txt", force=true)
-rm("vgwas.null.txt", force=true)
+rm("trajgwas.null.txt", force=true)
 ```
 
 In the following example we run a SNP-set test on the annotated SNP-set file.
@@ -1243,19 +1281,19 @@ run(`head ../data/hapmap_snpsetfile.txt`);
 
 
 ```julia
-vgwas(@formula(y ~ 1 + sex + onMeds),
+trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
-        datadir * "vgwas_plinkex.csv",
+        datadir * "trajgwas_plinkex.csv",
         datadir * "hapmap3",
         pvalfile = "snpset.pval.txt", 
         analysistype = "snpset",
         snpset = datadir * "/hapmap_snpsetfile.txt")
 ```
 
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.164930
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.146663
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.079630
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.060697
 
 
 
@@ -1294,13 +1332,13 @@ vgwas(@formula(y ~ 1 + sex + onMeds),
 
 
 ```julia
-first(CSV.read("snpset.pval.txt", DataFrame), 5)
+first(CSV.read("snpset.pval.txt", DataFrame; delim="\t"), 5)
 ```
 
 
 
 
-<table class="data-frame"><thead><tr><th></th><th>snpsetid</th><th>nsnps</th><th>betapval</th><th>taupval</th><th>jointpval</th></tr><tr><th></th><th>String</th><th>Int64</th><th>Float64</th><th>Float64</th><th>Float64</th></tr></thead><tbody><p>5 rows × 5 columns</p><tr><th>1</th><td>gene1</td><td>93</td><td>0.111864</td><td>0.011595</td><td>0.0536262</td></tr><tr><th>2</th><td>gene2</td><td>93</td><td>0.0249929</td><td>0.0648265</td><td>0.00863506</td></tr><tr><th>3</th><td>gene3</td><td>93</td><td>0.131741</td><td>0.0298884</td><td>0.0176667</td></tr><tr><th>4</th><td>gene4</td><td>92</td><td>0.010327</td><td>0.0584591</td><td>0.0126325</td></tr><tr><th>5</th><td>gene5</td><td>93</td><td>0.0303905</td><td>0.0924954</td><td>0.0494038</td></tr></tbody></table>
+<table class="data-frame"><thead><tr><th></th><th>snpsetid</th><th>nsnps</th><th>betapval</th><th>taupval</th></tr><tr><th></th><th>String</th><th>Int64</th><th>Float64</th><th>Float64</th></tr></thead><tbody><p>5 rows × 4 columns</p><tr><th>1</th><td>gene1</td><td>93</td><td>0.111864</td><td>0.011595</td></tr><tr><th>2</th><td>gene2</td><td>93</td><td>0.0249929</td><td>0.0648265</td></tr><tr><th>3</th><td>gene3</td><td>93</td><td>0.131741</td><td>0.0298884</td></tr><tr><th>4</th><td>gene4</td><td>92</td><td>0.010327</td><td>0.0584591</td></tr><tr><th>5</th><td>gene5</td><td>93</td><td>0.0303905</td><td>0.0924954</td></tr></tbody></table>
 
 
 
@@ -1308,26 +1346,26 @@ first(CSV.read("snpset.pval.txt", DataFrame), 5)
 ```julia
 # clean up
 rm("snpset.pval.txt", force=true)
-rm("vgwas.null.txt", force=true)
+rm("trajgwas.null.txt", force=true)
 ```
 
 In the following example we run a SNP-set test on every 15 SNPs.
 
 
 ```julia
-vgwas(@formula(y ~ 1 + sex + onMeds),
+trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
-        datadir * "vgwas_plinkex.csv",
+        datadir * "trajgwas_plinkex.csv",
         datadir * "hapmap3",
         pvalfile = "snpset.pval.txt", 
         analysistype = "snpset",
         snpset = 15)
 ```
 
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.174487
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.156026
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.082959
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.070899
 
 
 
@@ -1372,7 +1410,7 @@ first(CSV.read("snpset.pval.txt", DataFrame), 5)
 
 
 
-<table class="data-frame"><thead><tr><th></th><th>startchr</th><th>startpos</th><th>startsnpid</th><th>endchr</th><th>endpos</th><th>endsnpid</th><th>betapval</th><th>taupval</th><th>jointpval</th></tr><tr><th></th><th>Int64</th><th>Int64</th><th>String</th><th>Int64</th><th>Int64</th><th>String</th><th>Float64</th><th>Float64</th><th>Float64</th></tr></thead><tbody><p>5 rows × 9 columns</p><tr><th>1</th><td>1</td><td>554484</td><td>rs10458597</td><td>1</td><td>3431124</td><td>rs12093117</td><td>3.83046e-6</td><td>2.24303e-10</td><td>1.25591e-12</td></tr><tr><th>2</th><td>1</td><td>3633945</td><td>rs10910017</td><td>1</td><td>6514524</td><td>rs932112</td><td>0.000127922</td><td>7.94764e-6</td><td>5.98702e-8</td></tr><tr><th>3</th><td>1</td><td>6715827</td><td>rs441515</td><td>1</td><td>9534606</td><td>rs4926480</td><td>8.10353e-5</td><td>6.11848e-7</td><td>8.1905e-9</td></tr><tr><th>4</th><td>1</td><td>9737551</td><td>rs12047054</td><td>1</td><td>12559747</td><td>rs4845907</td><td>0.000425108</td><td>1.15311e-8</td><td>1.93616e-10</td></tr><tr><th>5</th><td>1</td><td>12760427</td><td>rs848577</td><td>1</td><td>16021797</td><td>rs6679870</td><td>2.75832e-5</td><td>0.00028553</td><td>9.27611e-7</td></tr></tbody></table>
+<table class="data-frame"><thead><tr><th></th><th>startchr</th><th>startpos</th><th>startsnpid</th><th>endchr</th><th>endpos</th><th>endsnpid</th><th>betapval</th><th>taupval</th></tr><tr><th></th><th>Int64</th><th>Int64</th><th>String</th><th>Int64</th><th>Int64</th><th>String</th><th>Float64</th><th>Float64</th></tr></thead><tbody><p>5 rows × 8 columns</p><tr><th>1</th><td>1</td><td>554484</td><td>rs10458597</td><td>1</td><td>3431124</td><td>rs12093117</td><td>3.83046e-6</td><td>2.24303e-10</td></tr><tr><th>2</th><td>1</td><td>3633945</td><td>rs10910017</td><td>1</td><td>6514524</td><td>rs932112</td><td>0.000127922</td><td>7.94764e-6</td></tr><tr><th>3</th><td>1</td><td>6715827</td><td>rs441515</td><td>1</td><td>9534606</td><td>rs4926480</td><td>8.10353e-5</td><td>6.11848e-7</td></tr><tr><th>4</th><td>1</td><td>9737551</td><td>rs12047054</td><td>1</td><td>12559747</td><td>rs4845907</td><td>0.000425108</td><td>1.15311e-8</td></tr><tr><th>5</th><td>1</td><td>12760427</td><td>rs848577</td><td>1</td><td>16021797</td><td>rs6679870</td><td>2.75832e-5</td><td>0.00028553</td></tr></tbody></table>
 
 
 
@@ -1380,7 +1418,7 @@ first(CSV.read("snpset.pval.txt", DataFrame), 5)
 ```julia
 # clean up
 rm("snpset.pval.txt", force=true)
-rm("vgwas.null.txt", force=true)
+rm("trajgwas.null.txt", force=true)
 ```
 
 ## Matching Indicies
@@ -1401,7 +1439,7 @@ famfileids = CSV.read(datadir * "hapmap3.fam", DataFrame, header = false)[!, 1] 
 
 
 
-    324-element Array{String,1}:
+    324-element Vector{String}:
      "A1"
      "2"
      "3"
@@ -1433,7 +1471,7 @@ famfileids = CSV.read(datadir * "hapmap3.fam", DataFrame, header = false)[!, 1] 
 
 
 ```julia
-covdf = CSV.read(datadir * "vgwas_plinkex.csv", DataFrame)
+covdf = CSV.read(datadir * "trajgwas_plinkex.csv", DataFrame)
 first(covdf, 11)
 ```
 
@@ -1454,11 +1492,11 @@ covrowmask, geneticrowmask = matchindices(@formula(y ~ 1 + sex + onMeds),
 
 
 ```julia
-vgwas(@formula(y ~ 1 + sex + onMeds),
+trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
-        datadir * "vgwas_plinkex.csv",
+        datadir * "trajgwas_plinkex.csv",
         datadir * "hapmap3",
         pvalfile = pvalpath,
         nullfile = nullpath,
@@ -1466,15 +1504,8 @@ vgwas(@formula(y ~ 1 + sex + onMeds),
         geneticrowinds = geneticrowmask)
 ```
 
-    
-    ******************************************************************************
-    This program contains Ipopt, a library for large-scale nonlinear optimization.
-     Ipopt is released as open source code under the Eclipse Public License (EPL).
-             For more information visit https://github.com/coin-or/Ipopt
-    ******************************************************************************
-    
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.341146
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.149456
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.049746
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.046497
 
 
 
@@ -1514,8 +1545,8 @@ vgwas(@formula(y ~ 1 + sex + onMeds),
 
 ```julia
 # clean up
-rm("vgwas.null.txt", force=true)
-rm("vgwas.pval.txt", force=true)
+rm("trajgwas.null.txt", force=true)
+rm("trajgwas.pval.txt", force=true)
 ```
 
 ## Plotting Results
@@ -1538,50 +1569,50 @@ readdir(glob"hapmap3.chr.*", datadir)
 
 
 
-    75-element Array{String,1}:
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.1.bed"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.1.bim"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.1.fam"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.10.bed"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.10.bim"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.10.fam"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.11.bed"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.11.bim"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.11.fam"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.12.bed"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.12.bim"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.12.fam"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.13.bed"
+    75-element Vector{String}:
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.1.bed"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.1.bim"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.1.fam"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.10.bed"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.10.bim"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.10.fam"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.11.bed"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.11.bim"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.11.fam"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.12.bed"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.12.bim"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.12.fam"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.13.bed"
      ⋮
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.6.bed"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.6.bim"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.6.fam"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.7.bed"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.7.bim"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.7.fam"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.8.bed"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.8.bim"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.8.fam"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.9.bed"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.9.bim"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.9.fam"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.6.bed"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.6.bim"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.6.fam"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.7.bed"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.7.bim"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.7.fam"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.8.bed"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.8.bim"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.8.fam"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.9.bed"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.9.bim"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.9.fam"
 
 
 
-Step 1: Fit the null model. Setting third argument `geneticfile` to `nothing` instructs `vgwas` function to fit the null model only.
+Step 1: Fit the null model. Setting third argument `geneticfile` to `nothing` instructs `trajgwas` function to fit the null model only.
 
 
 ```julia
-nm = vgwas(@formula(y ~ 1 + sex + onMeds),
+nm = trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
-        datadir * "vgwas_plinkex.csv",
+        datadir * "trajgwas_plinkex.csv",
         nothing)
 ```
 
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.177518
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.141628
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.058132
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.048682
 
 
 
@@ -1626,7 +1657,7 @@ Step 2: GWAS for each chromosome.
 for chr in 1:23
     plinkfile = datadir * "hapmap3.chr." * string(chr)
     pvalfile = plinkfile * ".pval.txt" 
-    vgwas(nm, plinkfile, pvalfile=pvalfile)
+    trajgwas(nm, plinkfile, pvalfile=pvalfile)
 end
 ```
 
@@ -1639,30 +1670,30 @@ readdir(glob"*.pval.txt", datadir)
 
 
 
-    23-element Array{String,1}:
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.1.pval.txt"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.10.pval.txt"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.11.pval.txt"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.12.pval.txt"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.13.pval.txt"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.14.pval.txt"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.15.pval.txt"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.16.pval.txt"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.17.pval.txt"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.18.pval.txt"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.19.pval.txt"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.2.pval.txt"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.20.pval.txt"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.21.pval.txt"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.22.pval.txt"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.23.pval.txt"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.3.pval.txt"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.4.pval.txt"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.5.pval.txt"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.6.pval.txt"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.7.pval.txt"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.8.pval.txt"
-     "/Users/christophergerman/.julia/dev/vGWAS/data/hapmap3.chr.9.pval.txt"
+    23-element Vector{String}:
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.1.pval.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.10.pval.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.11.pval.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.12.pval.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.13.pval.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.14.pval.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.15.pval.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.16.pval.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.17.pval.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.18.pval.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.19.pval.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.2.pval.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.20.pval.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.21.pval.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.22.pval.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.23.pval.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.3.pval.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.4.pval.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.5.pval.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.6.pval.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.7.pval.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.8.pval.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.9.pval.txt"
 
 
 
@@ -1677,14 +1708,14 @@ for chr in 1:23
     bedfile = datadir * "hapmap3.chr." * string(chr) * ".bed"
     bimfile = datadir * "hapmap3.chr." * string(chr) * ".bim"
     pvalfile = datadir * "hapmap3.chr." * string(chr) * ".pval.txt"
-    vgwas(nm, bedfile, bimfile, 324; pvalfile=pvalfile)
+    trajgwas(nm, bedfile, bimfile, 324; pvalfile=pvalfile)
 end
 ```
 
 
 ```julia
 # clean up
-rm("vgwas.null.txt", force=true)
+rm("trajgwas.null.txt", force=true)
 isfile(datadir * "fittednullmodel.jld2") && rm(datadir * "fittednullmodel.jld2")
 for chr in 1:23
     pvalfile = datadir * "hapmap3.chr." * string(chr) * ".pval.txt"
@@ -1700,11 +1731,11 @@ end
 
 ## Multiple Plink file sets on cluster
 
-Running analyses on multiple plink file sets on a cluster computing system is demonstrated with our [OrdinalGWAS.jl pacakge](https://openmendel.github.io/OrdinalGWAS.jl/latest/#Multiple-Plink-file-sets-on-cluster). A similar setup can be used with vGWAS. 
+Running analyses on multiple plink file sets on a cluster computing system is demonstrated with our [OrdinalGWAS.jl pacakge](https://openmendel.github.io/OrdinalGWAS.jl/latest/#Multiple-Plink-file-sets-on-cluster). A similar setup can be used with TrajGWAS. 
 
 ## Troubleshooting
 
-If there are issues you're encountering with running vGWAS, the following are possible remedies.
+If there are issues you're encountering with running TrajGWAS, the following are possible remedies.
 
 - Null Model
     - Issues with null model convergence may be solved by choosing alternate starting values for parameters, using a different solver, transforming variables, and increasing the number of runs (WiSER runs). These are detailed in the [WiSER documentation here](https://github.com/OpenMendel/WiSER.jl/blob/master/docs/src/model_fitting.md#tips-for-improving-estimation).
@@ -1712,9 +1743,4 @@ If there are issues you're encountering with running vGWAS, the following are po
 - GWAS Results
     - If you use the score test instead of the SPA-score test (SPA is default for single-SNP analyses), then there can be inflation in type I error and decreased power when (a) the sample size is small, (b) the number of repeated measures is low, or (c) the variants analyzed are rare with low minor allele frequencies. In these cases, the score test is not optimal and it is suggested to use the SPA version (`usespa=true`). SPA is only implemented for single-SNP analyses. These issues can occur in both Wald and score tests. 
     
-If you notice any problems with your output or results, [file an issue](https://github.com/OpenMendel/vGWAS.jl/issues). 
-
-
-```julia
-
-```
+If you notice any problems with your output or results, [file an issue](https://github.com/OpenMendel/TrajGWAS.jl/issues). 

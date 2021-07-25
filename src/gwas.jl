@@ -679,7 +679,7 @@ function trajgwas(
         elseif setlength == 0 #snpset is defined by snpset file
             # Report effects and pvals in beta and tau for each SNP
             SnpArrays.makestream(pvalfile, "w") do io
-                test == :score ? println(io, "snpsetid\tnsnps\tbetapval\ttaupval\t"
+                test == :score ? println(io, "snpsetid\tnsnps\tbetapval\ttaupval"
                 ) : println(io, "snpsetid\tnsnps\tl2normeffect\tbetapval\t",
                 "taupval")
                 for j in eachindex(snpset_ids)

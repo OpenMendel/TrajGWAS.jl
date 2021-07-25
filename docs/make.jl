@@ -3,7 +3,7 @@ using Documenter
 
 makedocs(;
     modules=[TrajGWAS],
-    authors="Seyoon Ko <syko0507@snu.ac.kr> and contributors",
+    authors="Seyoon Ko <kos@ucla.edu> and contributors",
     repo="https://github.com/OpenMendel/TrajGWAS.jl/blob/{commit}{path}#L{line}",
     sitename="TrajGWAS.jl",
     format=Documenter.HTML(;
