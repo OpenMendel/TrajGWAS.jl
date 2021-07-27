@@ -388,9 +388,9 @@ uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
 [[LoopVectorization]]
 deps = ["ArrayInterface", "DocStringExtensions", "IfElse", "LinearAlgebra", "OffsetArrays", "Polyester", "Requires", "SLEEFPirates", "Static", "StrideArraysCore", "ThreadingUtilities", "UnPack", "VectorizationBase"]
-git-tree-sha1 = "b844cb320457812f739fe75f216a481095daf5c2"
+git-tree-sha1 = "1578cc856a165170a9572602e885c8511d81da1e"
 uuid = "bdcacae8-1622-11e9-2a5c-532679323890"
-version = "0.12.55"
+version = "0.12.56"
 
 [[METIS_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
