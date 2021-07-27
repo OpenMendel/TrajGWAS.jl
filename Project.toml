@@ -24,8 +24,18 @@ WiSER = "2ff19380-1883-49fc-9d10-450face6b90c"
 
 [compat]
 BGEN = "0.1.2"
+CSV = "0.8"
+DataFrames = "1"
+Distributions = "0.25"
+Interpolations = "0.13"
+Optim = "1"
+Reexport = "1"
 SnpArrays = "0.3.8"
+StatsBase = "0.33"
+StatsModels = "0.6"
+Tables = "1"
 VCFTools = "0.2.1"
+VariantCallFormat = "0.5"
 WiSER = "0.1"
 julia = "1.5"
 
