@@ -1729,9 +1729,162 @@ for chr in 1:26
 end
 ```
 
-## Multiple Plink file sets on cluster
+## Multiple file sets on cluster
 
-Running analyses on multiple plink file sets on a cluster computing system is demonstrated with our [OrdinalGWAS.jl pacakge](https://openmendel.github.io/OrdinalGWAS.jl/latest/#Multiple-Plink-file-sets-on-cluster). A similar setup can be used with TrajGWAS. 
+For running the score tests on a cluster, it would be desirable to fit a null model on a single machine first, and save the model as a serialized Julia object (`.jls`). For example:
+
+```julia
+using DataFrames, CSV
+using Statistics
+using TrajGWAS
+using Ipopt, WiSER
+using LinearAlgebra
+using BGEN
+# fit the null model
+BLAS.set_num_threads(1)
+solver = Ipopt.IpoptSolver(print_level=1, watchdog_shortened_iter_trigger=5, max_iter=120)
+
+bp_data = CSV.read("bp.csv", DataFrame)
+@time nm = trajgwas(@formula(dbp ~ 1 + SEX + age + age_sq +
+        PC1 + PC2 + PC3 + PC4 + PC5 + bmi),
+    @formula(dbp ~ 1 + age),
+    @formula(dbp ~ 1 + SEX + age + age_sq +
+        PC1 + PC2 + PC3 + PC4 + PC5 +
+        bmi),
+    :FID, # subject ID
+    bp_data,
+    nothing;
+    nullfile="dbp.null.txt",
+    solver=solver,
+    runs=10
+)
+
+println(nm)
+using Serialization
+open("null.model.jls", "w") do io
+    Serialization.serialize(io, nm)
+end
+```
+
+Then, the fitted null model would be used for the score test. It could be desirable to configure each job to run on a slice of SNPs on a BGEN file for higher throughput. The julia script for score test (`scoretest_bp.jl`) for a slice of BGEN file would look like:
+
+```julia
+using DataFrames, CSV
+using Statistics
+using TrajGWAS
+using WiSER
+using LinearAlgebra
+using BGEN
+# fit the null model
+BLAS.set_num_threads(1)
+
+
+using Serialization
+
+bgendir = ARGS[1] 
+chr = ARGS[2] # 1 to 22
+fitted_null = ARGS[3] # "null.model.jls"
+pvalfile = ARGS[4] # "sbp.test.diabetics.chr$(chr).txt"
+chunkidx = parse(Int, ARGS[5])
+nchunks  = parse(Int, ARGS[6])
+
+nm = open(deserialize, fitted_null)
+genetic_iids_subsample = nm.ids
+
+bgenfilename = bgendir * "/Chr$(chr)" # to analyze, for example, /path/to/bgen/Chr5.bgen
+samplefilename = bgendir * "/Samples.sample" # .sample file compatible with BGEN
+mfifilename = bgendir * "/mfi_chr$(chr).txt" # "MFI" file, an external file with MAF + info score	
+ukb_data = Bgen(bgenfilename * ".bgen"; sample_path = samplefilename)
+genetic_iids = map(x -> parse(Int, split(x, " ")[1]), samples(ukb_data))
+
+order_dict = Dict{Int, Int}()
+for (i, iid) in enumerate(genetic_iids)
+    order_dict[iid] = i
+end
+
+sample_indicator = falses(length(genetic_iids))
+for v in genetic_iids_subsample
+    sample_indicator[order_dict[v]] = true # extract only the samples being used for the analysis
+end
+
+# GWAS for each chromosome
+
+## pre-filtering SNPs not passing the criteria (MAF > 0.002, info score > 0.3)
+min_maf = 0.002
+min_info_score = 0.3
+min_hwe_pval = 1e-10
+mfi = CSV.read(mfifilename, DataFrame; header=false)
+mfi.Column8 = map(x -> x == "NA" ? NaN : parse(Float64, x), mfi.Column8) # Column8: info score
+snpmask = (mfi.Column6 .> min_maf) .& (mfi.Column8 .> 0.3) # Column6: MAF
+
+# compute range to run the analysis
+chunksize = n_variants(ukb_data) ÷ nchunks + (n_variants(ukb_data) % nchunks > 0 ? 1 : 0)
+startidx = chunksize * (chunkidx - 1) + 1
+endidx = min(chunksize * chunkidx, n_variants(ukb_data))
+snpmask = snpmask[startidx:endidx]
+
+println("running for variants $startidx to $endidx")
+
+# rearrange data in nm so that it matches bgen data
+nullinds = indexin(genetic_iids[sample_indicator], nm.ids)
+nm.obswts .= isempty(nm.obswts) ? nm.obswts : nm.obswts[nullinds]
+nm.ids .= nm.ids[nullinds]
+nm.nis .= nm.nis[nullinds]
+nm.data .= nm.data[nullinds]
+@assert genetic_iids[sample_indicator] == nm.ids "there is some issue -- sampleids not matching"
+    
+trajgwas(nm, bgenfilename * ".bgen", count(sample_indicator);
+    samplepath=samplefilename,
+    pvalfile=pvalfile,
+    snpinds=snpmask,
+    min_hwe_pval = min_hwe_pval,
+    bgenrowinds = sample_indicator,
+    startidx = startidx,
+    endidx = endidx,
+    usespa=true)
+
+```
+
+- Command-line arguments
+    - Argument 1: directory for the BGEN files. BGEN files (.bgen), BGEN index files (.bgen.bgi), and MFI files (.txt) should be included there.
+    - Argument 2: chromosome
+    - Argument 3: fitted null model (.jls)
+    - Argument 4: path for the result p-value file
+    - Argument 5: chunk index (1-based)
+    - Argument 6: number of chunks
+    
+The code above runs the analysis on `ARGS[5]`-th slice out of `ARGS[6]` slices of chromosome `ARGS[2]`.
+
+Then, the following script could be used for a cluster managed by Sun Grid Engine: (`sbp_diabetes.sh`)
+
+```bash
+#!/bin/bash
+#$ -cwd
+#$ -o joblog.$JOB_ID.$TASK_ID
+#$ -j y
+#$ -pe shared 2
+#$ -l h_rt=8:00:00,h_data=8G,arch=intel*
+# Email address to notify
+##$ -M $USER@mail
+# Notify when
+#$ -m a
+#  Job array indexes
+#$ -t 1-352:1
+
+NCHUNKS=16
+CHUNKIDX=$(( (${SGE_TASK_ID} - 1) % ${NCHUNKS} + 1 ))
+CHR=$(( (${SGE_TASK_ID} - 1) / ${NCHUNKS} + 1))
+
+PROJECTDIR=/user/dir/jobscripts
+BGENDIR=/user/dir/imputed
+FITTED_NULL=/user/dir/null.model.jls
+PVALFILE=/user/dir/pvalfiles/sbp.test.diabetes.chr${CHR}.${CHUNKIDX}of${NCHUNKS}.txt
+
+module load julia
+time julia --project=${PROJECTDIR} ${PROJECTDIR}/scoretest_bp.jl ${BGENDIR} ${CHR} ${FITTED_NULL} ${PVALFILE} ${CHUNKIDX} ${NCHUNKS}
+```
+
+and this could be submitted using the `qsub` command.
 
 ## Troubleshooting
 
@@ -1744,3 +1897,8 @@ If there are issues you're encountering with running TrajGWAS, the following are
     - If you use the score test instead of the SPA-score test (SPA is default for single-SNP analyses), then there can be inflation in type I error and decreased power when (a) the sample size is small, (b) the number of repeated measures is low, or (c) the variants analyzed are rare with low minor allele frequencies. In these cases, the score test is not optimal and it is suggested to use the SPA version (`usespa=true`). SPA is only implemented for single-SNP analyses. These issues can occur in both Wald and score tests. 
     
 If you notice any problems with your output or results, [file an issue](https://github.com/OpenMendel/TrajGWAS.jl/issues). 
+
+
+```julia
+
+```
