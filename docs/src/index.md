@@ -65,7 +65,7 @@ const datadir = normpath(joinpath(dirname(pathof(TrajGWAS)), "../data/"))
 
 
 
-    "/Users/kose/.julia/dev/TrajGWAS/data/"
+    "/Users/xyz/.julia/dev/TrajGWAS/data/"
 
 
 
@@ -79,20 +79,20 @@ readdir(glob"*.*", datadir)
 
 
     14-element Vector{String}:
-     "/Users/kose/.julia/dev/TrajGWAS/data/bgen_snpsetfile.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/covariate.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/example.8bits.bgen"
-     "/Users/kose/.julia/dev/TrajGWAS/data/example.8bits.bgen.bgi"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.bed"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.bim"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.fam"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap_snpsetfile.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/sim_data.jl"
-     "/Users/kose/.julia/dev/TrajGWAS/data/snpsetfile_vcf.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/test_vcf.vcf.gz"
-     "/Users/kose/.julia/dev/TrajGWAS/data/trajgwas_bgen_ex.csv"
-     "/Users/kose/.julia/dev/TrajGWAS/data/trajgwas_plinkex.csv"
-     "/Users/kose/.julia/dev/TrajGWAS/data/trajgwas_vcfex.csv"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/bgen_snpsetfile.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/covariate.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/example.8bits.bgen"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/example.8bits.bgen.bgi"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.bed"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.bim"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.fam"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap_snpsetfile.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/sim_data.jl"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/snpsetfile_vcf.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/test_vcf.vcf.gz"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/trajgwas_bgen_ex.csv"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/trajgwas_plinkex.csv"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/trajgwas_vcfex.csv"
 
 
 
@@ -230,9 +230,9 @@ readdir(glob"hapmap3.*", datadir)
 
 
     3-element Vector{String}:
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.bed"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.bim"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.fam"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.bed"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.bim"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.fam"
 
 
 
@@ -1570,32 +1570,32 @@ readdir(glob"hapmap3.chr.*", datadir)
 
 
     75-element Vector{String}:
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.1.bed"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.1.bim"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.1.fam"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.10.bed"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.10.bim"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.10.fam"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.11.bed"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.11.bim"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.11.fam"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.12.bed"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.12.bim"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.12.fam"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.13.bed"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.1.bed"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.1.bim"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.1.fam"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.10.bed"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.10.bim"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.10.fam"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.11.bed"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.11.bim"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.11.fam"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.12.bed"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.12.bim"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.12.fam"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.13.bed"
      ⋮
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.6.bed"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.6.bim"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.6.fam"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.7.bed"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.7.bim"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.7.fam"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.8.bed"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.8.bim"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.8.fam"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.9.bed"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.9.bim"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.9.fam"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.6.bed"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.6.bim"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.6.fam"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.7.bed"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.7.bim"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.7.fam"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.8.bed"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.8.bim"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.8.fam"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.9.bed"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.9.bim"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.9.fam"
 
 
 
@@ -1671,29 +1671,29 @@ readdir(glob"*.pval.txt", datadir)
 
 
     23-element Vector{String}:
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.1.pval.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.10.pval.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.11.pval.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.12.pval.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.13.pval.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.14.pval.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.15.pval.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.16.pval.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.17.pval.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.18.pval.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.19.pval.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.2.pval.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.20.pval.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.21.pval.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.22.pval.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.23.pval.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.3.pval.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.4.pval.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.5.pval.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.6.pval.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.7.pval.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.8.pval.txt"
-     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.9.pval.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.1.pval.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.10.pval.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.11.pval.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.12.pval.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.13.pval.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.14.pval.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.15.pval.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.16.pval.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.17.pval.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.18.pval.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.19.pval.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.2.pval.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.20.pval.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.21.pval.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.22.pval.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.23.pval.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.3.pval.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.4.pval.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.5.pval.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.6.pval.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.7.pval.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.8.pval.txt"
+     "/Users/xyz/.julia/dev/TrajGWAS/data/hapmap3.chr.9.pval.txt"
 
 
 
