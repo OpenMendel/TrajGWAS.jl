@@ -2,6 +2,7 @@
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://OpenMendel.github.io/TrajGWAS.jl/stable)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://OpenMendel.github.io/TrajGWAS.jl/dev)
+[![build Actions Status](https://github.com/OpenMendel/TrajGWAS.jl/workflows/CI/badge.svg)](https://github.com/OpenMendel/TrajGWAS.jl/actions)
 [![Build Status](https://travis-ci.com/OpenMendel/TrajGWAS.jl.svg?branch=master)](https://travis-ci.com/OpenMendel/TrajGWAS.jl)
 [![Coverage](https://codecov.io/gh/OpenMendel/TrajGWAS.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/OpenMendel/TrajGWAS.jl)
 
