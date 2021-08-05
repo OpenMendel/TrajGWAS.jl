@@ -49,6 +49,8 @@ jobs:
       - uses: julia-actions/julia-buildpkg@latest
       - uses: julia-actions/julia-runtest@latest
       - uses: julia-actions/julia-processcoverage@v1
+      - run: |
+          export CODECOV_TOKEN='8e8920ea-707e-4b92-9189-9359e79ee665'
       - uses: codecov/codecov-action@v1
         with:
           file: lcov.info
