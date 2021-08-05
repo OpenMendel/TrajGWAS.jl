@@ -18,4 +18,5 @@ makedocs(;
 
 deploydocs(;
     repo="github.com/OpenMendel/TrajGWAS.jl",
+    devbranch = "main"
 )
