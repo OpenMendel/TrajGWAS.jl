@@ -4,37 +4,40 @@ pkg&quot;add https://github.com/OpenMendel/SnpArrays.jl&quot;
 pkg&quot;add https://github.com/OpenMendel/VCFTools.jl&quot;
 pkg&quot;add https://github.com/OpenMendel/BGEN.jl&quot;
 pkg&quot;add https://github.com/OpenMendel/WiSER.jl&quot;
-pkg&quot;add https://github.com/OpenMendel/TrajGWAS.jl&quot; </code></pre><p>To run the code in this document, the packages installed by the following command are also necessary:</p><pre><code class="language-julia hljs">pkg&quot;add BenchmarkTools CSV Glob&quot;</code></pre><pre><code class="language-julia hljs"># machine information for this tutorial
-versioninfo()</code></pre><pre><code class="nohighlight hljs">Julia Version 1.6.0
-Commit f9720dc2eb (2021-03-24 12:55 UTC)
+pkg&quot;add https://github.com/OpenMendel/TrajGWAS.jl&quot; </code></pre><p>To run the code in this document, the packages installed by the following command are also necessary:</p><pre><code class="language-julia hljs">pkg&quot;add BenchmarkTools CSV Glob PrettyTables&quot;</code></pre><pre><code class="language-julia hljs"># machine information for this tutorial
+versioninfo()</code></pre><pre><code class="nohighlight hljs">Julia Version 1.6.2
+Commit 1b93d53fc4 (2021-07-14 15:36 UTC)
 Platform Info:
-  OS: macOS (x86_64-apple-darwin19.6.0)
-  CPU: Intel(R) Core(TM) i7-6920HQ CPU @ 2.90GHz
+  OS: macOS (x86_64-apple-darwin18.7.0)
+  CPU: Intel(R) Core(TM) i7-7820HQ CPU @ 2.90GHz
   WORD_SIZE: 64
   LIBM: libopenlibm
-  LLVM: libLLVM-11.0.1 (ORCJIT, skylake)
-Environment:
-  JULIA_EDITOR = code
-  JULIA_NUM_THREADS = 4</code></pre><pre><code class="language-julia hljs"># for use in this tutorial
-ENV[&quot;COLUMNS&quot;] = 250
-using BenchmarkTools, CSV, Glob, SnpArrays, TrajGWAS</code></pre><h2 id="Example-data-sets"><a class="docs-heading-anchor" href="#Example-data-sets">Example data sets</a><a id="Example-data-sets-1"></a><a class="docs-heading-anchor-permalink" href="#Example-data-sets" title="Permalink"></a></h2><p>The <code>data</code> folder of the package contains the example data sets for use with PLINK and VCF Files. In general, the user can locate this folder by command:</p><pre><code class="language-julia hljs">pvalpath = &quot;trajgwas.pval.txt&quot;
+  LLVM: libLLVM-11.0.1 (ORCJIT, skylake)</code></pre><pre><code class="language-julia hljs"># for use in this tutorial
+ENV[&quot;COLUMNS&quot;] = 400
+using BenchmarkTools, CSV, Glob, SnpArrays, TrajGWAS, PrettyTables</code></pre><h2 id="Example-data-sets"><a class="docs-heading-anchor" href="#Example-data-sets">Example data sets</a><a id="Example-data-sets-1"></a><a class="docs-heading-anchor-permalink" href="#Example-data-sets" title="Permalink"></a></h2><p>The <code>data</code> folder of the package contains the example data sets for use with PLINK and VCF Files. In general, the user can locate this folder by command:</p><pre><code class="language-julia hljs">pvalpath = &quot;trajgwas.pval.txt&quot;
 nullpath = &quot;trajgwas.null.txt&quot;
-const datadir = normpath(joinpath(dirname(pathof(TrajGWAS)), &quot;../data/&quot;))</code></pre><pre><code class="nohighlight hljs">&quot;/Users/huazhou/.julia/dev/TrajGWAS/data/&quot;</code></pre><pre><code class="language-julia hljs"># content of the data folder
-readdir(glob&quot;*.*&quot;, datadir)</code></pre><pre><code class="nohighlight hljs">14-element Vector{String}:
- &quot;/Users/huazhou/.julia/dev/TrajGWAS/data/bgen_snpsetfile.txt&quot;
- &quot;/Users/huazhou/.julia/dev/TrajGWAS/data/covariate.txt&quot;
- &quot;/Users/huazhou/.julia/dev/TrajGWAS/data/example.8bits.bgen&quot;
- &quot;/Users/huazhou/.julia/dev/TrajGWAS/data/example.8bits.bgen.bgi&quot;
- &quot;/Users/huazhou/.julia/dev/TrajGWAS/data/hapmap3.bed&quot;
- &quot;/Users/huazhou/.julia/dev/TrajGWAS/data/hapmap3.bim&quot;
- &quot;/Users/huazhou/.julia/dev/TrajGWAS/data/hapmap3.fam&quot;
- &quot;/Users/huazhou/.julia/dev/TrajGWAS/data/hapmap_snpsetfile.txt&quot;
- &quot;/Users/huazhou/.julia/dev/TrajGWAS/data/sim_data.jl&quot;
- &quot;/Users/huazhou/.julia/dev/TrajGWAS/data/snpsetfile_vcf.txt&quot;
- &quot;/Users/huazhou/.julia/dev/TrajGWAS/data/test_vcf.vcf.gz&quot;
- &quot;/Users/huazhou/.julia/dev/TrajGWAS/data/trajgwas_bgen_ex.csv&quot;
- &quot;/Users/huazhou/.julia/dev/TrajGWAS/data/trajgwas_plinkex.csv&quot;
- &quot;/Users/huazhou/.julia/dev/TrajGWAS/data/trajgwas_vcfex.csv&quot;</code></pre><p>The <code>hapmap3</code> files <code>trajgwas_plinkex.csv</code> file correspond to data examples using PLINK formatted files (.bed, .bim, .fam). </p><p>The <code>test_vcf.vcf.gz</code> and <code>trajgwas_vcfex.csv</code> files are for an example analysis using VCF formatted files. </p><p>The <code>example.8bits.bgen</code> and <code>trajgwas_bgen_ex.csv</code> files are for an example analysis using VCF formatted files. </p><h2 id="Basic-usage"><a class="docs-heading-anchor" href="#Basic-usage">Basic usage</a><a id="Basic-usage-1"></a><a class="docs-heading-anchor-permalink" href="#Basic-usage" title="Permalink"></a></h2><p>The following command performs GWAS using for the hapmap3 PLINK files. The output is the fitted null model.</p><p>The default type of GWAS performed is a single-snp significance genome-wide scan, this can be changed by the keyword <code>analysistype</code> (default is &quot;singlesnp&quot;). Other types of analyses are covered later. It outputs the null model, runtime of fitting the null model, and convergence metrics. </p><pre><code class="language-julia hljs">trajgwas(@formula(y ~ 1 + sex + onMeds),
+const datadir = normpath(joinpath(dirname(pathof(TrajGWAS)), &quot;../data/&quot;))</code></pre><pre><code class="nohighlight hljs">&quot;/Users/kose/.julia/dev/TrajGWAS/data/&quot;</code></pre><pre><code class="language-julia hljs"># content of the data folder
+readdir(glob&quot;*.*&quot;, datadir)</code></pre><pre><code class="nohighlight hljs">20-element Vector{String}:
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/bgen_snpsetfile.txt&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/covariate.txt&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/example.8bits.bgen&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/example.8bits.bgen.bgi&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.bed&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.bim&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.25.bed&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.25.bim&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.25.fam&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.26.bed&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.26.bim&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.26.fam&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.fam&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/hapmap_snpsetfile.txt&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/sim_data.jl&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/snpsetfile_vcf.txt&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/test_vcf.vcf.gz&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/trajgwas_bgen_ex.csv&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/trajgwas_plinkex.csv&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/trajgwas_vcfex.csv&quot;</code></pre><p>The <code>hapmap3</code> files <code>trajgwas_plinkex.csv</code> file correspond to data examples using PLINK formatted files (.bed, .bim, .fam). </p><p>The <code>test_vcf.vcf.gz</code> and <code>trajgwas_vcfex.csv</code> files are for an example analysis using VCF formatted files. </p><p>The <code>example.8bits.bgen</code> and <code>trajgwas_bgen_ex.csv</code> files are for an example analysis using VCF formatted files. </p><h2 id="Basic-usage"><a class="docs-heading-anchor" href="#Basic-usage">Basic usage</a><a id="Basic-usage-1"></a><a class="docs-heading-anchor-permalink" href="#Basic-usage" title="Permalink"></a></h2><p>The following command performs GWAS using for the hapmap3 PLINK files. The output is the fitted null model.</p><p>The default type of GWAS performed is a single-snp significance genome-wide scan, this can be changed by the keyword <code>analysistype</code> (default is &quot;singlesnp&quot;). Other types of analyses are covered later. It outputs the null model, runtime of fitting the null model, and convergence metrics. </p><pre><code class="language-julia hljs">trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
@@ -47,8 +50,8 @@ This program contains Ipopt, a library for large-scale nonlinear optimization.
          For more information visit https://github.com/coin-or/Ipopt
 ******************************************************************************
 
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.259617
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.034867
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.221323
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.043580
 
 
 
@@ -94,7 +97,7 @@ trajgwas(@formula(trait ~ sex), covfile, vcffile;
 trajgwas(@formula(trait ~ sex), covfile, vcffile;
     geneticfile = &quot;VCF&quot;, vcftype = :GT)</code></pre><p>The following is an example of snpset GWAS (every 50 snps). For more types of snpset analyses see documentation:</p><pre><code class="language-julia hljs">trajgwas(@formula(trait ~ sex), covfile, plkfile;
     analysistype = &quot;snpset&quot;, snpset = 50)</code></pre><p>The following is an example of GxE GWAS testing the interaction effect:</p><pre><code class="language-julia hljs">trajgwas(@formula(trait ~ sex), covfile, plkfile;
-    analysistype = &quot;gxe&quot;, e = :sex)</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/OpenMendel/TrajGWAS.jl/blob/3aceb7d90d74391291ebf43c359609d8f763ee85/src/gwas.jl#LL15-L117">source</a></section></article><h3 id="Formula-for-null-model"><a class="docs-heading-anchor" href="#Formula-for-null-model">Formula for null model</a><a id="Formula-for-null-model-1"></a><a class="docs-heading-anchor-permalink" href="#Formula-for-null-model" title="Permalink"></a></h3><p>The first three arguments specify the null model without SNP effects. The fourth argument specifies the grouping variable (subject ID, cluster, etc.).</p><ul><li>The first term is the mean fixed effects formula e.g., <code>@formula(y ~ 1 + sex + onMeds)</code>.</li><li>The second argument is the random (location) effects – <code>@formula(y ~ 1)</code> specifies a random intercept, whereas <code>@formula(y ~ 1 + time)</code> would specify a random intercept and slope (time).</li><li>The third argument specifies the within-subject variance (WSV) formula <code>@formula(y ~ 1 + sex + onMeds)</code> models the intra-individual variability of <code>y</code> with an intercept, sex, and medication. Note: The WSV formula must have an intercept. </li><li>The fourth argument specifies the grouping variable of the longitudinal data. In the example data, the <code>id</code> variable specifies the grouping variable the repeated measures are collected on. </li></ul><h3 id="Input-files"><a class="docs-heading-anchor" href="#Input-files">Input files</a><a id="Input-files-1"></a><a class="docs-heading-anchor-permalink" href="#Input-files" title="Permalink"></a></h3><p><code>trajgwas</code> expects two input files: one for responses plus covariates (fifth argument) in long format, the other the genetic file(s) for dosages/genotypes (sixth argument).</p><h4 id="Covariate-and-trait-file"><a class="docs-heading-anchor" href="#Covariate-and-trait-file">Covariate and trait file</a><a id="Covariate-and-trait-file-1"></a><a class="docs-heading-anchor-permalink" href="#Covariate-and-trait-file" title="Permalink"></a></h4><p>Covariates and phenotype are provided in a csv file, e.g., <code>trajgwas_plinkex.csv</code>, which has one header line for variable names. In this example, variable <code>y</code> is continuous variable with repeated measures on individuals specified by <code>id</code>. We want to include variable <code>sex</code> and <code>onMeds</code> as covariates for GWAS.</p><pre><code class="language-julia hljs">run(`head $(datadir)trajgwas_plinkex.csv`);</code></pre><pre><code class="nohighlight hljs">sex,onMeds,snp1,snp2,snp3,snp4,y,id
+    analysistype = &quot;gxe&quot;, e = :sex)</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/OpenMendel/TrajGWAS.jl/blob/d25c9c1d76385b9bb403e7bcddbfc2c776aeaa73/src/gwas.jl#LL15-L117">source</a></section></article><h3 id="Formula-for-null-model"><a class="docs-heading-anchor" href="#Formula-for-null-model">Formula for null model</a><a id="Formula-for-null-model-1"></a><a class="docs-heading-anchor-permalink" href="#Formula-for-null-model" title="Permalink"></a></h3><p>The first three arguments specify the null model without SNP effects. The fourth argument specifies the grouping variable (subject ID, cluster, etc.).</p><ul><li>The first term is the mean fixed effects formula e.g., <code>@formula(y ~ 1 + sex + onMeds)</code>.</li><li>The second argument is the random (location) effects – <code>@formula(y ~ 1)</code> specifies a random intercept, whereas <code>@formula(y ~ 1 + time)</code> would specify a random intercept and slope (time).</li><li>The third argument specifies the within-subject variance (WSV) formula <code>@formula(y ~ 1 + sex + onMeds)</code> models the intra-individual variability of <code>y</code> with an intercept, sex, and medication. Note: The WSV formula must have an intercept. </li><li>The fourth argument specifies the grouping variable of the longitudinal data. In the example data, the <code>id</code> variable specifies the grouping variable the repeated measures are collected on. </li></ul><h3 id="Input-files"><a class="docs-heading-anchor" href="#Input-files">Input files</a><a id="Input-files-1"></a><a class="docs-heading-anchor-permalink" href="#Input-files" title="Permalink"></a></h3><p><code>trajgwas</code> expects two input files: one for responses plus covariates (fifth argument) in long format, the other the genetic file(s) for dosages/genotypes (sixth argument).</p><h4 id="Covariate-and-trait-file"><a class="docs-heading-anchor" href="#Covariate-and-trait-file">Covariate and trait file</a><a id="Covariate-and-trait-file-1"></a><a class="docs-heading-anchor-permalink" href="#Covariate-and-trait-file" title="Permalink"></a></h4><p>Covariates and phenotype are provided in a csv file, e.g., <code>trajgwas_plinkex.csv</code>, which has one header line for variable names. In this example, variable <code>y</code> is continuous variable with repeated measures on individuals specified by <code>id</code>. We want to include variable <code>sex</code> and <code>onMeds</code> as covariates for GWAS.</p><pre><code class="language-julia hljs">run(`head $(datadir)trajgwas_plinkex.csv`);</code></pre><pre><code class="nohighlight hljs">sex,onMeds,snp1,snp2,snp3,snp4,y,id
 0.0,1.0,0.0,1.0,2.0,0.0,12.26667411332518,A1
 0.0,0.0,0.0,1.0,2.0,0.0,10.268123812744903,A1
 0.0,0.0,0.0,1.0,2.0,0.0,12.165997408822557,A1
@@ -103,10 +106,16 @@ trajgwas(@formula(trait ~ sex), covfile, vcffile;
 0.0,0.0,0.0,1.0,2.0,0.0,9.987659617201372,A1
 0.0,0.0,0.0,1.0,2.0,0.0,12.140779426464974,A1
 0.0,1.0,0.0,1.0,2.0,0.0,13.205778146177705,A1
-0.0,0.0,0.0,1.0,2.0,0.0,11.363145919060207,A1</code></pre><h4 id="Genetic-file(s)"><a class="docs-heading-anchor" href="#Genetic-file(s)">Genetic file(s)</a><a id="Genetic-file(s)-1"></a><a class="docs-heading-anchor-permalink" href="#Genetic-file(s)" title="Permalink"></a></h4><p>TrajGWAS supports PLINK files, VCF files, and BGEN files.</p><ul><li><p>Genotype data is available as binary PLINK files.</p></li><li><p>TrajGWAS can use dosage or genotype data from VCF files. </p></li><li><p>TrajGWAS uses dosage data from BGEN files.</p></li></ul><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>By default, TrajGWAS assumes a set of PLINK files will be used. When using a VCF File, VCF file and type of data (dosage, genotype) must be specified by the <code>geneticformat</code> and <code>vcftype</code> options (as shown later). Similarly, BGEN must be specified as the <code>geneticformat</code> if using a BGEN file. </p></div></div><pre><code class="language-julia hljs">readdir(glob&quot;hapmap3.*&quot;, datadir)</code></pre><pre><code class="nohighlight hljs">3-element Vector{String}:
- &quot;/Users/huazhou/.julia/dev/TrajGWAS/data/hapmap3.bed&quot;
- &quot;/Users/huazhou/.julia/dev/TrajGWAS/data/hapmap3.bim&quot;
- &quot;/Users/huazhou/.julia/dev/TrajGWAS/data/hapmap3.fam&quot;</code></pre><p>In this example, there are 324 samples at 13,928 SNPs.</p><pre><code class="language-julia hljs">size(SnpArray(datadir * &quot;hapmap3.bed&quot;))</code></pre><pre><code class="nohighlight hljs">(324, 13928)</code></pre><p>Compressed PLINK and VCF files are supported. For example, if Plink files are <code>hapmap3.bed.gz</code>, <code>hapmap3.bim.gz</code> and <code>hapmap3.fam.gz</code>, the same command</p><pre><code class="language-julia hljs">trajgwas(@formula(y ~ 1 + sex + onMeds),
+0.0,0.0,0.0,1.0,2.0,0.0,11.363145919060207,A1</code></pre><h4 id="Genetic-file(s)"><a class="docs-heading-anchor" href="#Genetic-file(s)">Genetic file(s)</a><a id="Genetic-file(s)-1"></a><a class="docs-heading-anchor-permalink" href="#Genetic-file(s)" title="Permalink"></a></h4><p>TrajGWAS supports PLINK files, VCF files, and BGEN files.</p><ul><li><p>Genotype data is available as binary PLINK files.</p></li><li><p>TrajGWAS can use dosage or genotype data from VCF files. </p></li><li><p>TrajGWAS uses dosage data from BGEN files.</p></li></ul><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>By default, TrajGWAS assumes a set of PLINK files will be used. When using a VCF File, VCF file and type of data (dosage, genotype) must be specified by the <code>geneticformat</code> and <code>vcftype</code> options (as shown later). Similarly, BGEN must be specified as the <code>geneticformat</code> if using a BGEN file. </p></div></div><pre><code class="language-julia hljs">readdir(glob&quot;hapmap3.*&quot;, datadir)</code></pre><pre><code class="nohighlight hljs">9-element Vector{String}:
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.bed&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.bim&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.25.bed&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.25.bim&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.25.fam&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.26.bed&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.26.bim&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.26.fam&quot;
+ &quot;/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.fam&quot;</code></pre><p>In this example, there are 324 samples at 13,928 SNPs.</p><pre><code class="language-julia hljs">size(SnpArray(datadir * &quot;hapmap3.bed&quot;))</code></pre><pre><code class="nohighlight hljs">(324, 13928)</code></pre><p>Compressed PLINK and VCF files are supported. For example, if Plink files are <code>hapmap3.bed.gz</code>, <code>hapmap3.bim.gz</code> and <code>hapmap3.fam.gz</code>, the same command</p><pre><code class="language-julia hljs">trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
@@ -143,7 +152,17 @@ Fixed-effects parameters:
 τ3: onMeds        0.422303   0.063825     6.62    &lt;1e-10
 ────────────────────────────────────────────────────────
 Random effects covariance matrix Σγ:
- &quot;γ1: (Intercept)&quot;  3.32057</code></pre><ul><li><code>trajgwas.pval.txt</code> tallies the SNPs, their pvalues, and relevant information on each SNP.<ul><li><code>betapval</code> represents the p-value of the SNP&#39;s effect on the mean of the trait. If <code>spa=true</code> (default), then this is the SPA p-value. If <code>spa=false</code>, then this is the score test beta p-value. </li><li><code>taupval</code> represents the p-value of the SNP&#39;s effect on the within-subject variability of the trait. If <code>spa=true</code> (default), then this is the SPA p-value. If <code>spa=false</code>, then this is the score test tau p-value. </li><li><code>jointpval</code> represents a joint p-value of the SNP&#39;s effect on both the mean and variance. By default <code>spa=true</code> this is the harmonic mean of the saddlepoint approximated p-values for beta and tau. If <code>spa=false</code>, this is the joint score test p-value.</li></ul></li></ul><pre><code class="language-julia hljs">first(CSV.read(&quot;trajgwas.pval.txt&quot;, DataFrame), 8)</code></pre><p>&lt;div class=&quot;data-frame&quot;&gt;&lt;p&gt;8 rows × 10 columns&lt;/p&gt;&lt;table class=&quot;data-frame&quot;&gt;&lt;thead&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th&gt;chr&lt;/th&gt;&lt;th&gt;pos&lt;/th&gt;&lt;th&gt;snpid&lt;/th&gt;&lt;th&gt;maf&lt;/th&gt;&lt;th&gt;hwepval&lt;/th&gt;&lt;th&gt;betapval&lt;/th&gt;&lt;th&gt;betadir&lt;/th&gt;&lt;th&gt;taupval&lt;/th&gt;&lt;th&gt;taudir&lt;/th&gt;&lt;th&gt;jointpval&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;String&quot;&gt;String&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;&lt;tr&gt;&lt;th&gt;1&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;554484&lt;/td&gt;&lt;td&gt;rs10458597&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;2&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;758311&lt;/td&gt;&lt;td&gt;rs12562034&lt;/td&gt;&lt;td&gt;0.0776398&lt;/td&gt;&lt;td&gt;0.409876&lt;/td&gt;&lt;td&gt;0.38939&lt;/td&gt;&lt;td&gt;-1&lt;/td&gt;&lt;td&gt;0.922822&lt;/td&gt;&lt;td&gt;-1&lt;/td&gt;&lt;td&gt;0.547682&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;3&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;967643&lt;/td&gt;&lt;td&gt;rs2710875&lt;/td&gt;&lt;td&gt;0.324074&lt;/td&gt;&lt;td&gt;4.07625e-7&lt;/td&gt;&lt;td&gt;5.83856e-6&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;3.35408e-6&lt;/td&gt;&lt;td&gt;-1&lt;/td&gt;&lt;td&gt;4.93598e-7&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;4&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1168108&lt;/td&gt;&lt;td&gt;rs11260566&lt;/td&gt;&lt;td&gt;0.191589&lt;/td&gt;&lt;td&gt;0.128568&lt;/td&gt;&lt;td&gt;0.000850889&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;0.0559055&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;0.00101827&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;5&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1375074&lt;/td&gt;&lt;td&gt;rs1312568&lt;/td&gt;&lt;td&gt;0.441358&lt;/td&gt;&lt;td&gt;2.5376e-19&lt;/td&gt;&lt;td&gt;0.000171683&lt;/td&gt;&lt;td&gt;-1&lt;/td&gt;&lt;td&gt;1.84811e-13&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;2.07091e-15&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;6&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1588771&lt;/td&gt;&lt;td&gt;rs35154105&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;7&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1789051&lt;/td&gt;&lt;td&gt;rs16824508&lt;/td&gt;&lt;td&gt;0.00462963&lt;/td&gt;&lt;td&gt;0.933278&lt;/td&gt;&lt;td&gt;0.295035&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;0.304109&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;0.299504&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;8&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1990452&lt;/td&gt;&lt;td&gt;rs2678939&lt;/td&gt;&lt;td&gt;0.453704&lt;/td&gt;&lt;td&gt;5.07696e-11&lt;/td&gt;&lt;td&gt;1.27871e-7&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;7.73809e-9&lt;/td&gt;&lt;td&gt;-1&lt;/td&gt;&lt;td&gt;3.3986e-9&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/div&gt;</p><p>Output file names can be changed by the <code>nullfile</code> and <code>pvalfile</code> keywords respectively. For example, </p><pre><code class="language-julia hljs">trajgwas(@formula(y ~ 1 + sex + onMeds),
+ &quot;γ1: (Intercept)&quot;  3.32057</code></pre><ul><li><code>trajgwas.pval.txt</code> tallies the SNPs, their pvalues, and relevant information on each SNP.<ul><li><code>betapval</code> represents the p-value of the SNP&#39;s effect on the mean of the trait. If <code>spa=true</code> (default), then this is the SPA p-value. If <code>spa=false</code>, then this is the score test beta p-value. </li><li><code>taupval</code> represents the p-value of the SNP&#39;s effect on the within-subject variability of the trait. If <code>spa=true</code> (default), then this is the SPA p-value. If <code>spa=false</code>, then this is the score test tau p-value. </li><li><code>jointpval</code> represents a joint p-value of the SNP&#39;s effect on both the mean and variance. By default <code>spa=true</code> this is the harmonic mean of the saddlepoint approximated p-values for beta and tau. If <code>spa=false</code>, this is the joint score test p-value.</li></ul></li></ul><pre><code class="language-julia hljs">pretty_table(first(CSV.read(&quot;trajgwas.pval.txt&quot;, DataFrame), 8), tf = tf_markdown)</code></pre><pre><code class="nohighlight hljs">|[1m   chr [0m|[1m     pos [0m|[1m      snpid [0m|[1m        maf [0m|[1m     hwepval [0m|[1m    betapval [0m|[1m betadir [0m|[1m     taupval [0m|[1m taudir [0m|[1m   jointpval [0m|
+|[90m Int64 [0m|[90m   Int64 [0m|[90m     String [0m|[90m    Float64 [0m|[90m     Float64 [0m|[90m     Float64 [0m|[90m   Int64 [0m|[90m     Float64 [0m|[90m  Int64 [0m|[90m     Float64 [0m|
+|-------|---------|------------|------------|-------------|-------------|---------|-------------|--------|-------------|
+|     1 |  554484 | rs10458597 |        0.0 |         1.0 |         1.0 |       0 |         1.0 |      0 |         1.0 |
+|     1 |  758311 | rs12562034 |  0.0776398 |    0.409876 |     0.38939 |      -1 |    0.922822 |     -1 |    0.547682 |
+|     1 |  967643 |  rs2710875 |   0.324074 |  4.07625e-7 |  5.83856e-6 |       1 |  3.35408e-6 |     -1 |  4.93598e-7 |
+|     1 | 1168108 | rs11260566 |   0.191589 |    0.128568 | 0.000850889 |       1 |   0.0559055 |      1 |  0.00101827 |
+|     1 | 1375074 |  rs1312568 |   0.441358 |  2.5376e-19 | 0.000171683 |      -1 | 1.84811e-13 |      1 | 2.07091e-15 |
+|     1 | 1588771 | rs35154105 |        0.0 |         1.0 |         1.0 |       0 |         1.0 |      0 |         1.0 |
+|     1 | 1789051 | rs16824508 | 0.00462963 |    0.933278 |    0.295035 |       1 |    0.304109 |      1 |    0.299504 |
+|     1 | 1990452 |  rs2678939 |   0.453704 | 5.07696e-11 |  1.27871e-7 |       1 |  7.73809e-9 |     -1 |   3.3986e-9 |</code></pre><p>Output file names can be changed by the <code>nullfile</code> and <code>pvalfile</code> keywords respectively. For example, </p><pre><code class="language-julia hljs">trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
@@ -162,7 +181,27 @@ Random effects covariance matrix Σγ:
     :id,
     df, geneticfile)</code></pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>Users should always make sure that individuals in covariate file or DataFrame match those in Plink fam file/VCF File/BGEN file. </p></div></div><p>For example, following code checks that the subject ID of the <code>covariate.txt</code> file match that of the <code>hapmap3.fam</code> file exactly.</p><pre><code class="language-julia hljs">covdf = CSV.read(datadir * &quot;covariate.txt&quot;, DataFrame)
 plkfam = CSV.read(datadir * &quot;hapmap3.fam&quot;, DataFrame, header=0, delim=&#39; &#39;)
-all(covdf[!, 2] .== plkfam[!, 2])</code></pre><pre><code class="nohighlight hljs">true</code></pre><pre><code class="language-julia hljs">covdf</code></pre><p>&lt;div class=&quot;data-frame&quot;&gt;&lt;p&gt;324 rows × 6 columns&lt;/p&gt;&lt;table class=&quot;data-frame&quot;&gt;&lt;thead&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th&gt;famid&lt;/th&gt;&lt;th&gt;perid&lt;/th&gt;&lt;th&gt;faid&lt;/th&gt;&lt;th&gt;moid&lt;/th&gt;&lt;th&gt;sex&lt;/th&gt;&lt;th&gt;trait&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th title=&quot;String&quot;&gt;String&lt;/th&gt;&lt;th title=&quot;String&quot;&gt;String&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;&lt;tr&gt;&lt;th&gt;1&lt;/th&gt;&lt;td&gt;2431&lt;/td&gt;&lt;td&gt;NA19916&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;2&lt;/th&gt;&lt;td&gt;2424&lt;/td&gt;&lt;td&gt;NA19835&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;3&lt;/th&gt;&lt;td&gt;2469&lt;/td&gt;&lt;td&gt;NA20282&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;4&lt;/th&gt;&lt;td&gt;2368&lt;/td&gt;&lt;td&gt;NA19703&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;3&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;5&lt;/th&gt;&lt;td&gt;2425&lt;/td&gt;&lt;td&gt;NA19901&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;3&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;6&lt;/th&gt;&lt;td&gt;2427&lt;/td&gt;&lt;td&gt;NA19908&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;7&lt;/th&gt;&lt;td&gt;2430&lt;/td&gt;&lt;td&gt;NA19914&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;8&lt;/th&gt;&lt;td&gt;2470&lt;/td&gt;&lt;td&gt;NA20287&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;9&lt;/th&gt;&lt;td&gt;2436&lt;/td&gt;&lt;td&gt;NA19713&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;3&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;10&lt;/th&gt;&lt;td&gt;2426&lt;/td&gt;&lt;td&gt;NA19904&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;11&lt;/th&gt;&lt;td&gt;2431&lt;/td&gt;&lt;td&gt;NA19917&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;12&lt;/th&gt;&lt;td&gt;2436&lt;/td&gt;&lt;td&gt;NA19982&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;13&lt;/th&gt;&lt;td&gt;2487&lt;/td&gt;&lt;td&gt;NA20340&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;14&lt;/th&gt;&lt;td&gt;2427&lt;/td&gt;&lt;td&gt;NA19909&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;15&lt;/th&gt;&lt;td&gt;2424&lt;/td&gt;&lt;td&gt;NA19834&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;16&lt;/th&gt;&lt;td&gt;2480&lt;/td&gt;&lt;td&gt;NA20317&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;17&lt;/th&gt;&lt;td&gt;2418&lt;/td&gt;&lt;td&gt;NA19818&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;18&lt;/th&gt;&lt;td&gt;2490&lt;/td&gt;&lt;td&gt;NA20346&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;19&lt;/th&gt;&lt;td&gt;2433&lt;/td&gt;&lt;td&gt;NA19921&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;20&lt;/th&gt;&lt;td&gt;2469&lt;/td&gt;&lt;td&gt;NA20281&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;21&lt;/th&gt;&lt;td&gt;2495&lt;/td&gt;&lt;td&gt;NA20359&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;22&lt;/th&gt;&lt;td&gt;2477&lt;/td&gt;&lt;td&gt;NA20301&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;23&lt;/th&gt;&lt;td&gt;2492&lt;/td&gt;&lt;td&gt;NA20349&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;3&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;24&lt;/th&gt;&lt;td&gt;2474&lt;/td&gt;&lt;td&gt;NA20294&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;25&lt;/th&gt;&lt;td&gt;2494&lt;/td&gt;&lt;td&gt;NA20357&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;3&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;26&lt;/th&gt;&lt;td&gt;2425&lt;/td&gt;&lt;td&gt;NA19900&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;27&lt;/th&gt;&lt;td&gt;2491&lt;/td&gt;&lt;td&gt;NA20348&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;28&lt;/th&gt;&lt;td&gt;2471&lt;/td&gt;&lt;td&gt;NA20289&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;29&lt;/th&gt;&lt;td&gt;2489&lt;/td&gt;&lt;td&gt;NA20344&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;30&lt;/th&gt;&lt;td&gt;2418&lt;/td&gt;&lt;td&gt;NA19819&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;&amp;vellip;&lt;/th&gt;&lt;td&gt;&amp;vellip;&lt;/td&gt;&lt;td&gt;&amp;vellip;&lt;/td&gt;&lt;td&gt;&amp;vellip;&lt;/td&gt;&lt;td&gt;&amp;vellip;&lt;/td&gt;&lt;td&gt;&amp;vellip;&lt;/td&gt;&lt;td&gt;&amp;vellip;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/div&gt;</p><pre><code class="language-julia hljs">plkfam</code></pre><p>&lt;div class=&quot;data-frame&quot;&gt;&lt;p&gt;324 rows × 6 columns&lt;/p&gt;&lt;table class=&quot;data-frame&quot;&gt;&lt;thead&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th&gt;Column1&lt;/th&gt;&lt;th&gt;Column2&lt;/th&gt;&lt;th&gt;Column3&lt;/th&gt;&lt;th&gt;Column4&lt;/th&gt;&lt;th&gt;Column5&lt;/th&gt;&lt;th&gt;Column6&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th title=&quot;String&quot;&gt;String&lt;/th&gt;&lt;th title=&quot;String&quot;&gt;String&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;&lt;tr&gt;&lt;th&gt;1&lt;/th&gt;&lt;td&gt;A1&lt;/td&gt;&lt;td&gt;NA19916&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;2&lt;/th&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;NA19835&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;3&lt;/th&gt;&lt;td&gt;3&lt;/td&gt;&lt;td&gt;NA20282&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;4&lt;/th&gt;&lt;td&gt;4&lt;/td&gt;&lt;td&gt;NA19703&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;5&lt;/th&gt;&lt;td&gt;5&lt;/td&gt;&lt;td&gt;NA19901&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;6&lt;/th&gt;&lt;td&gt;6&lt;/td&gt;&lt;td&gt;NA19908&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;7&lt;/th&gt;&lt;td&gt;7&lt;/td&gt;&lt;td&gt;NA19914&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;8&lt;/th&gt;&lt;td&gt;8&lt;/td&gt;&lt;td&gt;NA20287&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;9&lt;/th&gt;&lt;td&gt;9&lt;/td&gt;&lt;td&gt;NA19713&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;10&lt;/th&gt;&lt;td&gt;10&lt;/td&gt;&lt;td&gt;NA19904&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;11&lt;/th&gt;&lt;td&gt;11&lt;/td&gt;&lt;td&gt;NA19917&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;12&lt;/th&gt;&lt;td&gt;12&lt;/td&gt;&lt;td&gt;NA19982&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;13&lt;/th&gt;&lt;td&gt;13&lt;/td&gt;&lt;td&gt;NA20340&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;14&lt;/th&gt;&lt;td&gt;14&lt;/td&gt;&lt;td&gt;NA19909&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;15&lt;/th&gt;&lt;td&gt;15&lt;/td&gt;&lt;td&gt;NA19834&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;16&lt;/th&gt;&lt;td&gt;16&lt;/td&gt;&lt;td&gt;NA20317&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;17&lt;/th&gt;&lt;td&gt;17&lt;/td&gt;&lt;td&gt;NA19818&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;18&lt;/th&gt;&lt;td&gt;18&lt;/td&gt;&lt;td&gt;NA20346&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;19&lt;/th&gt;&lt;td&gt;19&lt;/td&gt;&lt;td&gt;NA19921&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;20&lt;/th&gt;&lt;td&gt;20&lt;/td&gt;&lt;td&gt;NA20281&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;21&lt;/th&gt;&lt;td&gt;21&lt;/td&gt;&lt;td&gt;NA20359&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;22&lt;/th&gt;&lt;td&gt;22&lt;/td&gt;&lt;td&gt;NA20301&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;23&lt;/th&gt;&lt;td&gt;23&lt;/td&gt;&lt;td&gt;NA20349&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;24&lt;/th&gt;&lt;td&gt;24&lt;/td&gt;&lt;td&gt;NA20294&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;25&lt;/th&gt;&lt;td&gt;25&lt;/td&gt;&lt;td&gt;NA20357&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;26&lt;/th&gt;&lt;td&gt;26&lt;/td&gt;&lt;td&gt;NA19900&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;27&lt;/th&gt;&lt;td&gt;27&lt;/td&gt;&lt;td&gt;NA20348&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;28&lt;/th&gt;&lt;td&gt;28&lt;/td&gt;&lt;td&gt;NA20289&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;29&lt;/th&gt;&lt;td&gt;29&lt;/td&gt;&lt;td&gt;NA20344&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;30&lt;/th&gt;&lt;td&gt;30&lt;/td&gt;&lt;td&gt;NA19819&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;-9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;&amp;vellip;&lt;/th&gt;&lt;td&gt;&amp;vellip;&lt;/td&gt;&lt;td&gt;&amp;vellip;&lt;/td&gt;&lt;td&gt;&amp;vellip;&lt;/td&gt;&lt;td&gt;&amp;vellip;&lt;/td&gt;&lt;td&gt;&amp;vellip;&lt;/td&gt;&lt;td&gt;&amp;vellip;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/div&gt;</p><h3 id="Timing"><a class="docs-heading-anchor" href="#Timing">Timing</a><a id="Timing-1"></a><a class="docs-heading-anchor-permalink" href="#Timing" title="Permalink"></a></h3><p>For this moderate-sized data set, <code>trajgwas</code> takes around 1 second without applying SPA. With SPA, it takes a little longer. </p><pre><code class="language-julia hljs">@btime(trajgwas(@formula(y ~ 1 + sex + onMeds),
+all(covdf[!, 2] .== plkfam[!, 2])</code></pre><pre><code class="nohighlight hljs">true</code></pre><pre><code class="language-julia hljs">pretty_table(first(covdf, 8), tf = tf_markdown)</code></pre><pre><code class="nohighlight hljs">|[1m  famid [0m|[1m   perid [0m|[1m  faid [0m|[1m  moid [0m|[1m   sex [0m|[1m trait [0m|
+|[90m String [0m|[90m  String [0m|[90m Int64 [0m|[90m Int64 [0m|[90m Int64 [0m|[90m Int64 [0m|
+|--------|---------|-------|-------|-------|-------|
+|   2431 | NA19916 |     0 |     0 |     1 |     4 |
+|   2424 | NA19835 |     0 |     0 |     2 |     4 |
+|   2469 | NA20282 |     0 |     0 |     2 |     4 |
+|   2368 | NA19703 |     0 |     0 |     1 |     3 |
+|   2425 | NA19901 |     0 |     0 |     2 |     3 |
+|   2427 | NA19908 |     0 |     0 |     1 |     4 |
+|   2430 | NA19914 |     0 |     0 |     2 |     4 |
+|   2470 | NA20287 |     0 |     0 |     2 |     1 |</code></pre><pre><code class="language-julia hljs">pretty_table(first(plkfam, 8), tf = tf_markdown)</code></pre><pre><code class="nohighlight hljs">|[1m Column1 [0m|[1m Column2 [0m|[1m Column3 [0m|[1m Column4 [0m|[1m Column5 [0m|[1m Column6 [0m|
+|[90m  String [0m|[90m  String [0m|[90m   Int64 [0m|[90m   Int64 [0m|[90m   Int64 [0m|[90m   Int64 [0m|
+|---------|---------|---------|---------|---------|---------|
+|      A1 | NA19916 |       0 |       0 |       1 |      -9 |
+|       2 | NA19835 |       0 |       0 |       2 |      -9 |
+|       3 | NA20282 |       0 |       0 |       2 |      -9 |
+|       4 | NA19703 |       0 |       0 |       1 |      -9 |
+|       5 | NA19901 |       0 |       0 |       2 |      -9 |
+|       6 | NA19908 |       0 |       0 |       1 |      -9 |
+|       7 | NA19914 |       0 |       0 |       2 |      -9 |
+|       8 | NA20287 |       0 |       0 |       2 |      -9 |</code></pre><h3 id="Timing"><a class="docs-heading-anchor" href="#Timing">Timing</a><a id="Timing-1"></a><a class="docs-heading-anchor-permalink" href="#Timing" title="Permalink"></a></h3><p>For this moderate-sized data set, <code>trajgwas</code> takes around 1 second without applying SPA. With SPA, it takes a little longer. </p><pre><code class="language-julia hljs">@btime(trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
@@ -170,65 +209,49 @@ all(covdf[!, 2] .== plkfam[!, 2])</code></pre><pre><code class="nohighlight hljs
         datadir * &quot;hapmap3&quot;,
         pvalfile = pvalpath,
         nullfile = nullpath, 
-        usespa = false));</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.042119
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.036129
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.050494
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.051440
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.046484
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.034452
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.048439
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.050991
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.037938
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.034008
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.050020
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.040776
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.049833
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.043173
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.037266
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.032848
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.062879
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.038666
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.037709
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.034644
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.047753
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.051048
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.036596
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.035788
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.057062
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.041374
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.040622
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.035942
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.053378
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.039402
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.041604
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.035013
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.055528
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.039201
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.048910
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.036422
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.050033
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.044553
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.040895
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.041951
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.060043
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.049582
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.041068
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.038690
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.055143
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.041776
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.036662
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.034396
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.056156
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.038946
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.037163
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.032339
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.058409
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.038301
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.041117
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.036138
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.054768
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.037206
-  406.061 ms (1450847 allocations: 136.02 MiB)</code></pre><pre><code class="language-julia hljs"># clean up
+        usespa = false));</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.057233
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.049568
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.048886
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.043878
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.047836
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.043012
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.049458
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.045872
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.049866
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.043547
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.048758
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.043420
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.050578
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.044747
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.050458
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.043685
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.056678
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.044869
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.054062
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.049568
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.073285
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.072182
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.061566
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.044452
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.070823
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.072188
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.077687
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.070502
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.074338
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.092711
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.059497
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.047591
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.051782
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.047283
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.059795
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.058056
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.066836
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.061928
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.048388
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.043508
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.048973
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.050020
+  551.174 ms (1447140 allocations: 135.54 MiB)</code></pre><pre><code class="language-julia hljs"># clean up
 rm(&quot;trajgwas.null.txt&quot;, force=true)
 rm(&quot;trajgwas.pval.txt&quot;, force=true)</code></pre><h2 id="VCF-Formatted-Files"><a class="docs-heading-anchor" href="#VCF-Formatted-Files">VCF Formatted Files</a><a id="VCF-Formatted-Files-1"></a><a class="docs-heading-anchor-permalink" href="#VCF-Formatted-Files" title="Permalink"></a></h2><p>By default, TrajGWAS.jl will assume you are using PLINK files. It also supports VCF (and BGEN) Files. <code>vcf.gz</code> files are supported as well. To use vcf files in any of the analysis options detailed in this documentation, you simply need to add two keyword options to the <code>trajgwas</code> function:</p><ul><li><code>geneticformat</code>: Choices are &quot;VCF&quot; or &quot;PLINK&quot;. If you are using a VCF file, use <code>geneticformat = &quot;VCF&quot;</code>.</li><li><code>vcftype</code>: Choices are :GT (for genotypes) or :DS (for dosages). This tells TrajGWAS which type of data to extract from the VCF file.</li></ul><p>Using a VCF File does not output minor allele frequency or hardy weinberg equillibrium p-values for each SNP tested since they may be dosages. </p><p>The following shows how to run an analysis with a VCF file using the dosage information. </p><pre><code class="language-julia hljs">trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
@@ -238,8 +261,8 @@ rm(&quot;trajgwas.pval.txt&quot;, force=true)</code></pre><h2 id="VCF-Formatted-
         datadir * &quot;test_vcf&quot;,
         pvalfile = pvalpath,
         geneticformat = &quot;VCF&quot;,
-        vcftype = :DS)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.003459, ‖Δτ‖ = 0.421747, ‖ΔL‖ = 0.002492, status = Optimal, time(s) = 0.017842
-run = 2, ‖Δβ‖ = 0.001369, ‖Δτ‖ = 0.015998, ‖ΔL‖ = 0.003244, status = Optimal, time(s) = 0.014044
+        vcftype = :DS)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.003459, ‖Δτ‖ = 0.421747, ‖ΔL‖ = 0.002492, status = Optimal, time(s) = 0.022762
+run = 2, ‖Δβ‖ = 0.001369, ‖Δτ‖ = 0.015998, ‖ΔL‖ = 0.003244, status = Optimal, time(s) = 0.019076
 
 
 
@@ -270,15 +293,25 @@ Fixed-effects parameters:
 τ3: onMeds        0.633337   0.0814974    7.77    &lt;1e-14
 ────────────────────────────────────────────────────────
 Random effects covariance matrix Σγ:
- &quot;γ1: (Intercept)&quot;  2.86452</code></pre><pre><code class="language-julia hljs">first(CSV.read(&quot;trajgwas.pval.txt&quot;, DataFrame), 8)</code></pre><p>&lt;div class=&quot;data-frame&quot;&gt;&lt;p&gt;8 rows × 8 columns&lt;/p&gt;&lt;table class=&quot;data-frame&quot;&gt;&lt;thead&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th&gt;chr&lt;/th&gt;&lt;th&gt;pos&lt;/th&gt;&lt;th&gt;snpid&lt;/th&gt;&lt;th&gt;betapval&lt;/th&gt;&lt;th&gt;betadir&lt;/th&gt;&lt;th&gt;taupval&lt;/th&gt;&lt;th&gt;taudir&lt;/th&gt;&lt;th&gt;jointpval&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;String&quot;&gt;String&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;&lt;tr&gt;&lt;th&gt;1&lt;/th&gt;&lt;td&gt;22&lt;/td&gt;&lt;td&gt;20000086&lt;/td&gt;&lt;td&gt;rs138720731&lt;/td&gt;&lt;td&gt;0.322684&lt;/td&gt;&lt;td&gt;-1&lt;/td&gt;&lt;td&gt;0.61956&lt;/td&gt;&lt;td&gt;-1&lt;/td&gt;&lt;td&gt;0.424353&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;2&lt;/th&gt;&lt;td&gt;22&lt;/td&gt;&lt;td&gt;20000146&lt;/td&gt;&lt;td&gt;rs73387790&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;3&lt;/th&gt;&lt;td&gt;22&lt;/td&gt;&lt;td&gt;20000199&lt;/td&gt;&lt;td&gt;rs183293480&lt;/td&gt;&lt;td&gt;0.214207&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;0.190785&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;0.201819&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;4&lt;/th&gt;&lt;td&gt;22&lt;/td&gt;&lt;td&gt;20000291&lt;/td&gt;&lt;td&gt;rs185807825&lt;/td&gt;&lt;td&gt;0.292231&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;0.200029&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;0.237495&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;5&lt;/th&gt;&lt;td&gt;22&lt;/td&gt;&lt;td&gt;20000428&lt;/td&gt;&lt;td&gt;rs55902548&lt;/td&gt;&lt;td&gt;0.0140114&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;0.00369005&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;0.00576184&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;6&lt;/th&gt;&lt;td&gt;22&lt;/td&gt;&lt;td&gt;20000683&lt;/td&gt;&lt;td&gt;rs142720028&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;7&lt;/th&gt;&lt;td&gt;22&lt;/td&gt;&lt;td&gt;20000771&lt;/td&gt;&lt;td&gt;rs114690707&lt;/td&gt;&lt;td&gt;0.536406&lt;/td&gt;&lt;td&gt;-1&lt;/td&gt;&lt;td&gt;0.145113&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;0.22843&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;8&lt;/th&gt;&lt;td&gt;22&lt;/td&gt;&lt;td&gt;20000793&lt;/td&gt;&lt;td&gt;rs189842693&lt;/td&gt;&lt;td&gt;0.161414&lt;/td&gt;&lt;td&gt;-1&lt;/td&gt;&lt;td&gt;0.757017&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;0.266091&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/div&gt;</p><h2 id="BGEN-Formatted-Files"><a class="docs-heading-anchor" href="#BGEN-Formatted-Files">BGEN Formatted Files</a><a id="BGEN-Formatted-Files-1"></a><a class="docs-heading-anchor-permalink" href="#BGEN-Formatted-Files" title="Permalink"></a></h2><p>By default, TrajGWAS.jl will assume you are using PLINK files. It also supports BGEN Files. To use BGEN files in any of the analysis options detailed in this documentation, you simply need to add the following keyword option to the <code>trajgwas</code> function:</p><ul><li><code>geneticformat</code>: Choices are &quot;VCF&quot; or &quot;PLINK&quot; or &quot;BGEN&quot;. If you are using a BGEN file, use <code>geneticformat = &quot;BGEN&quot;</code>.</li></ul><p>Using a BGEN File does not output minor allele frequency or hardy weinberg equillibrium p-values for each SNP tested.</p><p>Some features, such as SNP-set analyses, are only available when there&#39;s an indexing <code>.bgi</code> file available. Additionally, if the BGEN file does not contain sample information (i.e. sample IDs), then a sample file is necessary and its path can be specified with the <code>samplepath</code> keyword. </p><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>BGEN files can contain an optional index file (<code>.bgi</code> file) that allows the variants to be specified in order of position. TrajGWAS will automatically look for a file in the same directory as the <code>BGENFILENAME</code> with the name <code>BGENFILENAME.bgi</code>. The BGEN file is read either in the <code>.bgi</code> file order if <code>BGENFILENAME.bgi</code> is supplied in the same directory as the BGEN file, otherwise it will use the order in the BGEN file. This is important in analyses specifying <code>snpinds</code> as well as annotation groupings. You must make sure this matches the way the BGEN file will be read in. </p></div></div><p>The following shows how to run an analysis with a BGEN file using the dosage information. </p><pre><code class="language-julia hljs">trajgwas(@formula(y ~ 1 + sex + onMeds),
+ &quot;γ1: (Intercept)&quot;  2.86452</code></pre><pre><code class="language-julia hljs">pretty_table(first(CSV.read(&quot;trajgwas.pval.txt&quot;, DataFrame), 8), tf = tf_markdown)</code></pre><pre><code class="nohighlight hljs">|[1m   chr [0m|[1m      pos [0m|[1m       snpid [0m|[1m  betapval [0m|[1m betadir [0m|[1m    taupval [0m|[1m taudir [0m|[1m  jointpval [0m|
+|[90m Int64 [0m|[90m    Int64 [0m|[90m      String [0m|[90m   Float64 [0m|[90m   Int64 [0m|[90m    Float64 [0m|[90m  Int64 [0m|[90m    Float64 [0m|
+|-------|----------|-------------|-----------|---------|------------|--------|------------|
+|    22 | 20000086 | rs138720731 |  0.322684 |      -1 |    0.61956 |     -1 |   0.424353 |
+|    22 | 20000146 |  rs73387790 |       1.0 |       0 |        1.0 |      0 |        1.0 |
+|    22 | 20000199 | rs183293480 |  0.214207 |       1 |   0.190785 |      1 |   0.201819 |
+|    22 | 20000291 | rs185807825 |  0.292231 |       1 |   0.200029 |      1 |   0.237495 |
+|    22 | 20000428 |  rs55902548 | 0.0140114 |       1 | 0.00369005 |      1 | 0.00576184 |
+|    22 | 20000683 | rs142720028 |       1.0 |       0 |        1.0 |      0 |        1.0 |
+|    22 | 20000771 | rs114690707 |  0.536406 |      -1 |   0.145113 |      1 |    0.22843 |
+|    22 | 20000793 | rs189842693 |  0.161414 |      -1 |   0.757017 |      1 |   0.266091 |</code></pre><h2 id="BGEN-Formatted-Files"><a class="docs-heading-anchor" href="#BGEN-Formatted-Files">BGEN Formatted Files</a><a id="BGEN-Formatted-Files-1"></a><a class="docs-heading-anchor-permalink" href="#BGEN-Formatted-Files" title="Permalink"></a></h2><p>By default, TrajGWAS.jl will assume you are using PLINK files. It also supports BGEN Files. To use BGEN files in any of the analysis options detailed in this documentation, you simply need to add the following keyword option to the <code>trajgwas</code> function:</p><ul><li><code>geneticformat</code>: Choices are &quot;VCF&quot; or &quot;PLINK&quot; or &quot;BGEN&quot;. If you are using a BGEN file, use <code>geneticformat = &quot;BGEN&quot;</code>.</li></ul><p>Using a BGEN File does not output minor allele frequency or hardy weinberg equillibrium p-values for each SNP tested.</p><p>Some features, such as SNP-set analyses, are only available when there&#39;s an indexing <code>.bgi</code> file available. Additionally, if the BGEN file does not contain sample information (i.e. sample IDs), then a sample file is necessary and its path can be specified with the <code>samplepath</code> keyword. </p><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>BGEN files can contain an optional index file (<code>.bgi</code> file) that allows the variants to be specified in order of position. TrajGWAS will automatically look for a file in the same directory as the <code>BGENFILENAME</code> with the name <code>BGENFILENAME.bgi</code>. The BGEN file is read either in the <code>.bgi</code> file order if <code>BGENFILENAME.bgi</code> is supplied in the same directory as the BGEN file, otherwise it will use the order in the BGEN file. This is important in analyses specifying <code>snpinds</code> as well as annotation groupings. You must make sure this matches the way the BGEN file will be read in. </p></div></div><p>The following shows how to run an analysis with a BGEN file using the dosage information. </p><pre><code class="language-julia hljs">trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id, 
         datadir * &quot;trajgwas_bgen_ex.csv&quot;, 
         datadir * &quot;example.8bits&quot;, 
         geneticformat = &quot;BGEN&quot;, 
-        pvalfile = pvalpath)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.096578, ‖Δτ‖ = 0.162563, ‖ΔL‖ = 0.007625, status = Optimal, time(s) = 0.058796
-run = 2, ‖Δβ‖ = 0.003173, ‖Δτ‖ = 0.005584, ‖ΔL‖ = 0.001468, status = Optimal, time(s) = 0.046212
+        pvalfile = pvalpath)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.096578, ‖Δτ‖ = 0.162563, ‖ΔL‖ = 0.007625, status = Optimal, time(s) = 0.079182
+run = 2, ‖Δβ‖ = 0.003173, ‖Δτ‖ = 0.005584, ‖ΔL‖ = 0.001468, status = Optimal, time(s) = 0.053977
 
 
 
@@ -309,7 +342,17 @@ Fixed-effects parameters:
 τ3: onMeds        0.559769   0.0467046   11.99    &lt;1e-32
 ────────────────────────────────────────────────────────
 Random effects covariance matrix Σγ:
- &quot;γ1: (Intercept)&quot;  2.51561</code></pre><pre><code class="language-julia hljs">first(CSV.read(&quot;trajgwas.pval.txt&quot;, DataFrame), 8)</code></pre><p>&lt;div class=&quot;data-frame&quot;&gt;&lt;p&gt;8 rows × 12 columns&lt;/p&gt;&lt;table class=&quot;data-frame&quot;&gt;&lt;thead&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th&gt;chr&lt;/th&gt;&lt;th&gt;pos&lt;/th&gt;&lt;th&gt;snpid&lt;/th&gt;&lt;th&gt;varid&lt;/th&gt;&lt;th&gt;hwepval&lt;/th&gt;&lt;th&gt;maf&lt;/th&gt;&lt;th&gt;infoscore&lt;/th&gt;&lt;th&gt;betapval&lt;/th&gt;&lt;th&gt;betadir&lt;/th&gt;&lt;th&gt;taupval&lt;/th&gt;&lt;th&gt;taudir&lt;/th&gt;&lt;th&gt;jointpval&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;String&quot;&gt;String&lt;/th&gt;&lt;th title=&quot;String&quot;&gt;String&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;&lt;tr&gt;&lt;th&gt;1&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1001&lt;/td&gt;&lt;td&gt;RSID<em>101&lt;/td&gt;&lt;td&gt;SNPID</em>101&lt;/td&gt;&lt;td&gt;0.86274&lt;/td&gt;&lt;td&gt;0.416977&lt;/td&gt;&lt;td&gt;0.984639&lt;/td&gt;&lt;td&gt;0.510629&lt;/td&gt;&lt;td&gt;-1&lt;/td&gt;&lt;td&gt;0.425112&lt;/td&gt;&lt;td&gt;-1&lt;/td&gt;&lt;td&gt;0.463963&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;2&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;2000&lt;/td&gt;&lt;td&gt;RSID<em>2&lt;/td&gt;&lt;td&gt;SNPID</em>2&lt;/td&gt;&lt;td&gt;0.192181&lt;/td&gt;&lt;td&gt;0.19751&lt;/td&gt;&lt;td&gt;9.0&lt;/td&gt;&lt;td&gt;4.5062e-10&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1.40173e-21&lt;/td&gt;&lt;td&gt;-1&lt;/td&gt;&lt;td&gt;6.67473e-21&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;3&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;2001&lt;/td&gt;&lt;td&gt;RSID<em>102&lt;/td&gt;&lt;td&gt;SNPID</em>102&lt;/td&gt;&lt;td&gt;0.1844&lt;/td&gt;&lt;td&gt;0.197667&lt;/td&gt;&lt;td&gt;0.727309&lt;/td&gt;&lt;td&gt;4.47847e-10&lt;/td&gt;&lt;td&gt;-1&lt;/td&gt;&lt;td&gt;1.79121e-21&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;8.45783e-21&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;4&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;3000&lt;/td&gt;&lt;td&gt;RSID<em>3&lt;/td&gt;&lt;td&gt;SNPID</em>3&lt;/td&gt;&lt;td&gt;0.965354&lt;/td&gt;&lt;td&gt;0.483396&lt;/td&gt;&lt;td&gt;0.955355&lt;/td&gt;&lt;td&gt;0.0721822&lt;/td&gt;&lt;td&gt;-1&lt;/td&gt;&lt;td&gt;0.600949&lt;/td&gt;&lt;td&gt;-1&lt;/td&gt;&lt;td&gt;0.128884&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;5&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;3001&lt;/td&gt;&lt;td&gt;RSID<em>103&lt;/td&gt;&lt;td&gt;SNPID</em>103&lt;/td&gt;&lt;td&gt;0.965354&lt;/td&gt;&lt;td&gt;0.483396&lt;/td&gt;&lt;td&gt;0.955355&lt;/td&gt;&lt;td&gt;0.0721821&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;0.600949&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;0.128884&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;6&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;4000&lt;/td&gt;&lt;td&gt;RSID<em>4&lt;/td&gt;&lt;td&gt;SNPID</em>4&lt;/td&gt;&lt;td&gt;0.371927&lt;/td&gt;&lt;td&gt;0.21671&lt;/td&gt;&lt;td&gt;0.991768&lt;/td&gt;&lt;td&gt;0.112472&lt;/td&gt;&lt;td&gt;-1&lt;/td&gt;&lt;td&gt;0.133752&lt;/td&gt;&lt;td&gt;-1&lt;/td&gt;&lt;td&gt;0.122192&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;7&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;4001&lt;/td&gt;&lt;td&gt;RSID<em>104&lt;/td&gt;&lt;td&gt;SNPID</em>104&lt;/td&gt;&lt;td&gt;0.371928&lt;/td&gt;&lt;td&gt;0.21671&lt;/td&gt;&lt;td&gt;0.991768&lt;/td&gt;&lt;td&gt;0.112471&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;0.133752&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;0.122192&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;8&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;5000&lt;/td&gt;&lt;td&gt;RSID<em>5&lt;/td&gt;&lt;td&gt;SNPID</em>5&lt;/td&gt;&lt;td&gt;0.587013&lt;/td&gt;&lt;td&gt;0.388082&lt;/td&gt;&lt;td&gt;0.968258&lt;/td&gt;&lt;td&gt;0.526325&lt;/td&gt;&lt;td&gt;-1&lt;/td&gt;&lt;td&gt;0.542332&lt;/td&gt;&lt;td&gt;-1&lt;/td&gt;&lt;td&gt;0.534209&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/div&gt;</p><h2 id="SNP-models"><a class="docs-heading-anchor" href="#SNP-models">SNP models</a><a id="SNP-models-1"></a><a class="docs-heading-anchor-permalink" href="#SNP-models" title="Permalink"></a></h2><p>Genotypes are translated into numeric values according to different genetic model, which is specified by the <code>snpmodel</code> keyword. Default is <code>ADDITIVE_MODEL</code>.</p><table><tr><th style="text-align: center">Genotype</th><th style="text-align: center"><code>SnpArray</code></th><th style="text-align: center"><code>ADDITIVE_MODEL</code></th><th style="text-align: center"><code>DOMINANT_MODEL</code></th><th style="text-align: center"><code>RECESSIVE_MODEL</code></th></tr><tr><td style="text-align: center">A1,A1</td><td style="text-align: center">0x00</td><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td></tr><tr><td style="text-align: center">missing</td><td style="text-align: center">0x01</td><td style="text-align: center">NaN</td><td style="text-align: center">NaN</td><td style="text-align: center">NaN</td></tr><tr><td style="text-align: center">A1,A2</td><td style="text-align: center">0x02</td><td style="text-align: center">1</td><td style="text-align: center">1</td><td style="text-align: center">0</td></tr><tr><td style="text-align: center">A2,A2</td><td style="text-align: center">0x03</td><td style="text-align: center">2</td><td style="text-align: center">1</td><td style="text-align: center">1</td></tr></table><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p><code>trajgwas</code> imputes missing genotypes according to minor allele frequencies. </p></div></div><p>Users are advised to impute genotypes using more sophiscated methods before GWAS.</p><h2 id="SNP-and/or-sample-masks"><a class="docs-heading-anchor" href="#SNP-and/or-sample-masks">SNP and/or sample masks</a><a id="SNP-and/or-sample-masks-1"></a><a class="docs-heading-anchor-permalink" href="#SNP-and/or-sample-masks" title="Permalink"></a></h2><p>In practice, we often perform GWAS on selected SNPs and/or selected samples. They can be specified by the <code>snpinds</code>, <code>covrowinds</code> and <code>geneticrowinds</code> keywords of <code>trajgwas</code> function. </p><p>For example, to perform GWAS on SNPs with minor allele frequency (MAF) above 0.05</p><pre><code class="language-julia hljs"># create SNP mask
+ &quot;γ1: (Intercept)&quot;  2.51561</code></pre><pre><code class="language-julia hljs">pretty_table(first(CSV.read(&quot;trajgwas.pval.txt&quot;, DataFrame), 8), tf = tf_markdown)</code></pre><pre><code class="nohighlight hljs">|[1m   chr [0m|[1m   pos [0m|[1m    snpid [0m|[1m     varid [0m|[1m  hwepval [0m|[1m      maf [0m|[1m infoscore [0m|[1m    betapval [0m|[1m betadir [0m|[1m     taupval [0m|[1m taudir [0m|[1m   jointpval [0m|
+|[90m Int64 [0m|[90m Int64 [0m|[90m   String [0m|[90m    String [0m|[90m  Float64 [0m|[90m  Float64 [0m|[90m   Float64 [0m|[90m     Float64 [0m|[90m   Int64 [0m|[90m     Float64 [0m|[90m  Int64 [0m|[90m     Float64 [0m|
+|-------|-------|----------|-----------|----------|----------|-----------|-------------|---------|-------------|--------|-------------|
+|     1 |  1001 | RSID_101 | SNPID_101 |  0.86274 | 0.416977 |  0.984639 |    0.510629 |      -1 |    0.425112 |     -1 |    0.463963 |
+|     1 |  2000 |   RSID_2 |   SNPID_2 | 0.192181 |  0.19751 |       9.0 |  4.5062e-10 |       1 | 1.40173e-21 |     -1 | 6.67473e-21 |
+|     1 |  2001 | RSID_102 | SNPID_102 |   0.1844 | 0.197667 |  0.727309 | 4.47847e-10 |      -1 | 1.79121e-21 |      1 | 8.45783e-21 |
+|     1 |  3000 |   RSID_3 |   SNPID_3 | 0.965354 | 0.483396 |  0.955355 |   0.0721822 |      -1 |    0.600949 |     -1 |    0.128884 |
+|     1 |  3001 | RSID_103 | SNPID_103 | 0.965354 | 0.483396 |  0.955355 |   0.0721821 |       1 |    0.600949 |      1 |    0.128884 |
+|     1 |  4000 |   RSID_4 |   SNPID_4 | 0.371927 |  0.21671 |  0.991768 |    0.112472 |      -1 |    0.133752 |     -1 |    0.122192 |
+|     1 |  4001 | RSID_104 | SNPID_104 | 0.371928 |  0.21671 |  0.991768 |    0.112471 |       1 |    0.133752 |      1 |    0.122192 |
+|     1 |  5000 |   RSID_5 |   SNPID_5 | 0.587013 | 0.388082 |  0.968258 |    0.526325 |      -1 |    0.542332 |     -1 |    0.534209 |</code></pre><h2 id="SNP-models"><a class="docs-heading-anchor" href="#SNP-models">SNP models</a><a id="SNP-models-1"></a><a class="docs-heading-anchor-permalink" href="#SNP-models" title="Permalink"></a></h2><p>Genotypes are translated into numeric values according to different genetic model, which is specified by the <code>snpmodel</code> keyword. Default is <code>ADDITIVE_MODEL</code>.</p><table><tr><th style="text-align: center">Genotype</th><th style="text-align: center"><code>SnpArray</code></th><th style="text-align: center"><code>ADDITIVE_MODEL</code></th><th style="text-align: center"><code>DOMINANT_MODEL</code></th><th style="text-align: center"><code>RECESSIVE_MODEL</code></th></tr><tr><td style="text-align: center">A1,A1</td><td style="text-align: center">0x00</td><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td></tr><tr><td style="text-align: center">missing</td><td style="text-align: center">0x01</td><td style="text-align: center">NaN</td><td style="text-align: center">NaN</td><td style="text-align: center">NaN</td></tr><tr><td style="text-align: center">A1,A2</td><td style="text-align: center">0x02</td><td style="text-align: center">1</td><td style="text-align: center">1</td><td style="text-align: center">0</td></tr><tr><td style="text-align: center">A2,A2</td><td style="text-align: center">0x03</td><td style="text-align: center">2</td><td style="text-align: center">1</td><td style="text-align: center">1</td></tr></table><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p><code>trajgwas</code> imputes missing genotypes according to minor allele frequencies. </p></div></div><p>Users are advised to impute genotypes using more sophiscated methods before GWAS.</p><h2 id="SNP-and/or-sample-masks"><a class="docs-heading-anchor" href="#SNP-and/or-sample-masks">SNP and/or sample masks</a><a id="SNP-and/or-sample-masks-1"></a><a class="docs-heading-anchor-permalink" href="#SNP-and/or-sample-masks" title="Permalink"></a></h2><p>In practice, we often perform GWAS on selected SNPs and/or selected samples. They can be specified by the <code>snpinds</code>, <code>covrowinds</code> and <code>geneticrowinds</code> keywords of <code>trajgwas</code> function. </p><p>For example, to perform GWAS on SNPs with minor allele frequency (MAF) above 0.05</p><pre><code class="language-julia hljs"># create SNP mask
 snpinds = maf(SnpArray(&quot;../data/hapmap3.bed&quot;)) .≥ 0.05
 # GWAS on selected SNPs
 @time trajgwas(@formula(y ~ 1 + sex + onMeds),
@@ -319,9 +362,9 @@ snpinds = maf(SnpArray(&quot;../data/hapmap3.bed&quot;)) .≥ 0.05
         datadir * &quot;trajgwas_plinkex.csv&quot;,
         datadir * &quot;hapmap3&quot;,
         pvalfile = &quot;commonvariant.pval.txt&quot;,
-        snpinds = snpinds)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.037584
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.032523
-  1.810614 seconds (6.52 M allocations: 446.105 MiB, 7.47% gc time, 55.30% compilation time)
+        snpinds = snpinds)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.049287
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.043427
+  2.152979 seconds (6.52 M allocations: 445.773 MiB, 4.83% gc time, 53.84% compilation time)
 
 
 
@@ -372,17 +415,17 @@ rm(&quot;commonvariant.pval.txt&quot;, force=true)</code></pre><p><code>covrowin
         datadir * &quot;hapmap3&quot;,
         pvalfile = &quot;wald.pval.txt&quot;,
         snpinds = 1:5,
-        test = :wald)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.040074
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.037214
-run = 1, ‖Δβ‖ = 0.033243, ‖Δτ‖ = 0.146511, ‖ΔL‖ = 0.005476, status = Optimal, time(s) = 0.050248
-run = 2, ‖Δβ‖ = 0.005774, ‖Δτ‖ = 0.042246, ‖ΔL‖ = 0.001784, status = Optimal, time(s) = 0.042017
-run = 1, ‖Δβ‖ = 0.013090, ‖Δτ‖ = 0.130781, ‖ΔL‖ = 0.005011, status = Optimal, time(s) = 0.051252
-run = 2, ‖Δβ‖ = 0.003913, ‖Δτ‖ = 0.037309, ‖ΔL‖ = 0.001516, status = Optimal, time(s) = 0.061290
-run = 1, ‖Δβ‖ = 0.022159, ‖Δτ‖ = 0.141135, ‖ΔL‖ = 0.005554, status = Optimal, time(s) = 0.046682
-run = 2, ‖Δβ‖ = 0.001482, ‖Δτ‖ = 0.021700, ‖ΔL‖ = 0.001435, status = Optimal, time(s) = 0.050569
-run = 1, ‖Δβ‖ = 0.026764, ‖Δτ‖ = 0.368620, ‖ΔL‖ = 0.000317, status = Optimal, time(s) = 0.043348
-run = 2, ‖Δβ‖ = 0.003023, ‖Δτ‖ = 0.030938, ‖ΔL‖ = 0.003568, status = Optimal, time(s) = 0.049007
-  3.558469 seconds (6.55 M allocations: 436.689 MiB, 3.70% gc time, 79.41% compilation time)
+        test = :wald)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.053906
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.049997
+run = 1, ‖Δβ‖ = 0.033243, ‖Δτ‖ = 0.146511, ‖ΔL‖ = 0.005476, status = Optimal, time(s) = 0.059765
+run = 2, ‖Δβ‖ = 0.005774, ‖Δτ‖ = 0.042246, ‖ΔL‖ = 0.001784, status = Optimal, time(s) = 0.055220
+run = 1, ‖Δβ‖ = 0.013090, ‖Δτ‖ = 0.130781, ‖ΔL‖ = 0.005011, status = Optimal, time(s) = 0.068422
+run = 2, ‖Δβ‖ = 0.003913, ‖Δτ‖ = 0.037309, ‖ΔL‖ = 0.001516, status = Optimal, time(s) = 0.078606
+run = 1, ‖Δβ‖ = 0.022159, ‖Δτ‖ = 0.141135, ‖ΔL‖ = 0.005554, status = Optimal, time(s) = 0.061286
+run = 2, ‖Δβ‖ = 0.001482, ‖Δτ‖ = 0.021700, ‖ΔL‖ = 0.001435, status = Optimal, time(s) = 0.062450
+run = 1, ‖Δβ‖ = 0.026764, ‖Δτ‖ = 0.368620, ‖ΔL‖ = 0.000317, status = Optimal, time(s) = 0.059241
+run = 2, ‖Δβ‖ = 0.003023, ‖Δτ‖ = 0.030938, ‖ΔL‖ = 0.003568, status = Optimal, time(s) = 0.063418
+  4.152440 seconds (5.95 M allocations: 402.164 MiB, 2.42% gc time, 82.57% compilation time)
 
 
 
@@ -426,9 +469,9 @@ rm(&quot;trajgwas.null.txt&quot;, force=true)</code></pre><h2 id="Score-test-for
         :id,
         datadir * &quot;trajgwas_plinkex.csv&quot;,
         datadir * &quot;hapmap3&quot;,
-        pvalfile = &quot;score.pval.txt&quot;)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.043004
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.035886
-  1.051142 seconds (4.00 M allocations: 290.773 MiB, 16.08% gc time)
+        pvalfile = &quot;score.pval.txt&quot;)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.055125
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.052755
+  1.252389 seconds (3.99 M allocations: 290.295 MiB, 12.84% gc time)
 
 
 
@@ -459,7 +502,17 @@ Fixed-effects parameters:
 τ3: onMeds        0.422303   0.063825     6.62    &lt;1e-10
 ────────────────────────────────────────────────────────
 Random effects covariance matrix Σγ:
- &quot;γ1: (Intercept)&quot;  3.32057</code></pre><pre><code class="language-julia hljs">first(CSV.read(&quot;score.pval.txt&quot;, DataFrame), 8)</code></pre><p>&lt;div class=&quot;data-frame&quot;&gt;&lt;p&gt;8 rows × 10 columns&lt;/p&gt;&lt;table class=&quot;data-frame&quot;&gt;&lt;thead&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th&gt;chr&lt;/th&gt;&lt;th&gt;pos&lt;/th&gt;&lt;th&gt;snpid&lt;/th&gt;&lt;th&gt;maf&lt;/th&gt;&lt;th&gt;hwepval&lt;/th&gt;&lt;th&gt;betapval&lt;/th&gt;&lt;th&gt;betadir&lt;/th&gt;&lt;th&gt;taupval&lt;/th&gt;&lt;th&gt;taudir&lt;/th&gt;&lt;th&gt;jointpval&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;String&quot;&gt;String&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;&lt;tr&gt;&lt;th&gt;1&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;554484&lt;/td&gt;&lt;td&gt;rs10458597&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;2&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;758311&lt;/td&gt;&lt;td&gt;rs12562034&lt;/td&gt;&lt;td&gt;0.0776398&lt;/td&gt;&lt;td&gt;0.409876&lt;/td&gt;&lt;td&gt;0.38939&lt;/td&gt;&lt;td&gt;-1&lt;/td&gt;&lt;td&gt;0.922822&lt;/td&gt;&lt;td&gt;-1&lt;/td&gt;&lt;td&gt;0.547682&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;3&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;967643&lt;/td&gt;&lt;td&gt;rs2710875&lt;/td&gt;&lt;td&gt;0.324074&lt;/td&gt;&lt;td&gt;4.07625e-7&lt;/td&gt;&lt;td&gt;5.83856e-6&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;3.35408e-6&lt;/td&gt;&lt;td&gt;-1&lt;/td&gt;&lt;td&gt;4.93598e-7&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;4&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1168108&lt;/td&gt;&lt;td&gt;rs11260566&lt;/td&gt;&lt;td&gt;0.191589&lt;/td&gt;&lt;td&gt;0.128568&lt;/td&gt;&lt;td&gt;0.000850889&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;0.0559055&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;0.00101827&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;5&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1375074&lt;/td&gt;&lt;td&gt;rs1312568&lt;/td&gt;&lt;td&gt;0.441358&lt;/td&gt;&lt;td&gt;2.5376e-19&lt;/td&gt;&lt;td&gt;0.000171683&lt;/td&gt;&lt;td&gt;-1&lt;/td&gt;&lt;td&gt;1.84811e-13&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;2.07091e-15&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;6&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1588771&lt;/td&gt;&lt;td&gt;rs35154105&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;7&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1789051&lt;/td&gt;&lt;td&gt;rs16824508&lt;/td&gt;&lt;td&gt;0.00462963&lt;/td&gt;&lt;td&gt;0.933278&lt;/td&gt;&lt;td&gt;0.295035&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;0.304109&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;0.299504&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;8&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1990452&lt;/td&gt;&lt;td&gt;rs2678939&lt;/td&gt;&lt;td&gt;0.453704&lt;/td&gt;&lt;td&gt;5.07696e-11&lt;/td&gt;&lt;td&gt;1.27871e-7&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;7.73809e-9&lt;/td&gt;&lt;td&gt;-1&lt;/td&gt;&lt;td&gt;3.3986e-9&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/div&gt;</p><p><strong>Step 2</strong>: Sort score test p-values and find top 10 SNPs.</p><pre><code class="language-julia hljs">scorepvals = CSV.read(&quot;score.pval.txt&quot;, DataFrame)[!, :taupval] # tau p-values 
+ &quot;γ1: (Intercept)&quot;  3.32057</code></pre><pre><code class="language-julia hljs">pretty_table(first(CSV.read(&quot;score.pval.txt&quot;, DataFrame), 8), tf = tf_markdown)</code></pre><pre><code class="nohighlight hljs">|[1m   chr [0m|[1m     pos [0m|[1m      snpid [0m|[1m        maf [0m|[1m     hwepval [0m|[1m    betapval [0m|[1m betadir [0m|[1m     taupval [0m|[1m taudir [0m|[1m   jointpval [0m|
+|[90m Int64 [0m|[90m   Int64 [0m|[90m     String [0m|[90m    Float64 [0m|[90m     Float64 [0m|[90m     Float64 [0m|[90m   Int64 [0m|[90m     Float64 [0m|[90m  Int64 [0m|[90m     Float64 [0m|
+|-------|---------|------------|------------|-------------|-------------|---------|-------------|--------|-------------|
+|     1 |  554484 | rs10458597 |        0.0 |         1.0 |         1.0 |       0 |         1.0 |      0 |         1.0 |
+|     1 |  758311 | rs12562034 |  0.0776398 |    0.409876 |     0.38939 |      -1 |    0.922822 |     -1 |    0.547682 |
+|     1 |  967643 |  rs2710875 |   0.324074 |  4.07625e-7 |  5.83856e-6 |       1 |  3.35408e-6 |     -1 |  4.93598e-7 |
+|     1 | 1168108 | rs11260566 |   0.191589 |    0.128568 | 0.000850889 |       1 |   0.0559055 |      1 |  0.00101827 |
+|     1 | 1375074 |  rs1312568 |   0.441358 |  2.5376e-19 | 0.000171683 |      -1 | 1.84811e-13 |      1 | 2.07091e-15 |
+|     1 | 1588771 | rs35154105 |        0.0 |         1.0 |         1.0 |       0 |         1.0 |      0 |         1.0 |
+|     1 | 1789051 | rs16824508 | 0.00462963 |    0.933278 |    0.295035 |       1 |    0.304109 |      1 |    0.299504 |
+|     1 | 1990452 |  rs2678939 |   0.453704 | 5.07696e-11 |  1.27871e-7 |       1 |  7.73809e-9 |     -1 |   3.3986e-9 |</code></pre><p><strong>Step 2</strong>: Sort score test p-values and find top 10 SNPs.</p><pre><code class="language-julia hljs">scorepvals = CSV.read(&quot;score.pval.txt&quot;, DataFrame)[!, :taupval] # tau p-values 
 tophits = sortperm(scorepvals)[1:10] # indices of 10 SNPs with smallest p-values
 scorepvals[tophits] # smallest 10 p-values</code></pre><pre><code class="nohighlight hljs">10-element Vector{Float64}:
  7.872202557706978e-17
@@ -479,29 +532,29 @@ scorepvals[tophits] # smallest 10 p-values</code></pre><pre><code class="nohighl
         datadir * &quot;hapmap3&quot;,
         pvalfile = &quot;wald.pval.txt&quot;,
         snpinds = tophits,
-        test = :wald)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.038970
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.037406
-run = 1, ‖Δβ‖ = 0.026764, ‖Δτ‖ = 0.368620, ‖ΔL‖ = 0.000317, status = Optimal, time(s) = 0.060669
-run = 2, ‖Δβ‖ = 0.003023, ‖Δτ‖ = 0.030938, ‖ΔL‖ = 0.003568, status = Optimal, time(s) = 0.046794
-run = 1, ‖Δβ‖ = 0.039946, ‖Δτ‖ = 0.185049, ‖ΔL‖ = 0.005690, status = Optimal, time(s) = 0.053884
-run = 2, ‖Δβ‖ = 0.001640, ‖Δτ‖ = 0.029639, ‖ΔL‖ = 0.002028, status = Optimal, time(s) = 0.043935
-run = 1, ‖Δβ‖ = 0.040207, ‖Δτ‖ = 0.407863, ‖ΔL‖ = 0.001924, status = Optimal, time(s) = 0.052120
-run = 2, ‖Δβ‖ = 0.002632, ‖Δτ‖ = 0.039609, ‖ΔL‖ = 0.005131, status = Optimal, time(s) = 0.043479
-run = 1, ‖Δβ‖ = 0.052372, ‖Δτ‖ = 0.828946, ‖ΔL‖ = 0.001277, status = Optimal, time(s) = 0.064348
-run = 2, ‖Δβ‖ = 0.013694, ‖Δτ‖ = 0.185493, ‖ΔL‖ = 0.007118, status = Optimal, time(s) = 0.046386
-run = 1, ‖Δβ‖ = 0.032435, ‖Δτ‖ = 0.199659, ‖ΔL‖ = 0.004973, status = Optimal, time(s) = 0.053088
-run = 2, ‖Δβ‖ = 0.002847, ‖Δτ‖ = 0.032438, ‖ΔL‖ = 0.002941, status = Optimal, time(s) = 0.043273
-run = 1, ‖Δβ‖ = 0.009362, ‖Δτ‖ = 0.625969, ‖ΔL‖ = 0.002237, status = Optimal, time(s) = 0.064251
-run = 2, ‖Δβ‖ = 0.005893, ‖Δτ‖ = 0.176417, ‖ΔL‖ = 0.005017, status = Optimal, time(s) = 0.047283
-run = 1, ‖Δβ‖ = 0.012805, ‖Δτ‖ = 0.243313, ‖ΔL‖ = 0.006289, status = Optimal, time(s) = 0.056666
-run = 2, ‖Δβ‖ = 0.002636, ‖Δτ‖ = 0.044210, ‖ΔL‖ = 0.003312, status = Optimal, time(s) = 0.046489
-run = 1, ‖Δβ‖ = 0.014062, ‖Δτ‖ = 0.225841, ‖ΔL‖ = 0.003899, status = Optimal, time(s) = 0.057465
-run = 2, ‖Δβ‖ = 0.002112, ‖Δτ‖ = 0.030955, ‖ΔL‖ = 0.003860, status = Optimal, time(s) = 0.047704
-run = 1, ‖Δβ‖ = 0.026425, ‖Δτ‖ = 0.258805, ‖ΔL‖ = 0.004204, status = Optimal, time(s) = 0.056906
-run = 2, ‖Δβ‖ = 0.001090, ‖Δτ‖ = 0.051281, ‖ΔL‖ = 0.003822, status = Optimal, time(s) = 0.047899
-run = 1, ‖Δβ‖ = 0.035737, ‖Δτ‖ = 0.174702, ‖ΔL‖ = 0.001439, status = Optimal, time(s) = 0.063558
-run = 2, ‖Δβ‖ = 0.004776, ‖Δτ‖ = 0.019790, ‖ΔL‖ = 0.001867, status = Optimal, time(s) = 0.047032
-  2.290992 seconds (3.89 M allocations: 297.829 MiB, 2.45% gc time, 45.79% compilation time)
+        test = :wald)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.050522
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.045896
+run = 1, ‖Δβ‖ = 0.026764, ‖Δτ‖ = 0.368620, ‖ΔL‖ = 0.000317, status = Optimal, time(s) = 0.052896
+run = 2, ‖Δβ‖ = 0.003023, ‖Δτ‖ = 0.030938, ‖ΔL‖ = 0.003568, status = Optimal, time(s) = 0.048927
+run = 1, ‖Δβ‖ = 0.039946, ‖Δτ‖ = 0.185049, ‖ΔL‖ = 0.005690, status = Optimal, time(s) = 0.062114
+run = 2, ‖Δβ‖ = 0.001640, ‖Δτ‖ = 0.029639, ‖ΔL‖ = 0.002028, status = Optimal, time(s) = 0.056800
+run = 1, ‖Δβ‖ = 0.040207, ‖Δτ‖ = 0.407863, ‖ΔL‖ = 0.001924, status = Optimal, time(s) = 0.067101
+run = 2, ‖Δβ‖ = 0.002632, ‖Δτ‖ = 0.039609, ‖ΔL‖ = 0.005131, status = Optimal, time(s) = 0.060396
+run = 1, ‖Δβ‖ = 0.052372, ‖Δτ‖ = 0.828946, ‖ΔL‖ = 0.001277, status = Optimal, time(s) = 0.072916
+run = 2, ‖Δβ‖ = 0.013694, ‖Δτ‖ = 0.185493, ‖ΔL‖ = 0.007118, status = Optimal, time(s) = 0.075154
+run = 1, ‖Δβ‖ = 0.032435, ‖Δτ‖ = 0.199659, ‖ΔL‖ = 0.004973, status = Optimal, time(s) = 0.053985
+run = 2, ‖Δβ‖ = 0.002847, ‖Δτ‖ = 0.032438, ‖ΔL‖ = 0.002941, status = Optimal, time(s) = 0.070164
+run = 1, ‖Δβ‖ = 0.009362, ‖Δτ‖ = 0.625969, ‖ΔL‖ = 0.002237, status = Optimal, time(s) = 0.074807
+run = 2, ‖Δβ‖ = 0.005893, ‖Δτ‖ = 0.176417, ‖ΔL‖ = 0.005017, status = Optimal, time(s) = 0.070525
+run = 1, ‖Δβ‖ = 0.012805, ‖Δτ‖ = 0.243313, ‖ΔL‖ = 0.006289, status = Optimal, time(s) = 0.058287
+run = 2, ‖Δβ‖ = 0.002636, ‖Δτ‖ = 0.044210, ‖ΔL‖ = 0.003312, status = Optimal, time(s) = 0.069262
+run = 1, ‖Δβ‖ = 0.014062, ‖Δτ‖ = 0.225841, ‖ΔL‖ = 0.003899, status = Optimal, time(s) = 0.059671
+run = 2, ‖Δβ‖ = 0.002112, ‖Δτ‖ = 0.030955, ‖ΔL‖ = 0.003860, status = Optimal, time(s) = 0.066645
+run = 1, ‖Δβ‖ = 0.026425, ‖Δτ‖ = 0.258805, ‖ΔL‖ = 0.004204, status = Optimal, time(s) = 0.059020
+run = 2, ‖Δβ‖ = 0.001090, ‖Δτ‖ = 0.051281, ‖ΔL‖ = 0.003822, status = Optimal, time(s) = 0.069588
+run = 1, ‖Δβ‖ = 0.035737, ‖Δτ‖ = 0.174702, ‖ΔL‖ = 0.001439, status = Optimal, time(s) = 0.062036
+run = 2, ‖Δβ‖ = 0.004776, ‖Δτ‖ = 0.019790, ‖ΔL‖ = 0.001867, status = Optimal, time(s) = 0.070591
+  2.883714 seconds (3.88 M allocations: 297.408 MiB, 3.07% gc time, 44.29% compilation time)
 
 
 
@@ -532,7 +585,19 @@ Fixed-effects parameters:
 τ3: onMeds        0.422303   0.063825     6.62    &lt;1e-10
 ────────────────────────────────────────────────────────
 Random effects covariance matrix Σγ:
- &quot;γ1: (Intercept)&quot;  3.32057</code></pre><pre><code class="language-julia hljs">CSV.read(&quot;wald.pval.txt&quot;, DataFrame)</code></pre><p>&lt;div class=&quot;data-frame&quot;&gt;&lt;p&gt;10 rows × 9 columns&lt;/p&gt;&lt;table class=&quot;data-frame&quot;&gt;&lt;thead&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th&gt;chr&lt;/th&gt;&lt;th&gt;pos&lt;/th&gt;&lt;th&gt;snpid&lt;/th&gt;&lt;th&gt;maf&lt;/th&gt;&lt;th&gt;hwepval&lt;/th&gt;&lt;th&gt;betaeffect&lt;/th&gt;&lt;th&gt;betapval&lt;/th&gt;&lt;th&gt;taueffect&lt;/th&gt;&lt;th&gt;taupval&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;String&quot;&gt;String&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;&lt;tr&gt;&lt;th&gt;1&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1375074&lt;/td&gt;&lt;td&gt;rs1312568&lt;/td&gt;&lt;td&gt;0.441358&lt;/td&gt;&lt;td&gt;2.5376e-19&lt;/td&gt;&lt;td&gt;-0.456032&lt;/td&gt;&lt;td&gt;0.000165921&lt;/td&gt;&lt;td&gt;0.496452&lt;/td&gt;&lt;td&gt;1.17735e-36&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;2&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;11552817&lt;/td&gt;&lt;td&gt;rs2745282&lt;/td&gt;&lt;td&gt;0.421053&lt;/td&gt;&lt;td&gt;1.3537e-14&lt;/td&gt;&lt;td&gt;-0.67282&lt;/td&gt;&lt;td&gt;7.6492e-9&lt;/td&gt;&lt;td&gt;0.425653&lt;/td&gt;&lt;td&gt;1.45395e-19&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;3&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;120276030&lt;/td&gt;&lt;td&gt;rs6688004&lt;/td&gt;&lt;td&gt;0.469136&lt;/td&gt;&lt;td&gt;1.75473e-27&lt;/td&gt;&lt;td&gt;-0.637817&lt;/td&gt;&lt;td&gt;5.13062e-9&lt;/td&gt;&lt;td&gt;0.430562&lt;/td&gt;&lt;td&gt;6.07457e-21&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;4&lt;/th&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;135623558&lt;/td&gt;&lt;td&gt;rs6730157&lt;/td&gt;&lt;td&gt;0.313272&lt;/td&gt;&lt;td&gt;7.76753e-16&lt;/td&gt;&lt;td&gt;-0.556166&lt;/td&gt;&lt;td&gt;1.10163e-5&lt;/td&gt;&lt;td&gt;0.462346&lt;/td&gt;&lt;td&gt;2.88628e-20&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;5&lt;/th&gt;&lt;td&gt;9&lt;/td&gt;&lt;td&gt;126307510&lt;/td&gt;&lt;td&gt;rs3814134&lt;/td&gt;&lt;td&gt;0.427469&lt;/td&gt;&lt;td&gt;4.28276e-33&lt;/td&gt;&lt;td&gt;0.723472&lt;/td&gt;&lt;td&gt;1.41601e-11&lt;/td&gt;&lt;td&gt;-0.518216&lt;/td&gt;&lt;td&gt;4.75338e-39&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;6&lt;/th&gt;&lt;td&gt;15&lt;/td&gt;&lt;td&gt;40603025&lt;/td&gt;&lt;td&gt;rs2617236&lt;/td&gt;&lt;td&gt;0.390966&lt;/td&gt;&lt;td&gt;1.16466e-14&lt;/td&gt;&lt;td&gt;-0.644375&lt;/td&gt;&lt;td&gt;1.44948e-7&lt;/td&gt;&lt;td&gt;0.445647&lt;/td&gt;&lt;td&gt;9.43451e-19&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;7&lt;/th&gt;&lt;td&gt;15&lt;/td&gt;&lt;td&gt;40803767&lt;/td&gt;&lt;td&gt;rs3742988&lt;/td&gt;&lt;td&gt;0.42284&lt;/td&gt;&lt;td&gt;4.26181e-30&lt;/td&gt;&lt;td&gt;-0.796743&lt;/td&gt;&lt;td&gt;2.24785e-13&lt;/td&gt;&lt;td&gt;0.389234&lt;/td&gt;&lt;td&gt;7.09349e-17&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;8&lt;/th&gt;&lt;td&gt;17&lt;/td&gt;&lt;td&gt;56509992&lt;/td&gt;&lt;td&gt;rs8064681&lt;/td&gt;&lt;td&gt;0.481481&lt;/td&gt;&lt;td&gt;1.37485e-21&lt;/td&gt;&lt;td&gt;-0.58961&lt;/td&gt;&lt;td&gt;1.9256e-7&lt;/td&gt;&lt;td&gt;0.425417&lt;/td&gt;&lt;td&gt;5.60171e-25&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;9&lt;/th&gt;&lt;td&gt;17&lt;/td&gt;&lt;td&gt;71293786&lt;/td&gt;&lt;td&gt;rs2125345&lt;/td&gt;&lt;td&gt;0.339009&lt;/td&gt;&lt;td&gt;1.75527e-14&lt;/td&gt;&lt;td&gt;-0.635669&lt;/td&gt;&lt;td&gt;1.82739e-7&lt;/td&gt;&lt;td&gt;0.449612&lt;/td&gt;&lt;td&gt;1.7146e-21&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;10&lt;/th&gt;&lt;td&gt;23&lt;/td&gt;&lt;td&gt;64815688&lt;/td&gt;&lt;td&gt;rs5964999&lt;/td&gt;&lt;td&gt;0.475078&lt;/td&gt;&lt;td&gt;3.63212e-56&lt;/td&gt;&lt;td&gt;0.75886&lt;/td&gt;&lt;td&gt;5.04109e-14&lt;/td&gt;&lt;td&gt;-0.38849&lt;/td&gt;&lt;td&gt;5.39098e-23&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/div&gt;</p><pre><code class="language-julia hljs"># clean up
+ &quot;γ1: (Intercept)&quot;  3.32057</code></pre><pre><code class="language-julia hljs">pretty_table(CSV.read(&quot;wald.pval.txt&quot;, DataFrame), tf = tf_markdown)</code></pre><pre><code class="nohighlight hljs">|[1m   chr [0m|[1m       pos [0m|[1m     snpid [0m|[1m      maf [0m|[1m     hwepval [0m|[1m betaeffect [0m|[1m    betapval [0m|[1m taueffect [0m|[1m     taupval [0m|
+|[90m Int64 [0m|[90m     Int64 [0m|[90m    String [0m|[90m  Float64 [0m|[90m     Float64 [0m|[90m    Float64 [0m|[90m     Float64 [0m|[90m   Float64 [0m|[90m     Float64 [0m|
+|-------|-----------|-----------|----------|-------------|------------|-------------|-----------|-------------|
+|     1 |   1375074 | rs1312568 | 0.441358 |  2.5376e-19 |  -0.456032 | 0.000165921 |  0.496452 | 1.17735e-36 |
+|     1 |  11552817 | rs2745282 | 0.421053 |  1.3537e-14 |   -0.67282 |   7.6492e-9 |  0.425653 | 1.45395e-19 |
+|     1 | 120276030 | rs6688004 | 0.469136 | 1.75473e-27 |  -0.637817 |  5.13062e-9 |  0.430562 | 6.07457e-21 |
+|     2 | 135623558 | rs6730157 | 0.313272 | 7.76753e-16 |  -0.556166 |  1.10163e-5 |  0.462346 | 2.88628e-20 |
+|     9 | 126307510 | rs3814134 | 0.427469 | 4.28276e-33 |   0.723472 | 1.41601e-11 | -0.518216 | 4.75338e-39 |
+|    15 |  40603025 | rs2617236 | 0.390966 | 1.16466e-14 |  -0.644375 |  1.44948e-7 |  0.445647 | 9.43451e-19 |
+|    15 |  40803767 | rs3742988 |  0.42284 | 4.26181e-30 |  -0.796743 | 2.24785e-13 |  0.389234 | 7.09349e-17 |
+|    17 |  56509992 | rs8064681 | 0.481481 | 1.37485e-21 |   -0.58961 |   1.9256e-7 |  0.425417 | 5.60171e-25 |
+|    17 |  71293786 | rs2125345 | 0.339009 | 1.75527e-14 |  -0.635669 |  1.82739e-7 |  0.449612 |  1.7146e-21 |
+|    23 |  64815688 | rs5964999 | 0.475078 | 3.63212e-56 |    0.75886 | 5.04109e-14 |  -0.38849 | 5.39098e-23 |</code></pre><pre><code class="language-julia hljs"># clean up
 rm(&quot;trajgwas.null.txt&quot;, force=true)
 rm(&quot;trajgwas.pval.txt&quot;, force=true)
 rm(&quot;score.pval.txt&quot;, force=true)
@@ -543,39 +608,8 @@ rm(&quot;wald.pval.txt&quot;, force=true)</code></pre><h2 id="GxE-or-other-inter
         datadir * &quot;trajgwas_plinkex.csv&quot;,
         datadir * &quot;hapmap3&quot;,
         pvalfile = &quot;GxE.pval.txt&quot;,
-        testformula=@formula(trait ~ snp + snp &amp; sex))</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.041253
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.035768
-
-
-
-
-
-
-Within-subject variance estimation by robust regression (WiSER)
-
-Mean Formula:
-y ~ 1 + sex + onMeds
-Random Effects Formula:
-y ~ 1
-Within-Subject Variance Formula:
-y ~ 1 + sex + onMeds
-
-Number of individuals/clusters: 324
-Total observations: 3240
-
-Fixed-effects parameters:
-────────────────────────────────────────────────────────
-                  Estimate  Std. Error       Z  Pr(&gt;|Z|)
-────────────────────────────────────────────────────────
-β1: (Intercept)  13.2282     0.146459    90.32    &lt;1e-99
-β2: sex          -3.29295    0.2101     -15.67    &lt;1e-54
-β3: onMeds        0.459585   0.0596002    7.71    &lt;1e-13
-τ1: (Intercept)   0.792508   0.0850728    9.32    &lt;1e-19
-τ2: sex          -0.2865     0.0970732   -2.95    0.0032
-τ3: onMeds        0.422303   0.063825     6.62    &lt;1e-10
-────────────────────────────────────────────────────────
-Random effects covariance matrix Σγ:
- &quot;γ1: (Intercept)&quot;  3.32057</code></pre><pre><code class="language-julia hljs">first(CSV.read(&quot;GxE.pval.txt&quot;, DataFrame), 5)</code></pre><p>&lt;div class=&quot;data-frame&quot;&gt;&lt;p&gt;5 rows × 8 columns&lt;/p&gt;&lt;table class=&quot;data-frame&quot;&gt;&lt;thead&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th&gt;chr&lt;/th&gt;&lt;th&gt;pos&lt;/th&gt;&lt;th&gt;snpid&lt;/th&gt;&lt;th&gt;maf&lt;/th&gt;&lt;th&gt;hwepval&lt;/th&gt;&lt;th&gt;betapval&lt;/th&gt;&lt;th&gt;taupval&lt;/th&gt;&lt;th&gt;jointpval&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;String&quot;&gt;String&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;&lt;tr&gt;&lt;th&gt;1&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;554484&lt;/td&gt;&lt;td&gt;rs10458597&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;2&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;758311&lt;/td&gt;&lt;td&gt;rs12562034&lt;/td&gt;&lt;td&gt;0.0776398&lt;/td&gt;&lt;td&gt;0.409876&lt;/td&gt;&lt;td&gt;0.383&lt;/td&gt;&lt;td&gt;0.33511&lt;/td&gt;&lt;td&gt;0.357458&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;3&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;967643&lt;/td&gt;&lt;td&gt;rs2710875&lt;/td&gt;&lt;td&gt;0.324074&lt;/td&gt;&lt;td&gt;4.07625e-7&lt;/td&gt;&lt;td&gt;9.98217e-6&lt;/td&gt;&lt;td&gt;5.73202e-7&lt;/td&gt;&lt;td&gt;1.08415e-6&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;4&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1168108&lt;/td&gt;&lt;td&gt;rs11260566&lt;/td&gt;&lt;td&gt;0.191589&lt;/td&gt;&lt;td&gt;0.128568&lt;/td&gt;&lt;td&gt;0.00225789&lt;/td&gt;&lt;td&gt;0.105482&lt;/td&gt;&lt;td&gt;0.00442114&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;5&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1375074&lt;/td&gt;&lt;td&gt;rs1312568&lt;/td&gt;&lt;td&gt;0.441358&lt;/td&gt;&lt;td&gt;2.5376e-19&lt;/td&gt;&lt;td&gt;0.000928728&lt;/td&gt;&lt;td&gt;3.48807e-15&lt;/td&gt;&lt;td&gt;6.97615e-15&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/div&gt;</p><pre><code class="language-julia hljs"># clean up
+        testformula=@formula(trait ~ snp + snp &amp; sex))</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.049676
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.047728</code></pre><pre><code class="language-julia hljs">pretty_table(first(CSV.read(&quot;GxE.pval.txt&quot;, DataFrame), 5), tf = tf_markdown)</code></pre><pre><code class="language-julia hljs"># clean up
 rm(&quot;trajgwas.null.txt&quot;, force=true)
 rm(&quot;GxE.pval.txt&quot;,  force=true)</code></pre><h3 id="Testing-only-GxE-interaction-term"><a class="docs-heading-anchor" href="#Testing-only-GxE-interaction-term">Testing only GxE interaction term</a><a id="Testing-only-GxE-interaction-term-1"></a><a class="docs-heading-anchor-permalink" href="#Testing-only-GxE-interaction-term" title="Permalink"></a></h3><p>For some applications, the user may want to simply test the GxE interaction effect. This requires fitting the SNP in the null model and is much slower, but the command <code>trajgwas()</code> with keyword <code>analysistype = &quot;gxe&quot;</code> can be used test the interaction effect. The environmental variable must be specified in the command using the keyword argument <code>e</code>, either as a symbol, such as <code>:age</code> or as a string <code>&quot;age&quot;</code>. </p><pre><code class="language-julia hljs">trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
@@ -587,47 +621,7 @@ rm(&quot;GxE.pval.txt&quot;,  force=true)</code></pre><h3 id="Testing-only-GxE-i
         analysistype = &quot;gxe&quot;,
         e = :sex, 
         snpinds=1:5)
-</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.042947
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.051226
-run = 1, ‖Δβ‖ = 0.480377, ‖Δτ‖ = 0.023510, ‖ΔL‖ = 0.001822, status = Optimal, time(s) = 0.045999
-run = 2, ‖Δβ‖ = 0.000323, ‖Δτ‖ = 0.002136, ‖ΔL‖ = 0.000025, status = Optimal, time(s) = 0.044744
-run = 1, ‖Δβ‖ = 1.059989, ‖Δτ‖ = 0.458239, ‖ΔL‖ = 0.063093, status = Optimal, time(s) = 0.065265
-run = 2, ‖Δβ‖ = 0.009118, ‖Δτ‖ = 0.105352, ‖ΔL‖ = 0.000056, status = Optimal, time(s) = 0.061506
-run = 1, ‖Δβ‖ = 1.144781, ‖Δτ‖ = 0.251459, ‖ΔL‖ = 0.034318, status = Optimal, time(s) = 0.060325
-run = 2, ‖Δβ‖ = 0.000830, ‖Δτ‖ = 0.025631, ‖ΔL‖ = 0.000042, status = Optimal, time(s) = 0.043208
-run = 1, ‖Δβ‖ = 0.683108, ‖Δτ‖ = 0.773919, ‖ΔL‖ = 0.042397, status = Optimal, time(s) = 0.052987
-run = 2, ‖Δβ‖ = 0.008159, ‖Δτ‖ = 0.069178, ‖ΔL‖ = 0.003574, status = Optimal, time(s) = 0.045152
-
-
-
-
-
-
-Within-subject variance estimation by robust regression (WiSER)
-
-Mean Formula:
-y ~ 1 + sex + onMeds
-Random Effects Formula:
-y ~ 1
-Within-Subject Variance Formula:
-y ~ 1 + sex + onMeds
-
-Number of individuals/clusters: 324
-Total observations: 3240
-
-Fixed-effects parameters:
-────────────────────────────────────────────────────────
-                  Estimate  Std. Error       Z  Pr(&gt;|Z|)
-────────────────────────────────────────────────────────
-β1: (Intercept)  13.2282     0.146459    90.32    &lt;1e-99
-β2: sex          -3.29295    0.2101     -15.67    &lt;1e-54
-β3: onMeds        0.459585   0.0596002    7.71    &lt;1e-13
-τ1: (Intercept)   0.792508   0.0850728    9.32    &lt;1e-19
-τ2: sex          -0.2865     0.0970732   -2.95    0.0032
-τ3: onMeds        0.422303   0.063825     6.62    &lt;1e-10
-────────────────────────────────────────────────────────
-Random effects covariance matrix Σγ:
- &quot;γ1: (Intercept)&quot;  3.32057</code></pre><pre><code class="language-julia hljs">CSV.read(&quot;gxe_snp.pval.txt&quot;, DataFrame)</code></pre><p>&lt;div class=&quot;data-frame&quot;&gt;&lt;p&gt;5 rows × 9 columns&lt;/p&gt;&lt;table class=&quot;data-frame&quot;&gt;&lt;thead&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th&gt;chr&lt;/th&gt;&lt;th&gt;pos&lt;/th&gt;&lt;th&gt;snpid&lt;/th&gt;&lt;th&gt;maf&lt;/th&gt;&lt;th&gt;hwepval&lt;/th&gt;&lt;th&gt;snpeffectnullbeta&lt;/th&gt;&lt;th&gt;snpeffectnulltau&lt;/th&gt;&lt;th&gt;betapval&lt;/th&gt;&lt;th&gt;taupval&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;String&quot;&gt;String&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;&lt;tr&gt;&lt;th&gt;1&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;554484&lt;/td&gt;&lt;td&gt;rs10458597&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;2&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;758311&lt;/td&gt;&lt;td&gt;rs12562034&lt;/td&gt;&lt;td&gt;0.0776398&lt;/td&gt;&lt;td&gt;0.409876&lt;/td&gt;&lt;td&gt;-0.230593&lt;/td&gt;&lt;td&gt;0.0102355&lt;/td&gt;&lt;td&gt;0.448376&lt;/td&gt;&lt;td&gt;0.149797&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;3&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;967643&lt;/td&gt;&lt;td&gt;rs2710875&lt;/td&gt;&lt;td&gt;0.324074&lt;/td&gt;&lt;td&gt;4.07625e-7&lt;/td&gt;&lt;td&gt;0.639871&lt;/td&gt;&lt;td&gt;-0.338815&lt;/td&gt;&lt;td&gt;0.293876&lt;/td&gt;&lt;td&gt;0.119916&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;4&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1168108&lt;/td&gt;&lt;td&gt;rs11260566&lt;/td&gt;&lt;td&gt;0.191589&lt;/td&gt;&lt;td&gt;0.128568&lt;/td&gt;&lt;td&gt;0.618855&lt;/td&gt;&lt;td&gt;-0.146819&lt;/td&gt;&lt;td&gt;0.590189&lt;/td&gt;&lt;td&gt;0.262791&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;5&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1375074&lt;/td&gt;&lt;td&gt;rs1312568&lt;/td&gt;&lt;td&gt;0.441358&lt;/td&gt;&lt;td&gt;2.5376e-19&lt;/td&gt;&lt;td&gt;-0.456003&lt;/td&gt;&lt;td&gt;0.492582&lt;/td&gt;&lt;td&gt;0.574737&lt;/td&gt;&lt;td&gt;0.250501&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/div&gt;</p><pre><code class="language-julia hljs"># clean up
+</code></pre><pre><code class="language-julia hljs">pretty_table(CSV.read(&quot;gxe_snp.pval.txt&quot;, DataFrame), tf = tf_markdown)</code></pre><pre><code class="language-julia hljs"># clean up
 rm(&quot;trajgwas.null.txt&quot;, force=true)
 rm(&quot;gxe_snp.pval.txt&quot;, force=true)</code></pre><h2 id="SNP-set-testing"><a class="docs-heading-anchor" href="#SNP-set-testing">SNP-set testing</a><a id="SNP-set-testing-1"></a><a class="docs-heading-anchor-permalink" href="#SNP-set-testing" title="Permalink"></a></h2><p>In many applications, we want to test a SNP-set. The function with keyword <code>analysistype = &quot;snpset&quot;</code> can be used to do this. To specify the type of snpset test, use the <code>snpset</code> keyword argument. </p><p>The snpset can be specified as either:</p><ul><li>a window (test every X snps) =&gt; <code>snpset = X</code></li><li>an annotated file.  This requires <code>snpset = filename</code> where filename is an input file, with no header and two columns separated by a space. The first column must contain the snpset ID and the second column must contain the snpid&#39;s (rsid) identical to the bimfile, or in the case of a BGEN format, the order the data will be read (see BGEN above for more details).</li><li>a joint test on only a specific set of snps. <code>snpset = AbstractVector</code> where the vector specifies the snps you want to perform one joint snpset test for. The vector can either be a vector of integers where the elements are the indicies of the SNPs to test, a vector of booleans, where true represents that you want to select that SNP index, or a range indicating the indicies of the SNPs to test. </li></ul><p>SNPset testing is currently only implemented for the score test (not Wald). </p><p>In the following example, we perform a SNP-set test on the 50th to 55th snps. </p><pre><code class="language-julia hljs">trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
@@ -637,50 +631,9 @@ rm(&quot;gxe_snp.pval.txt&quot;, force=true)</code></pre><h2 id="SNP-set-testing
         datadir * &quot;hapmap3&quot;,
         pvalfile = &quot;snpset.pval.txt&quot;, 
         analysistype = &quot;snpset&quot;,
-        snpset = 50:55)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.059821
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.037852
-
-
-
-
-
-
-Within-subject variance estimation by robust regression (WiSER)
-
-Mean Formula:
-y ~ 1 + sex + onMeds
-Random Effects Formula:
-y ~ 1
-Within-Subject Variance Formula:
-y ~ 1 + sex + onMeds
-
-Number of individuals/clusters: 324
-Total observations: 3240
-
-Fixed-effects parameters:
-────────────────────────────────────────────────────────
-                  Estimate  Std. Error       Z  Pr(&gt;|Z|)
-────────────────────────────────────────────────────────
-β1: (Intercept)  13.2282     0.146459    90.32    &lt;1e-99
-β2: sex          -3.29295    0.2101     -15.67    &lt;1e-54
-β3: onMeds        0.459585   0.0596002    7.71    &lt;1e-13
-τ1: (Intercept)   0.792508   0.0850728    9.32    &lt;1e-19
-τ2: sex          -0.2865     0.0970732   -2.95    0.0032
-τ3: onMeds        0.422303   0.063825     6.62    &lt;1e-10
-────────────────────────────────────────────────────────
-Random effects covariance matrix Σγ:
- &quot;γ1: (Intercept)&quot;  3.32057</code></pre><pre><code class="language-julia hljs">run(`head snpset.pval.txt`);</code></pre><pre><code class="nohighlight hljs">The pvalue of snps indexed at 50:55 is betapval: 2.3156171211965083e-5, taupval: 3.9729937063719077e-10</code></pre><pre><code class="language-julia hljs"># clean up
+        snpset = 50:55)</code></pre><pre><code class="language-julia hljs">run(`head snpset.pval.txt`);</code></pre><pre><code class="language-julia hljs"># clean up
 rm(&quot;snpset.pval.txt&quot;, force=true)
-rm(&quot;trajgwas.null.txt&quot;, force=true)</code></pre><p>In the following example we run a SNP-set test on the annotated SNP-set file.</p><pre><code class="language-julia hljs">run(`head ../data/hapmap_snpsetfile.txt`);</code></pre><pre><code class="nohighlight hljs">gene1 rs10458597
-gene1 rs12562034
-gene1 rs2710875
-gene1 rs11260566
-gene1 rs1312568
-gene1 rs35154105
-gene1 rs16824508
-gene1 rs2678939
-gene1 rs7553178
-gene1 rs13376356</code></pre><pre><code class="language-julia hljs">trajgwas(@formula(y ~ 1 + sex + onMeds),
+rm(&quot;trajgwas.null.txt&quot;, force=true)</code></pre><p>In the following example we run a SNP-set test on the annotated SNP-set file.</p><pre><code class="language-julia hljs">run(`head ../data/hapmap_snpsetfile.txt`);</code></pre><pre><code class="language-julia hljs">trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
@@ -688,39 +641,7 @@ gene1 rs13376356</code></pre><pre><code class="language-julia hljs">trajgwas(@fo
         datadir * &quot;hapmap3&quot;,
         pvalfile = &quot;snpset.pval.txt&quot;, 
         analysistype = &quot;snpset&quot;,
-        snpset = datadir * &quot;/hapmap_snpsetfile.txt&quot;)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.040899
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.036685
-
-
-
-
-
-
-Within-subject variance estimation by robust regression (WiSER)
-
-Mean Formula:
-y ~ 1 + sex + onMeds
-Random Effects Formula:
-y ~ 1
-Within-Subject Variance Formula:
-y ~ 1 + sex + onMeds
-
-Number of individuals/clusters: 324
-Total observations: 3240
-
-Fixed-effects parameters:
-────────────────────────────────────────────────────────
-                  Estimate  Std. Error       Z  Pr(&gt;|Z|)
-────────────────────────────────────────────────────────
-β1: (Intercept)  13.2282     0.146459    90.32    &lt;1e-99
-β2: sex          -3.29295    0.2101     -15.67    &lt;1e-54
-β3: onMeds        0.459585   0.0596002    7.71    &lt;1e-13
-τ1: (Intercept)   0.792508   0.0850728    9.32    &lt;1e-19
-τ2: sex          -0.2865     0.0970732   -2.95    0.0032
-τ3: onMeds        0.422303   0.063825     6.62    &lt;1e-10
-────────────────────────────────────────────────────────
-Random effects covariance matrix Σγ:
- &quot;γ1: (Intercept)&quot;  3.32057</code></pre><pre><code class="language-julia hljs">first(CSV.read(&quot;snpset.pval.txt&quot;, DataFrame; delim=&quot;\t&quot;), 5)</code></pre><p>&lt;div class=&quot;data-frame&quot;&gt;&lt;p&gt;5 rows × 4 columns&lt;/p&gt;&lt;table class=&quot;data-frame&quot;&gt;&lt;thead&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th&gt;snpsetid&lt;/th&gt;&lt;th&gt;nsnps&lt;/th&gt;&lt;th&gt;betapval&lt;/th&gt;&lt;th&gt;taupval&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th title=&quot;String&quot;&gt;String&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;&lt;tr&gt;&lt;th&gt;1&lt;/th&gt;&lt;td&gt;gene1&lt;/td&gt;&lt;td&gt;93&lt;/td&gt;&lt;td&gt;0.111864&lt;/td&gt;&lt;td&gt;0.011595&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;2&lt;/th&gt;&lt;td&gt;gene2&lt;/td&gt;&lt;td&gt;93&lt;/td&gt;&lt;td&gt;0.0249929&lt;/td&gt;&lt;td&gt;0.0648265&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;3&lt;/th&gt;&lt;td&gt;gene3&lt;/td&gt;&lt;td&gt;93&lt;/td&gt;&lt;td&gt;0.131741&lt;/td&gt;&lt;td&gt;0.0298884&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;4&lt;/th&gt;&lt;td&gt;gene4&lt;/td&gt;&lt;td&gt;92&lt;/td&gt;&lt;td&gt;0.010327&lt;/td&gt;&lt;td&gt;0.0584591&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;5&lt;/th&gt;&lt;td&gt;gene5&lt;/td&gt;&lt;td&gt;93&lt;/td&gt;&lt;td&gt;0.0303905&lt;/td&gt;&lt;td&gt;0.0924954&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/div&gt;</p><pre><code class="language-julia hljs"># clean up
+        snpset = datadir * &quot;/hapmap_snpsetfile.txt&quot;)</code></pre><pre><code class="language-julia hljs">pretty_table(first(CSV.read(&quot;snpset.pval.txt&quot;, DataFrame; delim=&quot;\t&quot;), 5), tf = tf_markdown)</code></pre><pre><code class="language-julia hljs"># clean up
 rm(&quot;snpset.pval.txt&quot;, force=true)
 rm(&quot;trajgwas.null.txt&quot;, force=true)</code></pre><p>In the following example we run a SNP-set test on every 15 SNPs.</p><pre><code class="language-julia hljs">trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
@@ -730,68 +651,10 @@ rm(&quot;trajgwas.null.txt&quot;, force=true)</code></pre><p>In the following ex
         datadir * &quot;hapmap3&quot;,
         pvalfile = &quot;snpset.pval.txt&quot;, 
         analysistype = &quot;snpset&quot;,
-        snpset = 15)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.039755
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.043883
-
-
-
-
-
-
-Within-subject variance estimation by robust regression (WiSER)
-
-Mean Formula:
-y ~ 1 + sex + onMeds
-Random Effects Formula:
-y ~ 1
-Within-Subject Variance Formula:
-y ~ 1 + sex + onMeds
-
-Number of individuals/clusters: 324
-Total observations: 3240
-
-Fixed-effects parameters:
-────────────────────────────────────────────────────────
-                  Estimate  Std. Error       Z  Pr(&gt;|Z|)
-────────────────────────────────────────────────────────
-β1: (Intercept)  13.2282     0.146459    90.32    &lt;1e-99
-β2: sex          -3.29295    0.2101     -15.67    &lt;1e-54
-β3: onMeds        0.459585   0.0596002    7.71    &lt;1e-13
-τ1: (Intercept)   0.792508   0.0850728    9.32    &lt;1e-19
-τ2: sex          -0.2865     0.0970732   -2.95    0.0032
-τ3: onMeds        0.422303   0.063825     6.62    &lt;1e-10
-────────────────────────────────────────────────────────
-Random effects covariance matrix Σγ:
- &quot;γ1: (Intercept)&quot;  3.32057</code></pre><pre><code class="language-julia hljs">first(CSV.read(&quot;snpset.pval.txt&quot;, DataFrame), 5)</code></pre><p>&lt;div class=&quot;data-frame&quot;&gt;&lt;p&gt;5 rows × 8 columns&lt;/p&gt;&lt;table class=&quot;data-frame&quot;&gt;&lt;thead&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th&gt;startchr&lt;/th&gt;&lt;th&gt;startpos&lt;/th&gt;&lt;th&gt;startsnpid&lt;/th&gt;&lt;th&gt;endchr&lt;/th&gt;&lt;th&gt;endpos&lt;/th&gt;&lt;th&gt;endsnpid&lt;/th&gt;&lt;th&gt;betapval&lt;/th&gt;&lt;th&gt;taupval&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;String&quot;&gt;String&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;Int64&quot;&gt;Int64&lt;/th&gt;&lt;th title=&quot;String&quot;&gt;String&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;&lt;tr&gt;&lt;th&gt;1&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;554484&lt;/td&gt;&lt;td&gt;rs10458597&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;3431124&lt;/td&gt;&lt;td&gt;rs12093117&lt;/td&gt;&lt;td&gt;3.83046e-6&lt;/td&gt;&lt;td&gt;2.24303e-10&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;2&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;3633945&lt;/td&gt;&lt;td&gt;rs10910017&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;6514524&lt;/td&gt;&lt;td&gt;rs932112&lt;/td&gt;&lt;td&gt;0.000127922&lt;/td&gt;&lt;td&gt;7.94764e-6&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;3&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;6715827&lt;/td&gt;&lt;td&gt;rs441515&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;9534606&lt;/td&gt;&lt;td&gt;rs4926480&lt;/td&gt;&lt;td&gt;8.10353e-5&lt;/td&gt;&lt;td&gt;6.11848e-7&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;4&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;9737551&lt;/td&gt;&lt;td&gt;rs12047054&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;12559747&lt;/td&gt;&lt;td&gt;rs4845907&lt;/td&gt;&lt;td&gt;0.000425108&lt;/td&gt;&lt;td&gt;1.15311e-8&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;5&lt;/th&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;12760427&lt;/td&gt;&lt;td&gt;rs848577&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;16021797&lt;/td&gt;&lt;td&gt;rs6679870&lt;/td&gt;&lt;td&gt;2.75832e-5&lt;/td&gt;&lt;td&gt;0.00028553&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/div&gt;</p><pre><code class="language-julia hljs"># clean up
+        snpset = 15)</code></pre><pre><code class="language-julia hljs">pretty_table(first(CSV.read(&quot;snpset.pval.txt&quot;, DataFrame), 5), tf = tf_markdown)</code></pre><pre><code class="language-julia hljs"># clean up
 rm(&quot;snpset.pval.txt&quot;, force=true)
-rm(&quot;trajgwas.null.txt&quot;, force=true)</code></pre><h2 id="Matching-Indicies"><a class="docs-heading-anchor" href="#Matching-Indicies">Matching Indicies</a><a id="Matching-Indicies-1"></a><a class="docs-heading-anchor-permalink" href="#Matching-Indicies" title="Permalink"></a></h2><p>In some cases, there are only a subset of individuals with both genetic data and covariate information available. The null model must be fit on a subset of the individuals with the genetic data. The rows can be specified with the argument <code>covrowinds</code> if you pass in a covariate file. The genetic indicies can be specified with the <code>geneticrowinds</code> argument. </p><p>For simplicity, we have implemented a function <code>matchindices(meanformula, reformula, wsvarformula, idvar, df, geneticsamples)</code> which can be used to do this. Input the mean, random effects, and within-subject variance formulas, the grouping (id) variable, the dataframe (or table), and a vector of the IDs in the order of the genetic file and it returns <code>covrowmask, geneticrowmask</code> for matching indicies in a covariate file and geneticfile.</p><p>Note: the <code>idvar</code> in the dataframe and the <code>geneticsamples</code> vector must have the same element type. To convert a vector of integers to strings <code>string.(intvector)</code> can be used. To go from a vector of strings to integers you can use&quot;  <code>map(x -&gt; parse(Int, x), stringvectoparse)</code>.</p><pre><code class="language-julia hljs">famfileids = CSV.read(datadir * &quot;hapmap3.fam&quot;, DataFrame, header = false)[!, 1] # famfile contains the sample IDs for PLINK files</code></pre><pre><code class="nohighlight hljs">324-element Vector{String}:
- &quot;A1&quot;
- &quot;2&quot;
- &quot;3&quot;
- &quot;4&quot;
- &quot;5&quot;
- &quot;6&quot;
- &quot;7&quot;
- &quot;8&quot;
- &quot;9&quot;
- &quot;10&quot;
- &quot;11&quot;
- &quot;12&quot;
- &quot;13&quot;
- ⋮
- &quot;313&quot;
- &quot;314&quot;
- &quot;315&quot;
- &quot;316&quot;
- &quot;317&quot;
- &quot;318&quot;
- &quot;319&quot;
- &quot;320&quot;
- &quot;321&quot;
- &quot;322&quot;
- &quot;323&quot;
- &quot;Z324&quot;</code></pre><pre><code class="language-julia hljs">covdf = CSV.read(datadir * &quot;trajgwas_plinkex.csv&quot;, DataFrame)
-first(covdf, 11)</code></pre><p>&lt;div class=&quot;data-frame&quot;&gt;&lt;p&gt;11 rows × 8 columns&lt;/p&gt;&lt;table class=&quot;data-frame&quot;&gt;&lt;thead&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th&gt;sex&lt;/th&gt;&lt;th&gt;onMeds&lt;/th&gt;&lt;th&gt;snp1&lt;/th&gt;&lt;th&gt;snp2&lt;/th&gt;&lt;th&gt;snp3&lt;/th&gt;&lt;th&gt;snp4&lt;/th&gt;&lt;th&gt;y&lt;/th&gt;&lt;th&gt;id&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;Float64&quot;&gt;Float64&lt;/th&gt;&lt;th title=&quot;String&quot;&gt;String&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;&lt;tr&gt;&lt;th&gt;1&lt;/th&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;2.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;12.2667&lt;/td&gt;&lt;td&gt;A1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;2&lt;/th&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;2.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;10.2681&lt;/td&gt;&lt;td&gt;A1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;3&lt;/th&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;2.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;12.166&lt;/td&gt;&lt;td&gt;A1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;4&lt;/th&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;2.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;11.8797&lt;/td&gt;&lt;td&gt;A1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;5&lt;/th&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;2.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;12.8127&lt;/td&gt;&lt;td&gt;A1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;6&lt;/th&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;2.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;9.98766&lt;/td&gt;&lt;td&gt;A1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;7&lt;/th&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;2.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;12.1408&lt;/td&gt;&lt;td&gt;A1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;8&lt;/th&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;2.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;13.2058&lt;/td&gt;&lt;td&gt;A1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;9&lt;/th&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;2.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;11.3631&lt;/td&gt;&lt;td&gt;A1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;10&lt;/th&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;1.0&lt;/td&gt;&lt;td&gt;2.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;15.2511&lt;/td&gt;&lt;td&gt;A1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;11&lt;/th&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;0.0&lt;/td&gt;&lt;td&gt;2.0&lt;/td&gt;&lt;td&gt;2.0&lt;/td&gt;&lt;td&gt;12.746&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/div&gt;</p><pre><code class="language-julia hljs">covrowmask, geneticrowmask = matchindices(@formula(y ~ 1 + sex + onMeds),
+rm(&quot;trajgwas.null.txt&quot;, force=true)</code></pre><h2 id="Matching-Indicies"><a class="docs-heading-anchor" href="#Matching-Indicies">Matching Indicies</a><a id="Matching-Indicies-1"></a><a class="docs-heading-anchor-permalink" href="#Matching-Indicies" title="Permalink"></a></h2><p>In some cases, there are only a subset of individuals with both genetic data and covariate information available. The null model must be fit on a subset of the individuals with the genetic data. The rows can be specified with the argument <code>covrowinds</code> if you pass in a covariate file. The genetic indicies can be specified with the <code>geneticrowinds</code> argument. </p><p>For simplicity, we have implemented a function <code>matchindices(meanformula, reformula, wsvarformula, idvar, df, geneticsamples)</code> which can be used to do this. Input the mean, random effects, and within-subject variance formulas, the grouping (id) variable, the dataframe (or table), and a vector of the IDs in the order of the genetic file and it returns <code>covrowmask, geneticrowmask</code> for matching indicies in a covariate file and geneticfile.</p><p>Note: the <code>idvar</code> in the dataframe and the <code>geneticsamples</code> vector must have the same element type. To convert a vector of integers to strings <code>string.(intvector)</code> can be used. To go from a vector of strings to integers you can use&quot;  <code>map(x -&gt; parse(Int, x), stringvectoparse)</code>.</p><pre><code class="language-julia hljs">famfileids = CSV.read(datadir * &quot;hapmap3.fam&quot;, DataFrame, header = false)[!, 1] # famfile contains the sample IDs for PLINK files</code></pre><pre><code class="language-julia hljs">covdf = CSV.read(datadir * &quot;trajgwas_plinkex.csv&quot;, DataFrame)
+pretty_table(first(covdf, 11), tf = tf_markdown)</code></pre><pre><code class="language-julia hljs">covrowmask, geneticrowmask = matchindices(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id, covdf, famfileids);</code></pre><pre><code class="language-julia hljs">trajgwas(@formula(y ~ 1 + sex + onMeds),
@@ -961,4 +824,4 @@ FITTED_NULL=/user/dir/null.model.jls
 PVALFILE=/user/dir/pvalfiles/sbp.test.diabetes.chr${CHR}.${CHUNKIDX}of${NCHUNKS}.txt
 
 module load julia
-time julia --project=${PROJECTDIR} ${PROJECTDIR}/scoretest_bp.jl ${BGENDIR} ${CHR} ${FITTED_NULL} ${PVALFILE} ${CHUNKIDX} ${NCHUNKS}</code></pre><p>and this could be submitted using the <code>qsub</code> command.</p><h2 id="Troubleshooting"><a class="docs-heading-anchor" href="#Troubleshooting">Troubleshooting</a><a id="Troubleshooting-1"></a><a class="docs-heading-anchor-permalink" href="#Troubleshooting" title="Permalink"></a></h2><p>If there are issues you&#39;re encountering with running TrajGWAS, the following are possible remedies.</p><ul><li>Null Model<ul><li>Issues with null model convergence may be solved by choosing alternate starting values for parameters, using a different solver, transforming variables, and increasing the number of runs (WiSER runs). These are detailed in the <a href="https://github.com/OpenMendel/WiSER.jl/blob/master/docs/src/model_fitting.md#tips-for-improving-estimation">WiSER documentation here</a>.</li></ul></li><li>GWAS Results<ul><li>If you use the score test instead of the SPA-score test (SPA is default for single-SNP analyses), then there can be inflation in type I error and decreased power when (a) the sample size is small, (b) the number of repeated measures is low, or (c) the variants analyzed are rare with low minor allele frequencies. In these cases, the score test is not optimal and it is suggested to use the SPA version (<code>usespa=true</code>). SPA is only implemented for single-SNP analyses. These issues can occur in both Wald and score tests. </li></ul></li></ul><p>If you notice any problems with your output or results, <a href="https://github.com/OpenMendel/TrajGWAS.jl/issues">file an issue</a>. </p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.5 on <span class="colophon-date" title="Thursday 5 August 2021 22:26">Thursday 5 August 2021</span>. Using Julia version 1.6.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+time julia --project=${PROJECTDIR} ${PROJECTDIR}/scoretest_bp.jl ${BGENDIR} ${CHR} ${FITTED_NULL} ${PVALFILE} ${CHUNKIDX} ${NCHUNKS}</code></pre><p>and this could be submitted using the <code>qsub</code> command.</p><h2 id="Troubleshooting"><a class="docs-heading-anchor" href="#Troubleshooting">Troubleshooting</a><a id="Troubleshooting-1"></a><a class="docs-heading-anchor-permalink" href="#Troubleshooting" title="Permalink"></a></h2><p>If there are issues you&#39;re encountering with running TrajGWAS, the following are possible remedies.</p><ul><li>Null Model<ul><li>Issues with null model convergence may be solved by choosing alternate starting values for parameters, using a different solver, transforming variables, and increasing the number of runs (WiSER runs). These are detailed in the <a href="https://github.com/OpenMendel/WiSER.jl/blob/master/docs/src/model_fitting.md#tips-for-improving-estimation">WiSER documentation here</a>.</li></ul></li><li>GWAS Results<ul><li>If you use the score test instead of the SPA-score test (SPA is default for single-SNP analyses), then there can be inflation in type I error and decreased power when (a) the sample size is small, (b) the number of repeated measures is low, or (c) the variants analyzed are rare with low minor allele frequencies. In these cases, the score test is not optimal and it is suggested to use the SPA version (<code>usespa=true</code>). SPA is only implemented for single-SNP analyses. These issues can occur in both Wald and score tests. </li></ul></li></ul><p>If you notice any problems with your output or results, <a href="https://github.com/OpenMendel/TrajGWAS.jl/issues">file an issue</a>. </p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.5 on <span class="colophon-date" title="Friday 6 August 2021 16:57">Friday 6 August 2021</span>. Using Julia version 1.6.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
