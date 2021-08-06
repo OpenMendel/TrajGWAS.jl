@@ -20,7 +20,7 @@ pkg"add https://github.com/OpenMendel/TrajGWAS.jl"
 
 To run the code in this document, the packages installed by the following command are also necessary:
 ```julia
-pkg"add BenchmarkTools CSV Glob"
+pkg"add BenchmarkTools CSV Glob PrettyTables"
 ```
 
 
@@ -29,24 +29,21 @@ pkg"add BenchmarkTools CSV Glob"
 versioninfo()
 ```
 
-    Julia Version 1.6.0
-    Commit f9720dc2eb (2021-03-24 12:55 UTC)
+    Julia Version 1.6.2
+    Commit 1b93d53fc4 (2021-07-14 15:36 UTC)
     Platform Info:
-      OS: macOS (x86_64-apple-darwin19.6.0)
-      CPU: Intel(R) Core(TM) i7-6920HQ CPU @ 2.90GHz
+      OS: macOS (x86_64-apple-darwin18.7.0)
+      CPU: Intel(R) Core(TM) i7-7820HQ CPU @ 2.90GHz
       WORD_SIZE: 64
       LIBM: libopenlibm
       LLVM: libLLVM-11.0.1 (ORCJIT, skylake)
-    Environment:
-      JULIA_EDITOR = code
-      JULIA_NUM_THREADS = 4
 
 
 
 ```julia
 # for use in this tutorial
-ENV["COLUMNS"] = 250
-using BenchmarkTools, CSV, Glob, SnpArrays, TrajGWAS
+ENV["COLUMNS"] = 400
+using BenchmarkTools, CSV, Glob, SnpArrays, TrajGWAS, PrettyTables
 ```
 
 ## Example data sets
@@ -63,7 +60,7 @@ const datadir = normpath(joinpath(dirname(pathof(TrajGWAS)), "../data/"))
 
 
 
-    "/Users/huazhou/.julia/dev/TrajGWAS/data/"
+    "/Users/kose/.julia/dev/TrajGWAS/data/"
 
 
 
@@ -76,21 +73,27 @@ readdir(glob"*.*", datadir)
 
 
 
-    14-element Vector{String}:
-     "/Users/huazhou/.julia/dev/TrajGWAS/data/bgen_snpsetfile.txt"
-     "/Users/huazhou/.julia/dev/TrajGWAS/data/covariate.txt"
-     "/Users/huazhou/.julia/dev/TrajGWAS/data/example.8bits.bgen"
-     "/Users/huazhou/.julia/dev/TrajGWAS/data/example.8bits.bgen.bgi"
-     "/Users/huazhou/.julia/dev/TrajGWAS/data/hapmap3.bed"
-     "/Users/huazhou/.julia/dev/TrajGWAS/data/hapmap3.bim"
-     "/Users/huazhou/.julia/dev/TrajGWAS/data/hapmap3.fam"
-     "/Users/huazhou/.julia/dev/TrajGWAS/data/hapmap_snpsetfile.txt"
-     "/Users/huazhou/.julia/dev/TrajGWAS/data/sim_data.jl"
-     "/Users/huazhou/.julia/dev/TrajGWAS/data/snpsetfile_vcf.txt"
-     "/Users/huazhou/.julia/dev/TrajGWAS/data/test_vcf.vcf.gz"
-     "/Users/huazhou/.julia/dev/TrajGWAS/data/trajgwas_bgen_ex.csv"
-     "/Users/huazhou/.julia/dev/TrajGWAS/data/trajgwas_plinkex.csv"
-     "/Users/huazhou/.julia/dev/TrajGWAS/data/trajgwas_vcfex.csv"
+    20-element Vector{String}:
+     "/Users/kose/.julia/dev/TrajGWAS/data/bgen_snpsetfile.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/covariate.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/example.8bits.bgen"
+     "/Users/kose/.julia/dev/TrajGWAS/data/example.8bits.bgen.bgi"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.bed"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.bim"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.25.bed"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.25.bim"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.25.fam"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.26.bed"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.26.bim"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.26.fam"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.fam"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap_snpsetfile.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/sim_data.jl"
+     "/Users/kose/.julia/dev/TrajGWAS/data/snpsetfile_vcf.txt"
+     "/Users/kose/.julia/dev/TrajGWAS/data/test_vcf.vcf.gz"
+     "/Users/kose/.julia/dev/TrajGWAS/data/trajgwas_bgen_ex.csv"
+     "/Users/kose/.julia/dev/TrajGWAS/data/trajgwas_plinkex.csv"
+     "/Users/kose/.julia/dev/TrajGWAS/data/trajgwas_vcfex.csv"
 
 
 
@@ -126,8 +129,8 @@ trajgwas(@formula(y ~ 1 + sex + onMeds),
              For more information visit https://github.com/coin-or/Ipopt
     ******************************************************************************
     
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.259617
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.034867
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.221323
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.043580
 
 
 
@@ -227,10 +230,16 @@ readdir(glob"hapmap3.*", datadir)
 
 
 
-    3-element Vector{String}:
-     "/Users/huazhou/.julia/dev/TrajGWAS/data/hapmap3.bed"
-     "/Users/huazhou/.julia/dev/TrajGWAS/data/hapmap3.bim"
-     "/Users/huazhou/.julia/dev/TrajGWAS/data/hapmap3.fam"
+    9-element Vector{String}:
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.bed"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.bim"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.25.bed"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.25.bim"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.25.fam"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.26.bed"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.26.bim"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.chr.26.fam"
+     "/Users/kose/.julia/dev/TrajGWAS/data/hapmap3.fam"
 
 
 
@@ -326,14 +335,20 @@ run(`cat trajgwas.null.txt`);
 
 
 ```julia
-first(CSV.read("trajgwas.pval.txt", DataFrame), 8)
+pretty_table(first(CSV.read("trajgwas.pval.txt", DataFrame), 8), tf = tf_markdown)
 ```
 
-
-
-
-<div class="data-frame"><p>8 rows × 10 columns</p><table class="data-frame"><thead><tr><th></th><th>chr</th><th>pos</th><th>snpid</th><th>maf</th><th>hwepval</th><th>betapval</th><th>betadir</th><th>taupval</th><th>taudir</th><th>jointpval</th></tr><tr><th></th><th title="Int64">Int64</th><th title="Int64">Int64</th><th title="String">String</th><th title="Float64">Float64</th><th title="Float64">Float64</th><th title="Float64">Float64</th><th title="Int64">Int64</th><th title="Float64">Float64</th><th title="Int64">Int64</th><th title="Float64">Float64</th></tr></thead><tbody><tr><th>1</th><td>1</td><td>554484</td><td>rs10458597</td><td>0.0</td><td>1.0</td><td>1.0</td><td>0</td><td>1.0</td><td>0</td><td>1.0</td></tr><tr><th>2</th><td>1</td><td>758311</td><td>rs12562034</td><td>0.0776398</td><td>0.409876</td><td>0.38939</td><td>-1</td><td>0.922822</td><td>-1</td><td>0.547682</td></tr><tr><th>3</th><td>1</td><td>967643</td><td>rs2710875</td><td>0.324074</td><td>4.07625e-7</td><td>5.83856e-6</td><td>1</td><td>3.35408e-6</td><td>-1</td><td>4.93598e-7</td></tr><tr><th>4</th><td>1</td><td>1168108</td><td>rs11260566</td><td>0.191589</td><td>0.128568</td><td>0.000850889</td><td>1</td><td>0.0559055</td><td>1</td><td>0.00101827</td></tr><tr><th>5</th><td>1</td><td>1375074</td><td>rs1312568</td><td>0.441358</td><td>2.5376e-19</td><td>0.000171683</td><td>-1</td><td>1.84811e-13</td><td>1</td><td>2.07091e-15</td></tr><tr><th>6</th><td>1</td><td>1588771</td><td>rs35154105</td><td>0.0</td><td>1.0</td><td>1.0</td><td>0</td><td>1.0</td><td>0</td><td>1.0</td></tr><tr><th>7</th><td>1</td><td>1789051</td><td>rs16824508</td><td>0.00462963</td><td>0.933278</td><td>0.295035</td><td>1</td><td>0.304109</td><td>1</td><td>0.299504</td></tr><tr><th>8</th><td>1</td><td>1990452</td><td>rs2678939</td><td>0.453704</td><td>5.07696e-11</td><td>1.27871e-7</td><td>1</td><td>7.73809e-9</td><td>-1</td><td>3.3986e-9</td></tr></tbody></table></div>
-
+    |[1m   chr [0m|[1m     pos [0m|[1m      snpid [0m|[1m        maf [0m|[1m     hwepval [0m|[1m    betapval [0m|[1m betadir [0m|[1m     taupval [0m|[1m taudir [0m|[1m   jointpval [0m|
+    |[90m Int64 [0m|[90m   Int64 [0m|[90m     String [0m|[90m    Float64 [0m|[90m     Float64 [0m|[90m     Float64 [0m|[90m   Int64 [0m|[90m     Float64 [0m|[90m  Int64 [0m|[90m     Float64 [0m|
+    |-------|---------|------------|------------|-------------|-------------|---------|-------------|--------|-------------|
+    |     1 |  554484 | rs10458597 |        0.0 |         1.0 |         1.0 |       0 |         1.0 |      0 |         1.0 |
+    |     1 |  758311 | rs12562034 |  0.0776398 |    0.409876 |     0.38939 |      -1 |    0.922822 |     -1 |    0.547682 |
+    |     1 |  967643 |  rs2710875 |   0.324074 |  4.07625e-7 |  5.83856e-6 |       1 |  3.35408e-6 |     -1 |  4.93598e-7 |
+    |     1 | 1168108 | rs11260566 |   0.191589 |    0.128568 | 0.000850889 |       1 |   0.0559055 |      1 |  0.00101827 |
+    |     1 | 1375074 |  rs1312568 |   0.441358 |  2.5376e-19 | 0.000171683 |      -1 | 1.84811e-13 |      1 | 2.07091e-15 |
+    |     1 | 1588771 | rs35154105 |        0.0 |         1.0 |         1.0 |       0 |         1.0 |      0 |         1.0 |
+    |     1 | 1789051 | rs16824508 | 0.00462963 |    0.933278 |    0.295035 |       1 |    0.304109 |      1 |    0.299504 |
+    |     1 | 1990452 |  rs2678939 |   0.453704 | 5.07696e-11 |  1.27871e-7 |       1 |  7.73809e-9 |     -1 |   3.3986e-9 |
 
 
 Output file names can be changed by the `nullfile` and `pvalfile` keywords respectively. For example, 
@@ -397,26 +412,38 @@ all(covdf[!, 2] .== plkfam[!, 2])
 
 
 ```julia
-covdf
+pretty_table(first(covdf, 8), tf = tf_markdown)
 ```
 
-
-
-
-<div class="data-frame"><p>324 rows × 6 columns</p><table class="data-frame"><thead><tr><th></th><th>famid</th><th>perid</th><th>faid</th><th>moid</th><th>sex</th><th>trait</th></tr><tr><th></th><th title="String">String</th><th title="String">String</th><th title="Int64">Int64</th><th title="Int64">Int64</th><th title="Int64">Int64</th><th title="Int64">Int64</th></tr></thead><tbody><tr><th>1</th><td>2431</td><td>NA19916</td><td>0</td><td>0</td><td>1</td><td>4</td></tr><tr><th>2</th><td>2424</td><td>NA19835</td><td>0</td><td>0</td><td>2</td><td>4</td></tr><tr><th>3</th><td>2469</td><td>NA20282</td><td>0</td><td>0</td><td>2</td><td>4</td></tr><tr><th>4</th><td>2368</td><td>NA19703</td><td>0</td><td>0</td><td>1</td><td>3</td></tr><tr><th>5</th><td>2425</td><td>NA19901</td><td>0</td><td>0</td><td>2</td><td>3</td></tr><tr><th>6</th><td>2427</td><td>NA19908</td><td>0</td><td>0</td><td>1</td><td>4</td></tr><tr><th>7</th><td>2430</td><td>NA19914</td><td>0</td><td>0</td><td>2</td><td>4</td></tr><tr><th>8</th><td>2470</td><td>NA20287</td><td>0</td><td>0</td><td>2</td><td>1</td></tr><tr><th>9</th><td>2436</td><td>NA19713</td><td>0</td><td>0</td><td>2</td><td>3</td></tr><tr><th>10</th><td>2426</td><td>NA19904</td><td>0</td><td>0</td><td>1</td><td>1</td></tr><tr><th>11</th><td>2431</td><td>NA19917</td><td>0</td><td>0</td><td>2</td><td>1</td></tr><tr><th>12</th><td>2436</td><td>NA19982</td><td>0</td><td>0</td><td>1</td><td>2</td></tr><tr><th>13</th><td>2487</td><td>NA20340</td><td>0</td><td>0</td><td>1</td><td>4</td></tr><tr><th>14</th><td>2427</td><td>NA19909</td><td>0</td><td>0</td><td>2</td><td>4</td></tr><tr><th>15</th><td>2424</td><td>NA19834</td><td>0</td><td>0</td><td>1</td><td>4</td></tr><tr><th>16</th><td>2480</td><td>NA20317</td><td>0</td><td>0</td><td>2</td><td>4</td></tr><tr><th>17</th><td>2418</td><td>NA19818</td><td>0</td><td>0</td><td>1</td><td>1</td></tr><tr><th>18</th><td>2490</td><td>NA20346</td><td>0</td><td>0</td><td>1</td><td>2</td></tr><tr><th>19</th><td>2433</td><td>NA19921</td><td>0</td><td>0</td><td>2</td><td>4</td></tr><tr><th>20</th><td>2469</td><td>NA20281</td><td>0</td><td>0</td><td>1</td><td>4</td></tr><tr><th>21</th><td>2495</td><td>NA20359</td><td>0</td><td>0</td><td>2</td><td>4</td></tr><tr><th>22</th><td>2477</td><td>NA20301</td><td>0</td><td>0</td><td>2</td><td>2</td></tr><tr><th>23</th><td>2492</td><td>NA20349</td><td>0</td><td>0</td><td>1</td><td>3</td></tr><tr><th>24</th><td>2474</td><td>NA20294</td><td>0</td><td>0</td><td>2</td><td>4</td></tr><tr><th>25</th><td>2494</td><td>NA20357</td><td>0</td><td>0</td><td>2</td><td>3</td></tr><tr><th>26</th><td>2425</td><td>NA19900</td><td>0</td><td>0</td><td>1</td><td>4</td></tr><tr><th>27</th><td>2491</td><td>NA20348</td><td>0</td><td>0</td><td>1</td><td>4</td></tr><tr><th>28</th><td>2471</td><td>NA20289</td><td>0</td><td>0</td><td>2</td><td>4</td></tr><tr><th>29</th><td>2489</td><td>NA20344</td><td>0</td><td>0</td><td>2</td><td>4</td></tr><tr><th>30</th><td>2418</td><td>NA19819</td><td>0</td><td>0</td><td>2</td><td>4</td></tr><tr><th>&vellip;</th><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td></tr></tbody></table></div>
-
+    |[1m  famid [0m|[1m   perid [0m|[1m  faid [0m|[1m  moid [0m|[1m   sex [0m|[1m trait [0m|
+    |[90m String [0m|[90m  String [0m|[90m Int64 [0m|[90m Int64 [0m|[90m Int64 [0m|[90m Int64 [0m|
+    |--------|---------|-------|-------|-------|-------|
+    |   2431 | NA19916 |     0 |     0 |     1 |     4 |
+    |   2424 | NA19835 |     0 |     0 |     2 |     4 |
+    |   2469 | NA20282 |     0 |     0 |     2 |     4 |
+    |   2368 | NA19703 |     0 |     0 |     1 |     3 |
+    |   2425 | NA19901 |     0 |     0 |     2 |     3 |
+    |   2427 | NA19908 |     0 |     0 |     1 |     4 |
+    |   2430 | NA19914 |     0 |     0 |     2 |     4 |
+    |   2470 | NA20287 |     0 |     0 |     2 |     1 |
 
 
 
 ```julia
-plkfam
+pretty_table(first(plkfam, 8), tf = tf_markdown)
 ```
 
-
-
-
-<div class="data-frame"><p>324 rows × 6 columns</p><table class="data-frame"><thead><tr><th></th><th>Column1</th><th>Column2</th><th>Column3</th><th>Column4</th><th>Column5</th><th>Column6</th></tr><tr><th></th><th title="String">String</th><th title="String">String</th><th title="Int64">Int64</th><th title="Int64">Int64</th><th title="Int64">Int64</th><th title="Int64">Int64</th></tr></thead><tbody><tr><th>1</th><td>A1</td><td>NA19916</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>2</th><td>2</td><td>NA19835</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>3</th><td>3</td><td>NA20282</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>4</th><td>4</td><td>NA19703</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>5</th><td>5</td><td>NA19901</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>6</th><td>6</td><td>NA19908</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>7</th><td>7</td><td>NA19914</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>8</th><td>8</td><td>NA20287</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>9</th><td>9</td><td>NA19713</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>10</th><td>10</td><td>NA19904</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>11</th><td>11</td><td>NA19917</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>12</th><td>12</td><td>NA19982</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>13</th><td>13</td><td>NA20340</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>14</th><td>14</td><td>NA19909</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>15</th><td>15</td><td>NA19834</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>16</th><td>16</td><td>NA20317</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>17</th><td>17</td><td>NA19818</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>18</th><td>18</td><td>NA20346</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>19</th><td>19</td><td>NA19921</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>20</th><td>20</td><td>NA20281</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>21</th><td>21</td><td>NA20359</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>22</th><td>22</td><td>NA20301</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>23</th><td>23</td><td>NA20349</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>24</th><td>24</td><td>NA20294</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>25</th><td>25</td><td>NA20357</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>26</th><td>26</td><td>NA19900</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>27</th><td>27</td><td>NA20348</td><td>0</td><td>0</td><td>1</td><td>-9</td></tr><tr><th>28</th><td>28</td><td>NA20289</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>29</th><td>29</td><td>NA20344</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>30</th><td>30</td><td>NA19819</td><td>0</td><td>0</td><td>2</td><td>-9</td></tr><tr><th>&vellip;</th><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td></tr></tbody></table></div>
-
+    |[1m Column1 [0m|[1m Column2 [0m|[1m Column3 [0m|[1m Column4 [0m|[1m Column5 [0m|[1m Column6 [0m|
+    |[90m  String [0m|[90m  String [0m|[90m   Int64 [0m|[90m   Int64 [0m|[90m   Int64 [0m|[90m   Int64 [0m|
+    |---------|---------|---------|---------|---------|---------|
+    |      A1 | NA19916 |       0 |       0 |       1 |      -9 |
+    |       2 | NA19835 |       0 |       0 |       2 |      -9 |
+    |       3 | NA20282 |       0 |       0 |       2 |      -9 |
+    |       4 | NA19703 |       0 |       0 |       1 |      -9 |
+    |       5 | NA19901 |       0 |       0 |       2 |      -9 |
+    |       6 | NA19908 |       0 |       0 |       1 |      -9 |
+    |       7 | NA19914 |       0 |       0 |       2 |      -9 |
+    |       8 | NA20287 |       0 |       0 |       2 |      -9 |
 
 
 ### Timing
@@ -436,65 +463,49 @@ For this moderate-sized data set, `trajgwas` takes around 1 second without apply
         usespa = false));
 ```
 
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.042119
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.036129
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.050494
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.051440
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.046484
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.034452
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.048439
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.050991
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.037938
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.034008
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.050020
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.040776
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.049833
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.043173
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.037266
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.032848
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.062879
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.038666
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.037709
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.034644
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.047753
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.051048
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.036596
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.035788
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.057062
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.041374
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.040622
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.035942
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.053378
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.039402
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.041604
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.035013
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.055528
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.039201
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.048910
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.036422
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.050033
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.044553
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.040895
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.041951
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.060043
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.049582
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.041068
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.038690
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.055143
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.041776
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.036662
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.034396
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.056156
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.038946
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.037163
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.032339
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.058409
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.038301
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.041117
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.036138
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.054768
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.037206
-      406.061 ms (1450847 allocations: 136.02 MiB)
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.057233
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.049568
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.048886
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.043878
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.047836
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.043012
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.049458
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.045872
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.049866
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.043547
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.048758
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.043420
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.050578
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.044747
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.050458
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.043685
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.056678
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.044869
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.054062
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.049568
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.073285
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.072182
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.061566
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.044452
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.070823
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.072188
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.077687
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.070502
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.074338
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.092711
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.059497
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.047591
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.051782
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.047283
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.059795
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.058056
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.066836
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.061928
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.048388
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.043508
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.048973
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.050020
+      551.174 ms (1447140 allocations: 135.54 MiB)
 
 
 
@@ -527,8 +538,8 @@ trajgwas(@formula(y ~ 1 + sex + onMeds),
         vcftype = :DS)
 ```
 
-    run = 1, ‖Δβ‖ = 0.003459, ‖Δτ‖ = 0.421747, ‖ΔL‖ = 0.002492, status = Optimal, time(s) = 0.017842
-    run = 2, ‖Δβ‖ = 0.001369, ‖Δτ‖ = 0.015998, ‖ΔL‖ = 0.003244, status = Optimal, time(s) = 0.014044
+    run = 1, ‖Δβ‖ = 0.003459, ‖Δτ‖ = 0.421747, ‖ΔL‖ = 0.002492, status = Optimal, time(s) = 0.022762
+    run = 2, ‖Δβ‖ = 0.001369, ‖Δτ‖ = 0.015998, ‖ΔL‖ = 0.003244, status = Optimal, time(s) = 0.019076
 
 
 
@@ -567,14 +578,20 @@ trajgwas(@formula(y ~ 1 + sex + onMeds),
 
 
 ```julia
-first(CSV.read("trajgwas.pval.txt", DataFrame), 8)
+pretty_table(first(CSV.read("trajgwas.pval.txt", DataFrame), 8), tf = tf_markdown)
 ```
 
-
-
-
-<div class="data-frame"><p>8 rows × 8 columns</p><table class="data-frame"><thead><tr><th></th><th>chr</th><th>pos</th><th>snpid</th><th>betapval</th><th>betadir</th><th>taupval</th><th>taudir</th><th>jointpval</th></tr><tr><th></th><th title="Int64">Int64</th><th title="Int64">Int64</th><th title="String">String</th><th title="Float64">Float64</th><th title="Int64">Int64</th><th title="Float64">Float64</th><th title="Int64">Int64</th><th title="Float64">Float64</th></tr></thead><tbody><tr><th>1</th><td>22</td><td>20000086</td><td>rs138720731</td><td>0.322684</td><td>-1</td><td>0.61956</td><td>-1</td><td>0.424353</td></tr><tr><th>2</th><td>22</td><td>20000146</td><td>rs73387790</td><td>1.0</td><td>0</td><td>1.0</td><td>0</td><td>1.0</td></tr><tr><th>3</th><td>22</td><td>20000199</td><td>rs183293480</td><td>0.214207</td><td>1</td><td>0.190785</td><td>1</td><td>0.201819</td></tr><tr><th>4</th><td>22</td><td>20000291</td><td>rs185807825</td><td>0.292231</td><td>1</td><td>0.200029</td><td>1</td><td>0.237495</td></tr><tr><th>5</th><td>22</td><td>20000428</td><td>rs55902548</td><td>0.0140114</td><td>1</td><td>0.00369005</td><td>1</td><td>0.00576184</td></tr><tr><th>6</th><td>22</td><td>20000683</td><td>rs142720028</td><td>1.0</td><td>0</td><td>1.0</td><td>0</td><td>1.0</td></tr><tr><th>7</th><td>22</td><td>20000771</td><td>rs114690707</td><td>0.536406</td><td>-1</td><td>0.145113</td><td>1</td><td>0.22843</td></tr><tr><th>8</th><td>22</td><td>20000793</td><td>rs189842693</td><td>0.161414</td><td>-1</td><td>0.757017</td><td>1</td><td>0.266091</td></tr></tbody></table></div>
-
+    |[1m   chr [0m|[1m      pos [0m|[1m       snpid [0m|[1m  betapval [0m|[1m betadir [0m|[1m    taupval [0m|[1m taudir [0m|[1m  jointpval [0m|
+    |[90m Int64 [0m|[90m    Int64 [0m|[90m      String [0m|[90m   Float64 [0m|[90m   Int64 [0m|[90m    Float64 [0m|[90m  Int64 [0m|[90m    Float64 [0m|
+    |-------|----------|-------------|-----------|---------|------------|--------|------------|
+    |    22 | 20000086 | rs138720731 |  0.322684 |      -1 |    0.61956 |     -1 |   0.424353 |
+    |    22 | 20000146 |  rs73387790 |       1.0 |       0 |        1.0 |      0 |        1.0 |
+    |    22 | 20000199 | rs183293480 |  0.214207 |       1 |   0.190785 |      1 |   0.201819 |
+    |    22 | 20000291 | rs185807825 |  0.292231 |       1 |   0.200029 |      1 |   0.237495 |
+    |    22 | 20000428 |  rs55902548 | 0.0140114 |       1 | 0.00369005 |      1 | 0.00576184 |
+    |    22 | 20000683 | rs142720028 |       1.0 |       0 |        1.0 |      0 |        1.0 |
+    |    22 | 20000771 | rs114690707 |  0.536406 |      -1 |   0.145113 |      1 |    0.22843 |
+    |    22 | 20000793 | rs189842693 |  0.161414 |      -1 |   0.757017 |      1 |   0.266091 |
 
 
 ## BGEN Formatted Files
@@ -604,8 +621,8 @@ trajgwas(@formula(y ~ 1 + sex + onMeds),
         pvalfile = pvalpath)
 ```
 
-    run = 1, ‖Δβ‖ = 0.096578, ‖Δτ‖ = 0.162563, ‖ΔL‖ = 0.007625, status = Optimal, time(s) = 0.058796
-    run = 2, ‖Δβ‖ = 0.003173, ‖Δτ‖ = 0.005584, ‖ΔL‖ = 0.001468, status = Optimal, time(s) = 0.046212
+    run = 1, ‖Δβ‖ = 0.096578, ‖Δτ‖ = 0.162563, ‖ΔL‖ = 0.007625, status = Optimal, time(s) = 0.079182
+    run = 2, ‖Δβ‖ = 0.003173, ‖Δτ‖ = 0.005584, ‖ΔL‖ = 0.001468, status = Optimal, time(s) = 0.053977
 
 
 
@@ -644,14 +661,20 @@ trajgwas(@formula(y ~ 1 + sex + onMeds),
 
 
 ```julia
-first(CSV.read("trajgwas.pval.txt", DataFrame), 8)
+pretty_table(first(CSV.read("trajgwas.pval.txt", DataFrame), 8), tf = tf_markdown)
 ```
 
-
-
-
-<div class="data-frame"><p>8 rows × 12 columns</p><table class="data-frame"><thead><tr><th></th><th>chr</th><th>pos</th><th>snpid</th><th>varid</th><th>hwepval</th><th>maf</th><th>infoscore</th><th>betapval</th><th>betadir</th><th>taupval</th><th>taudir</th><th>jointpval</th></tr><tr><th></th><th title="Int64">Int64</th><th title="Int64">Int64</th><th title="String">String</th><th title="String">String</th><th title="Float64">Float64</th><th title="Float64">Float64</th><th title="Float64">Float64</th><th title="Float64">Float64</th><th title="Int64">Int64</th><th title="Float64">Float64</th><th title="Int64">Int64</th><th title="Float64">Float64</th></tr></thead><tbody><tr><th>1</th><td>1</td><td>1001</td><td>RSID_101</td><td>SNPID_101</td><td>0.86274</td><td>0.416977</td><td>0.984639</td><td>0.510629</td><td>-1</td><td>0.425112</td><td>-1</td><td>0.463963</td></tr><tr><th>2</th><td>1</td><td>2000</td><td>RSID_2</td><td>SNPID_2</td><td>0.192181</td><td>0.19751</td><td>9.0</td><td>4.5062e-10</td><td>1</td><td>1.40173e-21</td><td>-1</td><td>6.67473e-21</td></tr><tr><th>3</th><td>1</td><td>2001</td><td>RSID_102</td><td>SNPID_102</td><td>0.1844</td><td>0.197667</td><td>0.727309</td><td>4.47847e-10</td><td>-1</td><td>1.79121e-21</td><td>1</td><td>8.45783e-21</td></tr><tr><th>4</th><td>1</td><td>3000</td><td>RSID_3</td><td>SNPID_3</td><td>0.965354</td><td>0.483396</td><td>0.955355</td><td>0.0721822</td><td>-1</td><td>0.600949</td><td>-1</td><td>0.128884</td></tr><tr><th>5</th><td>1</td><td>3001</td><td>RSID_103</td><td>SNPID_103</td><td>0.965354</td><td>0.483396</td><td>0.955355</td><td>0.0721821</td><td>1</td><td>0.600949</td><td>1</td><td>0.128884</td></tr><tr><th>6</th><td>1</td><td>4000</td><td>RSID_4</td><td>SNPID_4</td><td>0.371927</td><td>0.21671</td><td>0.991768</td><td>0.112472</td><td>-1</td><td>0.133752</td><td>-1</td><td>0.122192</td></tr><tr><th>7</th><td>1</td><td>4001</td><td>RSID_104</td><td>SNPID_104</td><td>0.371928</td><td>0.21671</td><td>0.991768</td><td>0.112471</td><td>1</td><td>0.133752</td><td>1</td><td>0.122192</td></tr><tr><th>8</th><td>1</td><td>5000</td><td>RSID_5</td><td>SNPID_5</td><td>0.587013</td><td>0.388082</td><td>0.968258</td><td>0.526325</td><td>-1</td><td>0.542332</td><td>-1</td><td>0.534209</td></tr></tbody></table></div>
-
+    |[1m   chr [0m|[1m   pos [0m|[1m    snpid [0m|[1m     varid [0m|[1m  hwepval [0m|[1m      maf [0m|[1m infoscore [0m|[1m    betapval [0m|[1m betadir [0m|[1m     taupval [0m|[1m taudir [0m|[1m   jointpval [0m|
+    |[90m Int64 [0m|[90m Int64 [0m|[90m   String [0m|[90m    String [0m|[90m  Float64 [0m|[90m  Float64 [0m|[90m   Float64 [0m|[90m     Float64 [0m|[90m   Int64 [0m|[90m     Float64 [0m|[90m  Int64 [0m|[90m     Float64 [0m|
+    |-------|-------|----------|-----------|----------|----------|-----------|-------------|---------|-------------|--------|-------------|
+    |     1 |  1001 | RSID_101 | SNPID_101 |  0.86274 | 0.416977 |  0.984639 |    0.510629 |      -1 |    0.425112 |     -1 |    0.463963 |
+    |     1 |  2000 |   RSID_2 |   SNPID_2 | 0.192181 |  0.19751 |       9.0 |  4.5062e-10 |       1 | 1.40173e-21 |     -1 | 6.67473e-21 |
+    |     1 |  2001 | RSID_102 | SNPID_102 |   0.1844 | 0.197667 |  0.727309 | 4.47847e-10 |      -1 | 1.79121e-21 |      1 | 8.45783e-21 |
+    |     1 |  3000 |   RSID_3 |   SNPID_3 | 0.965354 | 0.483396 |  0.955355 |   0.0721822 |      -1 |    0.600949 |     -1 |    0.128884 |
+    |     1 |  3001 | RSID_103 | SNPID_103 | 0.965354 | 0.483396 |  0.955355 |   0.0721821 |       1 |    0.600949 |      1 |    0.128884 |
+    |     1 |  4000 |   RSID_4 |   SNPID_4 | 0.371927 |  0.21671 |  0.991768 |    0.112472 |      -1 |    0.133752 |     -1 |    0.122192 |
+    |     1 |  4001 | RSID_104 | SNPID_104 | 0.371928 |  0.21671 |  0.991768 |    0.112471 |       1 |    0.133752 |      1 |    0.122192 |
+    |     1 |  5000 |   RSID_5 |   SNPID_5 | 0.587013 | 0.388082 |  0.968258 |    0.526325 |      -1 |    0.542332 |     -1 |    0.534209 |
 
 
 ## SNP models
@@ -692,9 +715,9 @@ snpinds = maf(SnpArray("../data/hapmap3.bed")) .≥ 0.05
         snpinds = snpinds)
 ```
 
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.037584
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.032523
-      1.810614 seconds (6.52 M allocations: 446.105 MiB, 7.47% gc time, 55.30% compilation time)
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.049287
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.043427
+      2.152979 seconds (6.52 M allocations: 445.773 MiB, 4.83% gc time, 53.84% compilation time)
 
 
 
@@ -787,17 +810,17 @@ By default, `trajgwas` calculates p-value for each SNP using SPA/score test. Sco
         test = :wald)
 ```
 
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.040074
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.037214
-    run = 1, ‖Δβ‖ = 0.033243, ‖Δτ‖ = 0.146511, ‖ΔL‖ = 0.005476, status = Optimal, time(s) = 0.050248
-    run = 2, ‖Δβ‖ = 0.005774, ‖Δτ‖ = 0.042246, ‖ΔL‖ = 0.001784, status = Optimal, time(s) = 0.042017
-    run = 1, ‖Δβ‖ = 0.013090, ‖Δτ‖ = 0.130781, ‖ΔL‖ = 0.005011, status = Optimal, time(s) = 0.051252
-    run = 2, ‖Δβ‖ = 0.003913, ‖Δτ‖ = 0.037309, ‖ΔL‖ = 0.001516, status = Optimal, time(s) = 0.061290
-    run = 1, ‖Δβ‖ = 0.022159, ‖Δτ‖ = 0.141135, ‖ΔL‖ = 0.005554, status = Optimal, time(s) = 0.046682
-    run = 2, ‖Δβ‖ = 0.001482, ‖Δτ‖ = 0.021700, ‖ΔL‖ = 0.001435, status = Optimal, time(s) = 0.050569
-    run = 1, ‖Δβ‖ = 0.026764, ‖Δτ‖ = 0.368620, ‖ΔL‖ = 0.000317, status = Optimal, time(s) = 0.043348
-    run = 2, ‖Δβ‖ = 0.003023, ‖Δτ‖ = 0.030938, ‖ΔL‖ = 0.003568, status = Optimal, time(s) = 0.049007
-      3.558469 seconds (6.55 M allocations: 436.689 MiB, 3.70% gc time, 79.41% compilation time)
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.053906
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.049997
+    run = 1, ‖Δβ‖ = 0.033243, ‖Δτ‖ = 0.146511, ‖ΔL‖ = 0.005476, status = Optimal, time(s) = 0.059765
+    run = 2, ‖Δβ‖ = 0.005774, ‖Δτ‖ = 0.042246, ‖ΔL‖ = 0.001784, status = Optimal, time(s) = 0.055220
+    run = 1, ‖Δβ‖ = 0.013090, ‖Δτ‖ = 0.130781, ‖ΔL‖ = 0.005011, status = Optimal, time(s) = 0.068422
+    run = 2, ‖Δβ‖ = 0.003913, ‖Δτ‖ = 0.037309, ‖ΔL‖ = 0.001516, status = Optimal, time(s) = 0.078606
+    run = 1, ‖Δβ‖ = 0.022159, ‖Δτ‖ = 0.141135, ‖ΔL‖ = 0.005554, status = Optimal, time(s) = 0.061286
+    run = 2, ‖Δβ‖ = 0.001482, ‖Δτ‖ = 0.021700, ‖ΔL‖ = 0.001435, status = Optimal, time(s) = 0.062450
+    run = 1, ‖Δβ‖ = 0.026764, ‖Δτ‖ = 0.368620, ‖ΔL‖ = 0.000317, status = Optimal, time(s) = 0.059241
+    run = 2, ‖Δβ‖ = 0.003023, ‖Δτ‖ = 0.030938, ‖ΔL‖ = 0.003568, status = Optimal, time(s) = 0.063418
+      4.152440 seconds (5.95 M allocations: 402.164 MiB, 2.42% gc time, 82.57% compilation time)
 
 
 
@@ -873,9 +896,9 @@ For large data sets, a practical solution is to perform the score test first acr
         pvalfile = "score.pval.txt")
 ```
 
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.043004
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.035886
-      1.051142 seconds (4.00 M allocations: 290.773 MiB, 16.08% gc time)
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.055125
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.052755
+      1.252389 seconds (3.99 M allocations: 290.295 MiB, 12.84% gc time)
 
 
 
@@ -914,14 +937,20 @@ For large data sets, a practical solution is to perform the score test first acr
 
 
 ```julia
-first(CSV.read("score.pval.txt", DataFrame), 8)
+pretty_table(first(CSV.read("score.pval.txt", DataFrame), 8), tf = tf_markdown)
 ```
 
-
-
-
-<div class="data-frame"><p>8 rows × 10 columns</p><table class="data-frame"><thead><tr><th></th><th>chr</th><th>pos</th><th>snpid</th><th>maf</th><th>hwepval</th><th>betapval</th><th>betadir</th><th>taupval</th><th>taudir</th><th>jointpval</th></tr><tr><th></th><th title="Int64">Int64</th><th title="Int64">Int64</th><th title="String">String</th><th title="Float64">Float64</th><th title="Float64">Float64</th><th title="Float64">Float64</th><th title="Int64">Int64</th><th title="Float64">Float64</th><th title="Int64">Int64</th><th title="Float64">Float64</th></tr></thead><tbody><tr><th>1</th><td>1</td><td>554484</td><td>rs10458597</td><td>0.0</td><td>1.0</td><td>1.0</td><td>0</td><td>1.0</td><td>0</td><td>1.0</td></tr><tr><th>2</th><td>1</td><td>758311</td><td>rs12562034</td><td>0.0776398</td><td>0.409876</td><td>0.38939</td><td>-1</td><td>0.922822</td><td>-1</td><td>0.547682</td></tr><tr><th>3</th><td>1</td><td>967643</td><td>rs2710875</td><td>0.324074</td><td>4.07625e-7</td><td>5.83856e-6</td><td>1</td><td>3.35408e-6</td><td>-1</td><td>4.93598e-7</td></tr><tr><th>4</th><td>1</td><td>1168108</td><td>rs11260566</td><td>0.191589</td><td>0.128568</td><td>0.000850889</td><td>1</td><td>0.0559055</td><td>1</td><td>0.00101827</td></tr><tr><th>5</th><td>1</td><td>1375074</td><td>rs1312568</td><td>0.441358</td><td>2.5376e-19</td><td>0.000171683</td><td>-1</td><td>1.84811e-13</td><td>1</td><td>2.07091e-15</td></tr><tr><th>6</th><td>1</td><td>1588771</td><td>rs35154105</td><td>0.0</td><td>1.0</td><td>1.0</td><td>0</td><td>1.0</td><td>0</td><td>1.0</td></tr><tr><th>7</th><td>1</td><td>1789051</td><td>rs16824508</td><td>0.00462963</td><td>0.933278</td><td>0.295035</td><td>1</td><td>0.304109</td><td>1</td><td>0.299504</td></tr><tr><th>8</th><td>1</td><td>1990452</td><td>rs2678939</td><td>0.453704</td><td>5.07696e-11</td><td>1.27871e-7</td><td>1</td><td>7.73809e-9</td><td>-1</td><td>3.3986e-9</td></tr></tbody></table></div>
-
+    |[1m   chr [0m|[1m     pos [0m|[1m      snpid [0m|[1m        maf [0m|[1m     hwepval [0m|[1m    betapval [0m|[1m betadir [0m|[1m     taupval [0m|[1m taudir [0m|[1m   jointpval [0m|
+    |[90m Int64 [0m|[90m   Int64 [0m|[90m     String [0m|[90m    Float64 [0m|[90m     Float64 [0m|[90m     Float64 [0m|[90m   Int64 [0m|[90m     Float64 [0m|[90m  Int64 [0m|[90m     Float64 [0m|
+    |-------|---------|------------|------------|-------------|-------------|---------|-------------|--------|-------------|
+    |     1 |  554484 | rs10458597 |        0.0 |         1.0 |         1.0 |       0 |         1.0 |      0 |         1.0 |
+    |     1 |  758311 | rs12562034 |  0.0776398 |    0.409876 |     0.38939 |      -1 |    0.922822 |     -1 |    0.547682 |
+    |     1 |  967643 |  rs2710875 |   0.324074 |  4.07625e-7 |  5.83856e-6 |       1 |  3.35408e-6 |     -1 |  4.93598e-7 |
+    |     1 | 1168108 | rs11260566 |   0.191589 |    0.128568 | 0.000850889 |       1 |   0.0559055 |      1 |  0.00101827 |
+    |     1 | 1375074 |  rs1312568 |   0.441358 |  2.5376e-19 | 0.000171683 |      -1 | 1.84811e-13 |      1 | 2.07091e-15 |
+    |     1 | 1588771 | rs35154105 |        0.0 |         1.0 |         1.0 |       0 |         1.0 |      0 |         1.0 |
+    |     1 | 1789051 | rs16824508 | 0.00462963 |    0.933278 |    0.295035 |       1 |    0.304109 |      1 |    0.299504 |
+    |     1 | 1990452 |  rs2678939 |   0.453704 | 5.07696e-11 |  1.27871e-7 |       1 |  7.73809e-9 |     -1 |   3.3986e-9 |
 
 
 **Step 2**: Sort score test p-values and find top 10 SNPs.
@@ -965,29 +994,29 @@ scorepvals[tophits] # smallest 10 p-values
         test = :wald)
 ```
 
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.038970
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.037406
-    run = 1, ‖Δβ‖ = 0.026764, ‖Δτ‖ = 0.368620, ‖ΔL‖ = 0.000317, status = Optimal, time(s) = 0.060669
-    run = 2, ‖Δβ‖ = 0.003023, ‖Δτ‖ = 0.030938, ‖ΔL‖ = 0.003568, status = Optimal, time(s) = 0.046794
-    run = 1, ‖Δβ‖ = 0.039946, ‖Δτ‖ = 0.185049, ‖ΔL‖ = 0.005690, status = Optimal, time(s) = 0.053884
-    run = 2, ‖Δβ‖ = 0.001640, ‖Δτ‖ = 0.029639, ‖ΔL‖ = 0.002028, status = Optimal, time(s) = 0.043935
-    run = 1, ‖Δβ‖ = 0.040207, ‖Δτ‖ = 0.407863, ‖ΔL‖ = 0.001924, status = Optimal, time(s) = 0.052120
-    run = 2, ‖Δβ‖ = 0.002632, ‖Δτ‖ = 0.039609, ‖ΔL‖ = 0.005131, status = Optimal, time(s) = 0.043479
-    run = 1, ‖Δβ‖ = 0.052372, ‖Δτ‖ = 0.828946, ‖ΔL‖ = 0.001277, status = Optimal, time(s) = 0.064348
-    run = 2, ‖Δβ‖ = 0.013694, ‖Δτ‖ = 0.185493, ‖ΔL‖ = 0.007118, status = Optimal, time(s) = 0.046386
-    run = 1, ‖Δβ‖ = 0.032435, ‖Δτ‖ = 0.199659, ‖ΔL‖ = 0.004973, status = Optimal, time(s) = 0.053088
-    run = 2, ‖Δβ‖ = 0.002847, ‖Δτ‖ = 0.032438, ‖ΔL‖ = 0.002941, status = Optimal, time(s) = 0.043273
-    run = 1, ‖Δβ‖ = 0.009362, ‖Δτ‖ = 0.625969, ‖ΔL‖ = 0.002237, status = Optimal, time(s) = 0.064251
-    run = 2, ‖Δβ‖ = 0.005893, ‖Δτ‖ = 0.176417, ‖ΔL‖ = 0.005017, status = Optimal, time(s) = 0.047283
-    run = 1, ‖Δβ‖ = 0.012805, ‖Δτ‖ = 0.243313, ‖ΔL‖ = 0.006289, status = Optimal, time(s) = 0.056666
-    run = 2, ‖Δβ‖ = 0.002636, ‖Δτ‖ = 0.044210, ‖ΔL‖ = 0.003312, status = Optimal, time(s) = 0.046489
-    run = 1, ‖Δβ‖ = 0.014062, ‖Δτ‖ = 0.225841, ‖ΔL‖ = 0.003899, status = Optimal, time(s) = 0.057465
-    run = 2, ‖Δβ‖ = 0.002112, ‖Δτ‖ = 0.030955, ‖ΔL‖ = 0.003860, status = Optimal, time(s) = 0.047704
-    run = 1, ‖Δβ‖ = 0.026425, ‖Δτ‖ = 0.258805, ‖ΔL‖ = 0.004204, status = Optimal, time(s) = 0.056906
-    run = 2, ‖Δβ‖ = 0.001090, ‖Δτ‖ = 0.051281, ‖ΔL‖ = 0.003822, status = Optimal, time(s) = 0.047899
-    run = 1, ‖Δβ‖ = 0.035737, ‖Δτ‖ = 0.174702, ‖ΔL‖ = 0.001439, status = Optimal, time(s) = 0.063558
-    run = 2, ‖Δβ‖ = 0.004776, ‖Δτ‖ = 0.019790, ‖ΔL‖ = 0.001867, status = Optimal, time(s) = 0.047032
-      2.290992 seconds (3.89 M allocations: 297.829 MiB, 2.45% gc time, 45.79% compilation time)
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.050522
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.045896
+    run = 1, ‖Δβ‖ = 0.026764, ‖Δτ‖ = 0.368620, ‖ΔL‖ = 0.000317, status = Optimal, time(s) = 0.052896
+    run = 2, ‖Δβ‖ = 0.003023, ‖Δτ‖ = 0.030938, ‖ΔL‖ = 0.003568, status = Optimal, time(s) = 0.048927
+    run = 1, ‖Δβ‖ = 0.039946, ‖Δτ‖ = 0.185049, ‖ΔL‖ = 0.005690, status = Optimal, time(s) = 0.062114
+    run = 2, ‖Δβ‖ = 0.001640, ‖Δτ‖ = 0.029639, ‖ΔL‖ = 0.002028, status = Optimal, time(s) = 0.056800
+    run = 1, ‖Δβ‖ = 0.040207, ‖Δτ‖ = 0.407863, ‖ΔL‖ = 0.001924, status = Optimal, time(s) = 0.067101
+    run = 2, ‖Δβ‖ = 0.002632, ‖Δτ‖ = 0.039609, ‖ΔL‖ = 0.005131, status = Optimal, time(s) = 0.060396
+    run = 1, ‖Δβ‖ = 0.052372, ‖Δτ‖ = 0.828946, ‖ΔL‖ = 0.001277, status = Optimal, time(s) = 0.072916
+    run = 2, ‖Δβ‖ = 0.013694, ‖Δτ‖ = 0.185493, ‖ΔL‖ = 0.007118, status = Optimal, time(s) = 0.075154
+    run = 1, ‖Δβ‖ = 0.032435, ‖Δτ‖ = 0.199659, ‖ΔL‖ = 0.004973, status = Optimal, time(s) = 0.053985
+    run = 2, ‖Δβ‖ = 0.002847, ‖Δτ‖ = 0.032438, ‖ΔL‖ = 0.002941, status = Optimal, time(s) = 0.070164
+    run = 1, ‖Δβ‖ = 0.009362, ‖Δτ‖ = 0.625969, ‖ΔL‖ = 0.002237, status = Optimal, time(s) = 0.074807
+    run = 2, ‖Δβ‖ = 0.005893, ‖Δτ‖ = 0.176417, ‖ΔL‖ = 0.005017, status = Optimal, time(s) = 0.070525
+    run = 1, ‖Δβ‖ = 0.012805, ‖Δτ‖ = 0.243313, ‖ΔL‖ = 0.006289, status = Optimal, time(s) = 0.058287
+    run = 2, ‖Δβ‖ = 0.002636, ‖Δτ‖ = 0.044210, ‖ΔL‖ = 0.003312, status = Optimal, time(s) = 0.069262
+    run = 1, ‖Δβ‖ = 0.014062, ‖Δτ‖ = 0.225841, ‖ΔL‖ = 0.003899, status = Optimal, time(s) = 0.059671
+    run = 2, ‖Δβ‖ = 0.002112, ‖Δτ‖ = 0.030955, ‖ΔL‖ = 0.003860, status = Optimal, time(s) = 0.066645
+    run = 1, ‖Δβ‖ = 0.026425, ‖Δτ‖ = 0.258805, ‖ΔL‖ = 0.004204, status = Optimal, time(s) = 0.059020
+    run = 2, ‖Δβ‖ = 0.001090, ‖Δτ‖ = 0.051281, ‖ΔL‖ = 0.003822, status = Optimal, time(s) = 0.069588
+    run = 1, ‖Δβ‖ = 0.035737, ‖Δτ‖ = 0.174702, ‖ΔL‖ = 0.001439, status = Optimal, time(s) = 0.062036
+    run = 2, ‖Δβ‖ = 0.004776, ‖Δτ‖ = 0.019790, ‖ΔL‖ = 0.001867, status = Optimal, time(s) = 0.070591
+      2.883714 seconds (3.88 M allocations: 297.408 MiB, 3.07% gc time, 44.29% compilation time)
 
 
 
@@ -1026,14 +1055,22 @@ scorepvals[tophits] # smallest 10 p-values
 
 
 ```julia
-CSV.read("wald.pval.txt", DataFrame)
+pretty_table(CSV.read("wald.pval.txt", DataFrame), tf = tf_markdown)
 ```
 
-
-
-
-<div class="data-frame"><p>10 rows × 9 columns</p><table class="data-frame"><thead><tr><th></th><th>chr</th><th>pos</th><th>snpid</th><th>maf</th><th>hwepval</th><th>betaeffect</th><th>betapval</th><th>taueffect</th><th>taupval</th></tr><tr><th></th><th title="Int64">Int64</th><th title="Int64">Int64</th><th title="String">String</th><th title="Float64">Float64</th><th title="Float64">Float64</th><th title="Float64">Float64</th><th title="Float64">Float64</th><th title="Float64">Float64</th><th title="Float64">Float64</th></tr></thead><tbody><tr><th>1</th><td>1</td><td>1375074</td><td>rs1312568</td><td>0.441358</td><td>2.5376e-19</td><td>-0.456032</td><td>0.000165921</td><td>0.496452</td><td>1.17735e-36</td></tr><tr><th>2</th><td>1</td><td>11552817</td><td>rs2745282</td><td>0.421053</td><td>1.3537e-14</td><td>-0.67282</td><td>7.6492e-9</td><td>0.425653</td><td>1.45395e-19</td></tr><tr><th>3</th><td>1</td><td>120276030</td><td>rs6688004</td><td>0.469136</td><td>1.75473e-27</td><td>-0.637817</td><td>5.13062e-9</td><td>0.430562</td><td>6.07457e-21</td></tr><tr><th>4</th><td>2</td><td>135623558</td><td>rs6730157</td><td>0.313272</td><td>7.76753e-16</td><td>-0.556166</td><td>1.10163e-5</td><td>0.462346</td><td>2.88628e-20</td></tr><tr><th>5</th><td>9</td><td>126307510</td><td>rs3814134</td><td>0.427469</td><td>4.28276e-33</td><td>0.723472</td><td>1.41601e-11</td><td>-0.518216</td><td>4.75338e-39</td></tr><tr><th>6</th><td>15</td><td>40603025</td><td>rs2617236</td><td>0.390966</td><td>1.16466e-14</td><td>-0.644375</td><td>1.44948e-7</td><td>0.445647</td><td>9.43451e-19</td></tr><tr><th>7</th><td>15</td><td>40803767</td><td>rs3742988</td><td>0.42284</td><td>4.26181e-30</td><td>-0.796743</td><td>2.24785e-13</td><td>0.389234</td><td>7.09349e-17</td></tr><tr><th>8</th><td>17</td><td>56509992</td><td>rs8064681</td><td>0.481481</td><td>1.37485e-21</td><td>-0.58961</td><td>1.9256e-7</td><td>0.425417</td><td>5.60171e-25</td></tr><tr><th>9</th><td>17</td><td>71293786</td><td>rs2125345</td><td>0.339009</td><td>1.75527e-14</td><td>-0.635669</td><td>1.82739e-7</td><td>0.449612</td><td>1.7146e-21</td></tr><tr><th>10</th><td>23</td><td>64815688</td><td>rs5964999</td><td>0.475078</td><td>3.63212e-56</td><td>0.75886</td><td>5.04109e-14</td><td>-0.38849</td><td>5.39098e-23</td></tr></tbody></table></div>
-
+    |[1m   chr [0m|[1m       pos [0m|[1m     snpid [0m|[1m      maf [0m|[1m     hwepval [0m|[1m betaeffect [0m|[1m    betapval [0m|[1m taueffect [0m|[1m     taupval [0m|
+    |[90m Int64 [0m|[90m     Int64 [0m|[90m    String [0m|[90m  Float64 [0m|[90m     Float64 [0m|[90m    Float64 [0m|[90m     Float64 [0m|[90m   Float64 [0m|[90m     Float64 [0m|
+    |-------|-----------|-----------|----------|-------------|------------|-------------|-----------|-------------|
+    |     1 |   1375074 | rs1312568 | 0.441358 |  2.5376e-19 |  -0.456032 | 0.000165921 |  0.496452 | 1.17735e-36 |
+    |     1 |  11552817 | rs2745282 | 0.421053 |  1.3537e-14 |   -0.67282 |   7.6492e-9 |  0.425653 | 1.45395e-19 |
+    |     1 | 120276030 | rs6688004 | 0.469136 | 1.75473e-27 |  -0.637817 |  5.13062e-9 |  0.430562 | 6.07457e-21 |
+    |     2 | 135623558 | rs6730157 | 0.313272 | 7.76753e-16 |  -0.556166 |  1.10163e-5 |  0.462346 | 2.88628e-20 |
+    |     9 | 126307510 | rs3814134 | 0.427469 | 4.28276e-33 |   0.723472 | 1.41601e-11 | -0.518216 | 4.75338e-39 |
+    |    15 |  40603025 | rs2617236 | 0.390966 | 1.16466e-14 |  -0.644375 |  1.44948e-7 |  0.445647 | 9.43451e-19 |
+    |    15 |  40803767 | rs3742988 |  0.42284 | 4.26181e-30 |  -0.796743 | 2.24785e-13 |  0.389234 | 7.09349e-17 |
+    |    17 |  56509992 | rs8064681 | 0.481481 | 1.37485e-21 |   -0.58961 |   1.9256e-7 |  0.425417 | 5.60171e-25 |
+    |    17 |  71293786 | rs2125345 | 0.339009 | 1.75527e-14 |  -0.635669 |  1.82739e-7 |  0.449612 |  1.7146e-21 |
+    |    23 |  64815688 | rs5964999 | 0.475078 | 3.63212e-56 |    0.75886 | 5.04109e-14 |  -0.38849 | 5.39098e-23 |
 
 
 
@@ -1065,55 +1102,14 @@ trajgwas(@formula(y ~ 1 + sex + onMeds),
         testformula=@formula(trait ~ snp + snp & sex))
 ```
 
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.041253
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.035768
-
-
-
-
-
-    
-    Within-subject variance estimation by robust regression (WiSER)
-    
-    Mean Formula:
-    y ~ 1 + sex + onMeds
-    Random Effects Formula:
-    y ~ 1
-    Within-Subject Variance Formula:
-    y ~ 1 + sex + onMeds
-    
-    Number of individuals/clusters: 324
-    Total observations: 3240
-    
-    Fixed-effects parameters:
-    ────────────────────────────────────────────────────────
-                      Estimate  Std. Error       Z  Pr(>|Z|)
-    ────────────────────────────────────────────────────────
-    β1: (Intercept)  13.2282     0.146459    90.32    <1e-99
-    β2: sex          -3.29295    0.2101     -15.67    <1e-54
-    β3: onMeds        0.459585   0.0596002    7.71    <1e-13
-    τ1: (Intercept)   0.792508   0.0850728    9.32    <1e-19
-    τ2: sex          -0.2865     0.0970732   -2.95    0.0032
-    τ3: onMeds        0.422303   0.063825     6.62    <1e-10
-    ────────────────────────────────────────────────────────
-    Random effects covariance matrix Σγ:
-     "γ1: (Intercept)"  3.32057
-    
-
-
+    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.049676
+    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.047728
 
 
 
 ```julia
-first(CSV.read("GxE.pval.txt", DataFrame), 5)
+pretty_table(first(CSV.read("GxE.pval.txt", DataFrame), 5), tf = tf_markdown)
 ```
-
-
-
-
-<div class="data-frame"><p>5 rows × 8 columns</p><table class="data-frame"><thead><tr><th></th><th>chr</th><th>pos</th><th>snpid</th><th>maf</th><th>hwepval</th><th>betapval</th><th>taupval</th><th>jointpval</th></tr><tr><th></th><th title="Int64">Int64</th><th title="Int64">Int64</th><th title="String">String</th><th title="Float64">Float64</th><th title="Float64">Float64</th><th title="Float64">Float64</th><th title="Float64">Float64</th><th title="Float64">Float64</th></tr></thead><tbody><tr><th>1</th><td>1</td><td>554484</td><td>rs10458597</td><td>0.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td></tr><tr><th>2</th><td>1</td><td>758311</td><td>rs12562034</td><td>0.0776398</td><td>0.409876</td><td>0.383</td><td>0.33511</td><td>0.357458</td></tr><tr><th>3</th><td>1</td><td>967643</td><td>rs2710875</td><td>0.324074</td><td>4.07625e-7</td><td>9.98217e-6</td><td>5.73202e-7</td><td>1.08415e-6</td></tr><tr><th>4</th><td>1</td><td>1168108</td><td>rs11260566</td><td>0.191589</td><td>0.128568</td><td>0.00225789</td><td>0.105482</td><td>0.00442114</td></tr><tr><th>5</th><td>1</td><td>1375074</td><td>rs1312568</td><td>0.441358</td><td>2.5376e-19</td><td>0.000928728</td><td>3.48807e-15</td><td>6.97615e-15</td></tr></tbody></table></div>
-
-
 
 
 ```julia
@@ -1142,63 +1138,10 @@ trajgwas(@formula(y ~ 1 + sex + onMeds),
 
 ```
 
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.042947
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.051226
-    run = 1, ‖Δβ‖ = 0.480377, ‖Δτ‖ = 0.023510, ‖ΔL‖ = 0.001822, status = Optimal, time(s) = 0.045999
-    run = 2, ‖Δβ‖ = 0.000323, ‖Δτ‖ = 0.002136, ‖ΔL‖ = 0.000025, status = Optimal, time(s) = 0.044744
-    run = 1, ‖Δβ‖ = 1.059989, ‖Δτ‖ = 0.458239, ‖ΔL‖ = 0.063093, status = Optimal, time(s) = 0.065265
-    run = 2, ‖Δβ‖ = 0.009118, ‖Δτ‖ = 0.105352, ‖ΔL‖ = 0.000056, status = Optimal, time(s) = 0.061506
-    run = 1, ‖Δβ‖ = 1.144781, ‖Δτ‖ = 0.251459, ‖ΔL‖ = 0.034318, status = Optimal, time(s) = 0.060325
-    run = 2, ‖Δβ‖ = 0.000830, ‖Δτ‖ = 0.025631, ‖ΔL‖ = 0.000042, status = Optimal, time(s) = 0.043208
-    run = 1, ‖Δβ‖ = 0.683108, ‖Δτ‖ = 0.773919, ‖ΔL‖ = 0.042397, status = Optimal, time(s) = 0.052987
-    run = 2, ‖Δβ‖ = 0.008159, ‖Δτ‖ = 0.069178, ‖ΔL‖ = 0.003574, status = Optimal, time(s) = 0.045152
-
-
-
-
-
-    
-    Within-subject variance estimation by robust regression (WiSER)
-    
-    Mean Formula:
-    y ~ 1 + sex + onMeds
-    Random Effects Formula:
-    y ~ 1
-    Within-Subject Variance Formula:
-    y ~ 1 + sex + onMeds
-    
-    Number of individuals/clusters: 324
-    Total observations: 3240
-    
-    Fixed-effects parameters:
-    ────────────────────────────────────────────────────────
-                      Estimate  Std. Error       Z  Pr(>|Z|)
-    ────────────────────────────────────────────────────────
-    β1: (Intercept)  13.2282     0.146459    90.32    <1e-99
-    β2: sex          -3.29295    0.2101     -15.67    <1e-54
-    β3: onMeds        0.459585   0.0596002    7.71    <1e-13
-    τ1: (Intercept)   0.792508   0.0850728    9.32    <1e-19
-    τ2: sex          -0.2865     0.0970732   -2.95    0.0032
-    τ3: onMeds        0.422303   0.063825     6.62    <1e-10
-    ────────────────────────────────────────────────────────
-    Random effects covariance matrix Σγ:
-     "γ1: (Intercept)"  3.32057
-    
-
-
-
-
 
 ```julia
-CSV.read("gxe_snp.pval.txt", DataFrame)
+pretty_table(CSV.read("gxe_snp.pval.txt", DataFrame), tf = tf_markdown)
 ```
-
-
-
-
-<div class="data-frame"><p>5 rows × 9 columns</p><table class="data-frame"><thead><tr><th></th><th>chr</th><th>pos</th><th>snpid</th><th>maf</th><th>hwepval</th><th>snpeffectnullbeta</th><th>snpeffectnulltau</th><th>betapval</th><th>taupval</th></tr><tr><th></th><th title="Int64">Int64</th><th title="Int64">Int64</th><th title="String">String</th><th title="Float64">Float64</th><th title="Float64">Float64</th><th title="Float64">Float64</th><th title="Float64">Float64</th><th title="Float64">Float64</th><th title="Float64">Float64</th></tr></thead><tbody><tr><th>1</th><td>1</td><td>554484</td><td>rs10458597</td><td>0.0</td><td>1.0</td><td>0.0</td><td>0.0</td><td>1.0</td><td>1.0</td></tr><tr><th>2</th><td>1</td><td>758311</td><td>rs12562034</td><td>0.0776398</td><td>0.409876</td><td>-0.230593</td><td>0.0102355</td><td>0.448376</td><td>0.149797</td></tr><tr><th>3</th><td>1</td><td>967643</td><td>rs2710875</td><td>0.324074</td><td>4.07625e-7</td><td>0.639871</td><td>-0.338815</td><td>0.293876</td><td>0.119916</td></tr><tr><th>4</th><td>1</td><td>1168108</td><td>rs11260566</td><td>0.191589</td><td>0.128568</td><td>0.618855</td><td>-0.146819</td><td>0.590189</td><td>0.262791</td></tr><tr><th>5</th><td>1</td><td>1375074</td><td>rs1312568</td><td>0.441358</td><td>2.5376e-19</td><td>-0.456003</td><td>0.492582</td><td>0.574737</td><td>0.250501</td></tr></tbody></table></div>
-
-
 
 
 ```julia
@@ -1233,51 +1176,10 @@ trajgwas(@formula(y ~ 1 + sex + onMeds),
         snpset = 50:55)
 ```
 
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.059821
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.037852
-
-
-
-
-
-    
-    Within-subject variance estimation by robust regression (WiSER)
-    
-    Mean Formula:
-    y ~ 1 + sex + onMeds
-    Random Effects Formula:
-    y ~ 1
-    Within-Subject Variance Formula:
-    y ~ 1 + sex + onMeds
-    
-    Number of individuals/clusters: 324
-    Total observations: 3240
-    
-    Fixed-effects parameters:
-    ────────────────────────────────────────────────────────
-                      Estimate  Std. Error       Z  Pr(>|Z|)
-    ────────────────────────────────────────────────────────
-    β1: (Intercept)  13.2282     0.146459    90.32    <1e-99
-    β2: sex          -3.29295    0.2101     -15.67    <1e-54
-    β3: onMeds        0.459585   0.0596002    7.71    <1e-13
-    τ1: (Intercept)   0.792508   0.0850728    9.32    <1e-19
-    τ2: sex          -0.2865     0.0970732   -2.95    0.0032
-    τ3: onMeds        0.422303   0.063825     6.62    <1e-10
-    ────────────────────────────────────────────────────────
-    Random effects covariance matrix Σγ:
-     "γ1: (Intercept)"  3.32057
-    
-
-
-
-
 
 ```julia
 run(`head snpset.pval.txt`);
 ```
-
-    The pvalue of snps indexed at 50:55 is betapval: 2.3156171211965083e-5, taupval: 3.9729937063719077e-10
-
 
 
 ```julia
@@ -1293,18 +1195,6 @@ In the following example we run a SNP-set test on the annotated SNP-set file.
 run(`head ../data/hapmap_snpsetfile.txt`);
 ```
 
-    gene1 rs10458597
-    gene1 rs12562034
-    gene1 rs2710875
-    gene1 rs11260566
-    gene1 rs1312568
-    gene1 rs35154105
-    gene1 rs16824508
-    gene1 rs2678939
-    gene1 rs7553178
-    gene1 rs13376356
-
-
 
 ```julia
 trajgwas(@formula(y ~ 1 + sex + onMeds),
@@ -1318,55 +1208,10 @@ trajgwas(@formula(y ~ 1 + sex + onMeds),
         snpset = datadir * "/hapmap_snpsetfile.txt")
 ```
 
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.040899
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.036685
-
-
-
-
-
-    
-    Within-subject variance estimation by robust regression (WiSER)
-    
-    Mean Formula:
-    y ~ 1 + sex + onMeds
-    Random Effects Formula:
-    y ~ 1
-    Within-Subject Variance Formula:
-    y ~ 1 + sex + onMeds
-    
-    Number of individuals/clusters: 324
-    Total observations: 3240
-    
-    Fixed-effects parameters:
-    ────────────────────────────────────────────────────────
-                      Estimate  Std. Error       Z  Pr(>|Z|)
-    ────────────────────────────────────────────────────────
-    β1: (Intercept)  13.2282     0.146459    90.32    <1e-99
-    β2: sex          -3.29295    0.2101     -15.67    <1e-54
-    β3: onMeds        0.459585   0.0596002    7.71    <1e-13
-    τ1: (Intercept)   0.792508   0.0850728    9.32    <1e-19
-    τ2: sex          -0.2865     0.0970732   -2.95    0.0032
-    τ3: onMeds        0.422303   0.063825     6.62    <1e-10
-    ────────────────────────────────────────────────────────
-    Random effects covariance matrix Σγ:
-     "γ1: (Intercept)"  3.32057
-    
-
-
-
-
 
 ```julia
-first(CSV.read("snpset.pval.txt", DataFrame; delim="\t"), 5)
+pretty_table(first(CSV.read("snpset.pval.txt", DataFrame; delim="\t"), 5), tf = tf_markdown)
 ```
-
-
-
-
-<div class="data-frame"><p>5 rows × 4 columns</p><table class="data-frame"><thead><tr><th></th><th>snpsetid</th><th>nsnps</th><th>betapval</th><th>taupval</th></tr><tr><th></th><th title="String">String</th><th title="Int64">Int64</th><th title="Float64">Float64</th><th title="Float64">Float64</th></tr></thead><tbody><tr><th>1</th><td>gene1</td><td>93</td><td>0.111864</td><td>0.011595</td></tr><tr><th>2</th><td>gene2</td><td>93</td><td>0.0249929</td><td>0.0648265</td></tr><tr><th>3</th><td>gene3</td><td>93</td><td>0.131741</td><td>0.0298884</td></tr><tr><th>4</th><td>gene4</td><td>92</td><td>0.010327</td><td>0.0584591</td></tr><tr><th>5</th><td>gene5</td><td>93</td><td>0.0303905</td><td>0.0924954</td></tr></tbody></table></div>
-
-
 
 
 ```julia
@@ -1390,55 +1235,10 @@ trajgwas(@formula(y ~ 1 + sex + onMeds),
         snpset = 15)
 ```
 
-    run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = Optimal, time(s) = 0.039755
-    run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = Optimal, time(s) = 0.043883
-
-
-
-
-
-    
-    Within-subject variance estimation by robust regression (WiSER)
-    
-    Mean Formula:
-    y ~ 1 + sex + onMeds
-    Random Effects Formula:
-    y ~ 1
-    Within-Subject Variance Formula:
-    y ~ 1 + sex + onMeds
-    
-    Number of individuals/clusters: 324
-    Total observations: 3240
-    
-    Fixed-effects parameters:
-    ────────────────────────────────────────────────────────
-                      Estimate  Std. Error       Z  Pr(>|Z|)
-    ────────────────────────────────────────────────────────
-    β1: (Intercept)  13.2282     0.146459    90.32    <1e-99
-    β2: sex          -3.29295    0.2101     -15.67    <1e-54
-    β3: onMeds        0.459585   0.0596002    7.71    <1e-13
-    τ1: (Intercept)   0.792508   0.0850728    9.32    <1e-19
-    τ2: sex          -0.2865     0.0970732   -2.95    0.0032
-    τ3: onMeds        0.422303   0.063825     6.62    <1e-10
-    ────────────────────────────────────────────────────────
-    Random effects covariance matrix Σγ:
-     "γ1: (Intercept)"  3.32057
-    
-
-
-
-
 
 ```julia
-first(CSV.read("snpset.pval.txt", DataFrame), 5)
+pretty_table(first(CSV.read("snpset.pval.txt", DataFrame), 5), tf = tf_markdown)
 ```
-
-
-
-
-<div class="data-frame"><p>5 rows × 8 columns</p><table class="data-frame"><thead><tr><th></th><th>startchr</th><th>startpos</th><th>startsnpid</th><th>endchr</th><th>endpos</th><th>endsnpid</th><th>betapval</th><th>taupval</th></tr><tr><th></th><th title="Int64">Int64</th><th title="Int64">Int64</th><th title="String">String</th><th title="Int64">Int64</th><th title="Int64">Int64</th><th title="String">String</th><th title="Float64">Float64</th><th title="Float64">Float64</th></tr></thead><tbody><tr><th>1</th><td>1</td><td>554484</td><td>rs10458597</td><td>1</td><td>3431124</td><td>rs12093117</td><td>3.83046e-6</td><td>2.24303e-10</td></tr><tr><th>2</th><td>1</td><td>3633945</td><td>rs10910017</td><td>1</td><td>6514524</td><td>rs932112</td><td>0.000127922</td><td>7.94764e-6</td></tr><tr><th>3</th><td>1</td><td>6715827</td><td>rs441515</td><td>1</td><td>9534606</td><td>rs4926480</td><td>8.10353e-5</td><td>6.11848e-7</td></tr><tr><th>4</th><td>1</td><td>9737551</td><td>rs12047054</td><td>1</td><td>12559747</td><td>rs4845907</td><td>0.000425108</td><td>1.15311e-8</td></tr><tr><th>5</th><td>1</td><td>12760427</td><td>rs848577</td><td>1</td><td>16021797</td><td>rs6679870</td><td>2.75832e-5</td><td>0.00028553</td></tr></tbody></table></div>
-
-
 
 
 ```julia
@@ -1463,50 +1263,10 @@ famfileids = CSV.read(datadir * "hapmap3.fam", DataFrame, header = false)[!, 1] 
 ```
 
 
-
-
-    324-element Vector{String}:
-     "A1"
-     "2"
-     "3"
-     "4"
-     "5"
-     "6"
-     "7"
-     "8"
-     "9"
-     "10"
-     "11"
-     "12"
-     "13"
-     ⋮
-     "313"
-     "314"
-     "315"
-     "316"
-     "317"
-     "318"
-     "319"
-     "320"
-     "321"
-     "322"
-     "323"
-     "Z324"
-
-
-
-
 ```julia
 covdf = CSV.read(datadir * "trajgwas_plinkex.csv", DataFrame)
-first(covdf, 11)
+pretty_table(first(covdf, 11), tf = tf_markdown)
 ```
-
-
-
-
-<div class="data-frame"><p>11 rows × 8 columns</p><table class="data-frame"><thead><tr><th></th><th>sex</th><th>onMeds</th><th>snp1</th><th>snp2</th><th>snp3</th><th>snp4</th><th>y</th><th>id</th></tr><tr><th></th><th title="Float64">Float64</th><th title="Float64">Float64</th><th title="Float64">Float64</th><th title="Float64">Float64</th><th title="Float64">Float64</th><th title="Float64">Float64</th><th title="Float64">Float64</th><th title="String">String</th></tr></thead><tbody><tr><th>1</th><td>0.0</td><td>1.0</td><td>0.0</td><td>1.0</td><td>2.0</td><td>0.0</td><td>12.2667</td><td>A1</td></tr><tr><th>2</th><td>0.0</td><td>0.0</td><td>0.0</td><td>1.0</td><td>2.0</td><td>0.0</td><td>10.2681</td><td>A1</td></tr><tr><th>3</th><td>0.0</td><td>0.0</td><td>0.0</td><td>1.0</td><td>2.0</td><td>0.0</td><td>12.166</td><td>A1</td></tr><tr><th>4</th><td>0.0</td><td>0.0</td><td>0.0</td><td>1.0</td><td>2.0</td><td>0.0</td><td>11.8797</td><td>A1</td></tr><tr><th>5</th><td>0.0</td><td>0.0</td><td>0.0</td><td>1.0</td><td>2.0</td><td>0.0</td><td>12.8127</td><td>A1</td></tr><tr><th>6</th><td>0.0</td><td>0.0</td><td>0.0</td><td>1.0</td><td>2.0</td><td>0.0</td><td>9.98766</td><td>A1</td></tr><tr><th>7</th><td>0.0</td><td>0.0</td><td>0.0</td><td>1.0</td><td>2.0</td><td>0.0</td><td>12.1408</td><td>A1</td></tr><tr><th>8</th><td>0.0</td><td>1.0</td><td>0.0</td><td>1.0</td><td>2.0</td><td>0.0</td><td>13.2058</td><td>A1</td></tr><tr><th>9</th><td>0.0</td><td>0.0</td><td>0.0</td><td>1.0</td><td>2.0</td><td>0.0</td><td>11.3631</td><td>A1</td></tr><tr><th>10</th><td>0.0</td><td>1.0</td><td>0.0</td><td>1.0</td><td>2.0</td><td>0.0</td><td>15.2511</td><td>A1</td></tr><tr><th>11</th><td>0.0</td><td>0.0</td><td>0.0</td><td>0.0</td><td>2.0</td><td>2.0</td><td>12.746</td><td>2</td></tr></tbody></table></div>
-
-
 
 
 ```julia
