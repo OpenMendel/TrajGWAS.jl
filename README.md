@@ -10,18 +10,12 @@ TrajGWAS.jl is a Julia package for performing genome-wide association studies (G
 TrajGWAS.jl supports Julia v1.5 or later. See the [documentation](https://openmendel.github.io/TrajGWAS.jl/dev/) for usage.  
 <!-- [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://OpenMendel.github.io/TrajGWAS.jl/stable) [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://OpenMendel.github.io/TrajGWAS.jl/latest) -->
 
-TrajGWAS.jl is not yet registered. It requires [SnpArrays.jl](https://github.com/OpenMendel/SnpArrays.jl), [VCFTools.jl](https://github.com/OpenMendel/VCFTools.jl), [BGEN.jl](https://github.com/OpenMendel/BGEN.jl), and [WiSER.jl](https://github.com/OpenMendel/WiSER.jl) which are also not yet registered, so it will require the following steps to install. 
+TrajGWAS.jl is not yet registered. It will require running the following code to install. 
 
 ```{julia}
-pkg> add https://github.com/OpenMendel/SnpArrays.jl
-
-pkg> add https://github.com/OpenMendel/VCFTools.jl
-
-pkg> add https://github.com/OpenMendel/BGEN.jl
-
-pkg> add https://github.com/OpenMendel/WiSER.jl
-
-pkg> add https://github.com/OpenMendel/TrajGWAS.jl
+using Pkg
+pkg"add SnpArrays VCFTools BGEN WiSER"
+pkg"add https://github.com/OpenMendel/TrajGWAS.jl"
 ```
 
 ## Citation
