@@ -14,7 +14,6 @@ TrajGWAS.jl is not yet registered. It will require running the following code to
 
 ```{julia}
 using Pkg
-pkg"add SnpArrays VCFTools BGEN WiSER"
 pkg"add https://github.com/OpenMendel/TrajGWAS.jl"
 ```
 
