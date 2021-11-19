@@ -1623,7 +1623,15 @@ function trajgwas(
                         dirs = betadir, taudir
                         if usespa
                             p = variant.genotypes.preamble
-                            if p.bit_depth == 8 && p.max_probs == 3 && p.max_ploidy == p.min_ploidy 
+
+                            if !(p.bit_depth == 8 && p.max_probs == 3 && p.max_ploidy == p.min_ploidy)
+                                cnts = nothing
+                                cnts2 = nothing
+                                ref_vals = nothing
+                                vals_norm = g_norm
+                                tmp_ecgf = similar(g_norm)
+                            end
+                            if cnts !== nothing 
                                 cnts = counts!(bgendata, variant; rmask=bgenrowmask_UInt16, r=cnts)
                                 if !ref_dosage && variant.genotypes.minor_idx != 1
                                     cnts2 .= cnts
