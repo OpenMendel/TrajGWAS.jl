@@ -1488,11 +1488,23 @@ function trajgwas(
     # storage vectors for SPA if it is set to true
     if (usespa == true) & (analysistype == "singlesnp")
         g_norm = Array{Float64}(undef, fittednullmodel.m)
-        cnts = Vector{Int}(undef, 512)
-        cnts2 = Vector{Int}(undef, 512)
-        ref_vals = vcat([i / 255 for i in 0:510], [NaN])
-        vals_norm = similar(ref_vals)
-        tmp_ecgf = similar(ref_vals)
+        v_first = first(bgen_iterator_filter)
+        # dummy call to populate preamble.
+        allele_dosage!(bgendata, v_first)
+        p = v_first.genotypes.preamble
+        if p.bit_depth == 8 && p.max_probs == 3 && p.max_ploidy == p.min_ploidy
+            cnts = Vector{Int}(undef, 512)
+            cnts2 = Vector{Int}(undef, 512)
+            ref_vals = vcat([i / 255 for i in 0:510], [NaN])
+            vals_norm = similar(ref_vals)
+            tmp_ecgf = similar(ref_vals)
+        else
+            cnts = nothing
+            cnts2 = nothing
+            ref_vals = nothing
+            vals_norm = g_norm
+            tmp_ecgf = similar(g_norm)
+        end
     end
     
 
@@ -1610,13 +1622,17 @@ function trajgwas(
                         ps = betapval, taupval
                         dirs = betadir, taudir
                         if usespa
-                            cnts = counts!(bgendata, variant; rmask=bgenrowmask_UInt16, r=cnts)
-                            if !ref_dosage && variant.genotypes.minor_idx != 1
-                                cnts2 .= cnts
-                                @inbounds for i in 1:511
-                                    cnts[i] = cnts2[512-i]
+                            p = variant.genotypes.preamble
+                            if p.bit_depth == 8 && p.max_probs == 3 && p.max_ploidy == p.min_ploidy 
+                                cnts = counts!(bgendata, variant; rmask=bgenrowmask_UInt16, r=cnts)
+                                if !ref_dosage && variant.genotypes.minor_idx != 1
+                                    cnts2 .= cnts
+                                    @inbounds for i in 1:511
+                                        cnts[i] = cnts2[512-i]
+                                    end
                                 end
                             end
+
                             betapval_, taupval_, betadir_, taudir_ = spa(snpholder, ts, 
                                 ps, dirs, Ks; g_norm = g_norm, ref_vals = ref_vals, 
                                 cnts = cnts, vals_norm=vals_norm,
