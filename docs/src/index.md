@@ -11,11 +11,7 @@ This package requires Julia v1.5 or later and four other unregistered packages S
 
 ```julia
 using Pkg
-pkg"add https://github.com/OpenMendel/SnpArrays.jl"
-pkg"add https://github.com/OpenMendel/VCFTools.jl"
-pkg"add https://github.com/OpenMendel/BGEN.jl"
-pkg"add https://github.com/OpenMendel/WiSER.jl"
-pkg"add https://github.com/OpenMendel/TrajGWAS.jl" 
+pkg"add TrajGWAS" 
 ```
 
 To run the code in this document, the packages installed by the following command are also necessary:
