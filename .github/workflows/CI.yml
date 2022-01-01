@@ -27,9 +27,9 @@ jobs:
         arch:
           - x64
         include:
-          - os: ubuntu-latest
+          - experimental: true
+            os: ubuntu-latest
             version: nightly
-            experimental: true
             arch: x64
     steps:
       - uses: actions/checkout@v2
@@ -85,14 +85,6 @@ jobs:
       - uses: julia-actions/setup-julia@v1
         with:
           version: '1.6'
-      - run: | # add unregistered packages first
-          julia --project=docs -e '
-            using Pkg
-            pkg"add https://github.com/OpenMendel/SnpArrays.jl"
-            pkg"add https://github.com/OpenMendel/VCFTools.jl"
-            pkg"add https://github.com/OpenMendel/BGEN.jl"
-            pkg"add https://github.com/OpenMendel/WiSER.jl"
-            pkg"add https://github.com/OpenMendel/TrajGWAS.jl"' 
       - run: |
           julia --project=docs -e '
             using Pkg
