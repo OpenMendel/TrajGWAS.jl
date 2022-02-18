@@ -3,6 +3,7 @@
 *.jl.mem
 *.swp
 /docs/build/
+Manifest.toml
 
 .DS_Store
 *.ipynb_checkpoints
