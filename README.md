@@ -10,11 +10,11 @@ TrajGWAS.jl is a Julia package for performing genome-wide association studies (G
 TrajGWAS.jl supports Julia v1.5 or later. See the [documentation](https://openmendel.github.io/TrajGWAS.jl/dev/) for usage.  
 <!-- [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://OpenMendel.github.io/TrajGWAS.jl/stable) [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://OpenMendel.github.io/TrajGWAS.jl/latest) -->
 
-TrajGWAS.jl is not yet registered. It will require running the following code to install. 
+TrajGWAS.jl is a registered package, and it will require running the following code to install. 
 
 ```{julia}
 using Pkg
-pkg"add https://github.com/OpenMendel/TrajGWAS.jl"
+pkg"add TrajGWAS"
 ```
 
 ## Citation
