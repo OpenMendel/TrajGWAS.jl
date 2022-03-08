@@ -153,8 +153,8 @@ function trajgwas(
     )
     # fit and output null model
     nm = WSVarLmmModel(nullmeanformula, reformula, nullwsvarformula,
-     idvar, nulldf)
-    WiSER.fit!(nm, solver, parallel = parallel, runs = runs)
+        idvar, nulldf)
+    WiSER.fit!(nm, solver, parallel = parallel, runs = runs, init = init_ls!(nm, gniters = 0))
     verbose && show(nm)
     SnpArrays.makestream(nullfile, "w") do io
         show(io, nm)
