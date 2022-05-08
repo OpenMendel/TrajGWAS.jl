@@ -21,7 +21,7 @@ pkg"add TrajGWAS"
 
 The methods and applications of this software package are detailed in the following publication:
 
-_Ko S, German CA, Jensen A, Shen J, Wang A, Mehrotra DV, Sun YV, Sinsheimer JS, Zhou H, Zhou JJ. GWAS of longitudinal trajectories at biobank scale. The American Journal of Human Genetics. In press. [doi:10.1016/j.ajhg.2022.01.018](https://doi.org/10.1016/j.ajhg.2022.01.018)._
+_Ko S, German CA, Jensen A, Shen J, Wang A, Mehrotra DV, Sun YV, Sinsheimer JS, Zhou H, Zhou JJ. GWAS of longitudinal trajectories at biobank scale. The American Journal of Human Genetics, 109(3):433-445. [doi:10.1016/j.ajhg.2022.01.018](https://doi.org/10.1016/j.ajhg.2022.01.018)._
 
 
 If you use [OpenMendel](https://openmendel.github.io) analysis packages in your research, please cite the following reference in the resulting publications:
