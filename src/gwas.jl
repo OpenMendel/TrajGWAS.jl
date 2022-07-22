@@ -275,7 +275,7 @@ function trajgwas(
         fittednullmodel.ids .= fittednullmodel.ids[nullinds]
         fittednullmodel.nis .= fittednullmodel.nis[nullinds]
         fittednullmodel.data .= fittednullmodel.data[nullinds]
-        warn("Null model data was rearranged to match genetic file order")
+        @warn("Null model data was rearranged to match genetic file order")
     end
 
     # validate testing method
