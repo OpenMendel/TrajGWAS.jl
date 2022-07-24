@@ -26,5 +26,5 @@ _Ko S, German CA, Jensen A, Shen J, Wang A, Mehrotra DV, Sun YV, Sinsheimer JS, 
 
 If you use [OpenMendel](https://openmendel.github.io) analysis packages in your research, please cite the following reference in the resulting publications:
 
-*OPENMENDEL: a cooperative programming project for statistical genetics. Zhou H, Sinsheimer JS, Bates DM, Chu BB, German CA, Ji SS, Keys KL, Kim J, Ko S, Mosher GD, Papp JC, Sobel EM, Zhai J, Zhou JJ, Lange K. Hum Genet. 139, 61–71 (2020). [doi:10.1007/s00439-019-02001-z](10.1007/s00439-019-02001-z). PMID: 30915546*
+*OPENMENDEL: a cooperative programming project for statistical genetics. Zhou H, Sinsheimer JS, Bates DM, Chu BB, German CA, Ji SS, Keys KL, Kim J, Ko S, Mosher GD, Papp JC, Sobel EM, Zhai J, Zhou JJ, Lange K. Hum Genet. 139, 61–71 (2020). [doi:10.1007/s00439-019-02001-z](10.1007/s00439-019-02001-z). PMCID: PMC6763373*
 
