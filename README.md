@@ -27,3 +27,6 @@ If you use [OpenMendel](https://openmendel.github.io) analysis packages in your 
 
 *OPENMENDEL: a cooperative programming project for statistical genetics. Zhou H, Sinsheimer JS, Bates DM, Chu BB, German CA, Ji SS, Keys KL, Kim J, Ko S, Mosher GD, Papp JC, Sobel EM, Zhai J, Zhou JJ, Lange K. Hum Genet. 139, 61–71 (2020). [doi:10.1007/s00439-019-02001-z](10.1007/s00439-019-02001-z). PMCID:[PMC6763373](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6763373/).*
 
+## Acknowledgments
+
+This project has been supported by the National Institutes of Health under awards R01GM053275, R01HG006139, R25GM103774, and 1R25HG011845.
