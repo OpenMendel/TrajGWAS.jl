@@ -21,10 +21,9 @@ pkg"add TrajGWAS"
 
 The methods and applications of this software package are detailed in the following publication:
 
-_Ko S, German CA, Jensen A, Shen J, Wang A, Mehrotra DV, Sun YV, Sinsheimer JS, Zhou H, Zhou JJ. GWAS of longitudinal trajectories at biobank scale. The American Journal of Human Genetics, 109(3):433-445. [doi:10.1016/j.ajhg.2022.01.018](https://doi.org/10.1016/j.ajhg.2022.01.018)._
-
+*Ko S, German CA, Jensen A, Shen J, Wang A, Mehrotra DV, Sun YV, Sinsheimer JS, Zhou H, Zhou JJ. GWAS of longitudinal trajectories at biobank scale. Am J Hum Genet. 2022 Mar 3;109(3):433-445. doi: 10.1016/j.ajhg.2022.01.018. Epub 2022 Feb 22. PMID: 35196515; PMCID: PMC8948167.*
 
 If you use [OpenMendel](https://openmendel.github.io) analysis packages in your research, please cite the following reference in the resulting publications:
 
-*OPENMENDEL: a cooperative programming project for statistical genetics. Zhou H, Sinsheimer JS, Bates DM, Chu BB, German CA, Ji SS, Keys KL, Kim J, Ko S, Mosher GD, Papp JC, Sobel EM, Zhai J, Zhou JJ, Lange K. Hum Genet. 139, 61–71 (2020). [doi:10.1007/s00439-019-02001-z](10.1007/s00439-019-02001-z). PMCID: PMC6763373*
+*OPENMENDEL: a cooperative programming project for statistical genetics. Zhou H, Sinsheimer JS, Bates DM, Chu BB, German CA, Ji SS, Keys KL, Kim J, Ko S, Mosher GD, Papp JC, Sobel EM, Zhai J, Zhou JJ, Lange K. Hum Genet. 139, 61–71 (2020). [doi:10.1007/s00439-019-02001-z](10.1007/s00439-019-02001-z). PMCID:[PMC6763373](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6763373/).*
 
