@@ -158,7 +158,7 @@ function trajgwas(
     if init === nothing
         WiSER.fit!(nm, solver, parallel = parallel, runs = runs)
     else
-        WiSER.fit!(nm, solver, parallel = parallel, runs = runs, init=init)
+        WiSER.fit!(nm, solver, parallel = parallel, runs = runs, init=init(nm))
     end
     verbose && show(nm)
     SnpArrays.makestream(nullfile, "w") do io
