@@ -12,6 +12,8 @@ module TrajGWAS
     export trajgwas
     export matchindices
     export Adjustor
+    using MathOptInterface
+    const MOI = MathOptInterface
 
     """
         ◺(n::Integer)

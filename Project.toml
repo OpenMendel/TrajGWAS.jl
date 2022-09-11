@@ -1,7 +1,7 @@
 name = "TrajGWAS"
 uuid = "9514c204-b736-47c9-8157-11c3e9e5ab30"
 authors = ["Seyoon Ko <kos@ucla.edu> and contributors"]
-version = "0.1.5"
+version = "0.2.0"
 
 [deps]
 BGEN = "6db4b851-9beb-4b83-9d64-eb1cfb37721d"
@@ -10,6 +10,7 @@ DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+MathOptInterface = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
 Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
@@ -23,7 +24,7 @@ VariantCallFormat = "28eba6e3-a997-4ad9-87c6-d933b8bca6c1"
 WiSER = "2ff19380-1883-49fc-9d10-450face6b90c"
 
 [compat]
-BGEN = "0.1.2"
+BGEN = "0.1.8"
 CSV = "0.8,0.9, 0.10"
 DataFrames = "1"
 Distributions = "0.24, 0.25"
@@ -36,8 +37,8 @@ StatsModels = "0.6"
 Tables = "1"
 VCFTools = "0.2.1"
 VariantCallFormat = "0.5"
-WiSER = "0.1"
-julia = "1.5"
+WiSER = "0.2"
+julia = "1.6"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

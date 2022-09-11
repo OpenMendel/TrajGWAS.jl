@@ -12,6 +12,14 @@ end
     return 2 * x * y / (x + y)
 end
 
+@inline function config_solver(solver::MathOptInterface.AbstractOptimizer,
+    solver_config::Dict)
+    for (k, v) in solver_config
+        MOI.set(solver, 
+            MOI.RawOptimizerAttribute(k), v)
+    end
+end
+
 """
     trajgwas(nullmeanformula, reformula, nullwsvarformula, idvar, covfile, geneticfile; kwargs...)
     trajgwas(nullmeanformula, reformula, nullwsvarformula, idvar, df, geneticfile; kwargs...)
@@ -64,9 +72,11 @@ end
 - `snpinds::Union{Nothing,AbstractVector{<:Integer}}`: SNP indices for bed/vcf file.
 - `geneticrowinds::Union{Nothing,AbstractVector{<:Integer}}`: sample indices for bed/vcf file.
 - `samplepath::Union{Nothing, AbstractString}`: path for BGEN sample file if it's not encoded in the BGEN file.
-- `solver`: an optimization solver supported by MathProgBase. Default is
-    `NLoptSolver(algorithm=:LD_SLSQP, maxeval=4000)`. Another common choice is
-    `IpoptSolver(print_level=0)`.
+- `solver`: an optimizer supported by MathOptInterface. Default is
+    `Ipopt.Optimizer()`.
+- `solver_config`: Dict of configuration keys and values for the optimizer. Default is
+    `Dict("print_level" => 0, "mehrotra_algorithm" => "yes", "warm_start_init_point" => "yes",
+    "max_iter" => 100)`.
 - `runs::Integer`: Number of weighted NLS runs for the null model; default is 2.
     Each run will use the newest `m.τ` and `m.Lγ` to update the weight matrices
     `Vi` and solve the new weighted NLS.
@@ -144,14 +154,17 @@ function trajgwas(
     nulldf::DataFrame,
     geneticfile::Union{Nothing, AbstractString} = nothing;
     nullfile::Union{AbstractString, IOStream} = "trajgwas.null.txt",
-    solver = Ipopt.IpoptSolver(print_level=0, mehrotra_algorithm = "yes",
-    warm_start_init_point="yes", max_iter=100),
+    solver = Ipopt.Optimizer(),
+    solver_config = Dict("print_level" => 0, "mehrotra_algorithm" => "yes", 
+        "warm_start_init_point" => "yes",
+        "max_iter" => 100),
     parallel::Bool = false,
     runs::Int = 2,
     verbose::Bool = false,
     init = nothing,
     kwargs...
     )
+    config_solver(solver, solver_config)
     # fit and output null model
     nm = WSVarLmmModel(nullmeanformula, reformula, nullwsvarformula,
         idvar, nulldf)
@@ -186,8 +199,10 @@ function trajgwas(
     usespa::Bool = true,
     reportchisq::Bool = false,
     geneticrowinds::Union{Nothing, AbstractVector{<:Integer}} = nothing,
-    solver = Ipopt.IpoptSolver(print_level=0, mehrotra_algorithm = "yes",
-    warm_start_init_point="yes", max_iter=100),
+    solver = Ipopt.Optimizer(),
+    solver_config = Dict("print_level" => 0, "mehrotra_algorithm" => "yes", 
+        "warm_start_init_point" => "yes",
+        "max_iter" => 100),
     parallel::Bool = false,
     runs::Int = 2,
     verbose::Bool = false,
@@ -196,7 +211,7 @@ function trajgwas(
     e::Union{Nothing, AbstractString, Symbol} = nothing, # for GxE analysis
     kwargs...
     )
-
+    config_solver(solver, solver_config)
     # locate plink bed, fam, bim files or VCF file
     lowercase(geneticformat) in ["plink", "vcf", "bgen"] || error("`geneticformat` $geneticformat not valid. Please use 'VCF', 'BGEN', or 'PLINK'.")
     if lowercase(geneticformat) == "plink"
@@ -295,6 +310,7 @@ function trajgwas(
             reportchisq = reportchisq,
             bedrowinds = rowinds,
             solver = solver,
+            solver_config = solver_config,
             parallel = parallel,
             runs = runs,
             verbose = verbose,
@@ -313,6 +329,7 @@ function trajgwas(
             reportchisq = reportchisq,
             vcfrowinds = rowinds,
             solver = solver,
+            solver_config = solver_config,
             parallel = parallel,
             runs = runs,
             verbose = verbose,
@@ -332,6 +349,7 @@ function trajgwas(
             reportchisq = reportchisq,
             bgenrowinds = rowinds,
             solver = solver,
+            solver_config = solver_config,
             parallel = parallel,
             runs = runs,
             verbose = verbose,
@@ -356,8 +374,10 @@ function trajgwas(
     usespa::Bool = true,
     reportchisq::Bool = false,
     bedrowinds::AbstractVector{<:Integer} = 1:bedn, # row indices for SnpArray
-    solver = Ipopt.IpoptSolver(print_level=0, mehrotra_algorithm = "yes",
-    warm_start_init_point="yes", max_iter=100),
+    solver = Ipopt.Optimizer(),
+    solver_config = Dict("print_level" => 0, "mehrotra_algorithm" => "yes", 
+        "warm_start_init_point" => "yes",
+        "max_iter" => 100),
     parallel::Bool = false,
     runs::Int = 2,
     verbose::Bool = false,
@@ -368,6 +388,7 @@ function trajgwas(
     adjustor::Union{Adjustor, Nothing}=nothing,
     adj_cutoff::Real=5e-5
     )
+    config_solver(solver, solver_config)
     # create SnpArray
     genomat = SnpArrays.SnpArray(bedfile, bedn)
     cc = SnpArrays.counts(genomat, dims=1) # column counts of genomat
@@ -893,8 +914,10 @@ function trajgwas(
     usespa::Bool = true,
     reportchisq::Bool = false,
     vcfrowinds::AbstractVector{<:Integer} = 1:nsamples, # row indices for VCF array
-    solver = Ipopt.IpoptSolver(print_level=0, mehrotra_algorithm = "yes",
-    warm_start_init_point="yes", max_iter=100),
+    solver = Ipopt.Optimizer(),
+    solver_config = Dict("print_level" => 0, "mehrotra_algorithm" => "yes", 
+        "warm_start_init_point" => "yes",
+        "max_iter" => 100),
     parallel::Bool = false,
     runs::Int = 2,
     verbose::Bool = false,
@@ -905,6 +928,7 @@ function trajgwas(
     adjustor::Union{Adjustor, Nothing}=nothing,
     adj_cutoff::Real=5e-5
     )
+    config_solver(solver, solver_config)
 
     # get number of SNPs in file
     nsnps = nrecords(vcffile)
@@ -1442,22 +1466,25 @@ function trajgwas(
     min_hwe_pval::AbstractFloat = NaN,
     min_info_score::AbstractFloat = NaN,
     bgenrowinds::AbstractVector{<:Integer} = 1:nsamples, # row indices for VCF array
-    solver = Ipopt.IpoptSolver(print_level=0, mehrotra_algorithm = "yes",
-    warm_start_init_point="yes", max_iter=100),
+    solver = Ipopt.Optimizer(),
+    solver_config = Dict("print_level" => 0, "mehrotra_algorithm" => "yes", 
+        "warm_start_init_point" => "yes",
+        "max_iter" => 100),
     parallel::Bool = false,
     runs::Int = 2,
     verbose::Bool = false,
     snpset::Union{Nothing, Integer, AbstractString, #for snpset analysis
         AbstractVector{<:Integer}} = nothing,
     e::Union{Nothing, AbstractString, Symbol} = nothing, # for GxE analysis
-    ref_dosage::Bool = true,
+    first_dosage::Bool = true,
     startidx::Union{<:Integer, Nothing}=nothing,
     endidx::Union{<:Integer, Nothing}=nothing,
     r::Float64=2.0,
     adjustor::Union{Adjustor, Nothing}=nothing,
     adj_cutoff::Real=5e-5
     )
-    allele_dosage! = ref_dosage ? ref_allele_dosage! : minor_allele_dosage!
+    config_solver(solver, solver_config)
+    allele_dosage! = first_dosage ? first_allele_dosage! : minor_allele_dosage!
 
     # open BGEN file and get number of SNPs in file
     bgendata = Bgen(bgenfile; sample_path=samplepath)
@@ -1638,7 +1665,7 @@ function trajgwas(
                             end
                             if cnts !== nothing 
                                 cnts = counts!(bgendata, variant; rmask=bgenrowmask_UInt16, r=cnts)
-                                if !ref_dosage && variant.genotypes.minor_idx != 1
+                                if !first_dosage && variant.genotypes.minor_idx != 1
                                     cnts2 .= cnts
                                     @inbounds for i in 1:511
                                         cnts[i] = cnts2[512-i]
