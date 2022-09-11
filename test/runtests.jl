@@ -160,7 +160,7 @@ end
         usespa = false,
         geneticformat = "BGEN", 
         pvalfile = pvalpath,
-        ref_dosage=false)
+        first_dosage=false)
     results = CSV.read(pvalpath, DataFrame)
 
     @test all(isapprox.((mean(results.betapval),
@@ -178,7 +178,7 @@ end
         geneticformat = "BGEN", 
         pvalfile = pvalpath,
         reportchisq=true,
-        ref_dosage=false)#Adjustor(ones(500, 1)))
+        first_dosage=false)#Adjustor(ones(500, 1)))
     results = CSV.read(pvalpath, DataFrame)
     @test all(isapprox.((mean(results.betapval),
         mean(results.taupval)),
@@ -293,7 +293,7 @@ end
         pvalfile = pvalpath,
         analysistype = "snpset",
         snpset = 20,
-        ref_dosage=false)
+        first_dosage=false)
     results = CSV.read(pvalpath, DataFrame)
     @test all(isapprox.((mean(results.betapval),
         mean(results.taupval)),
@@ -309,7 +309,7 @@ end
         pvalfile = pvalpath,
         analysistype = "snpset",
         snpset = filepath * "bgen_snpsetfile.txt",
-        ref_dosage=false,
+        first_dosage=false,
         r=2.0,
         adjustor=Adjustor(ones(500, 1)))
         #adjustor=Adjustor(ones(500, 1)))
@@ -328,7 +328,7 @@ end
         pvalfile = pvalpath,
         analysistype = "snpset",
         snpset = 1:5,
-        ref_dosage=false)
+        first_dosage=false)
     pvalfile = open(pvalpath)
     pvals = split(readline(pvalfile), r"[, ]")[[end-3, end]]
     close(pvalfile)
