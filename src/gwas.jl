@@ -161,18 +161,14 @@ function trajgwas(
     parallel::Bool = false,
     runs::Int = 2,
     verbose::Bool = false,
-    init = nothing,
+    init = WiSER.init_ls!,
     kwargs...
     )
     config_solver(solver, solver_config)
     # fit and output null model
     nm = WSVarLmmModel(nullmeanformula, reformula, nullwsvarformula,
         idvar, nulldf)
-    if init === nothing
-        WiSER.fit!(nm, solver, parallel = parallel, runs = runs)
-    else
-        WiSER.fit!(nm, solver, parallel = parallel, runs = runs, init=init(nm))
-    end
+    WiSER.fit!(nm, solver, parallel = parallel, runs = runs, init=init(nm))
     verbose && show(nm)
     SnpArrays.makestream(nullfile, "w") do io
         show(io, nm)
@@ -378,6 +374,7 @@ function trajgwas(
     solver_config = Dict("print_level" => 0, "mehrotra_algorithm" => "yes", 
         "warm_start_init_point" => "yes",
         "max_iter" => 100),
+    init = WiSER.init_ls!,
     parallel::Bool = false,
     runs::Int = 2,
     verbose::Bool = false,
@@ -560,7 +557,11 @@ function trajgwas(
                                 fittednullmodel.reformula, fullwsvarformula,
                                 :id, testdf)
                             altmodel.obswts .= fittednullmodel.obswts
-                            WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs)
+                            try
+                                WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs)
+                            catch e
+                                WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs, init=init(altmodel))            
+                            end
                             copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
                             copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
                             copyto!(pvalsβ, 1, coeftable(altmodel).cols[4], fittednullmodel.p + 1, q)
@@ -856,8 +857,13 @@ function trajgwas(
 
                             nm.obswts .= fittednullmodel.obswts
                             @assert nm.ids == fittednullmodel.ids "IDs not matching for GxE."
-                            WiSER.fit!(nm, init = nm, solver, 
-                                parallel = parallel, runs = runs)
+                            try
+                                WiSER.fit!(nm, init = nm, solver, 
+                                    parallel = parallel, runs = runs)
+                            catch e
+                                WiSER.fit!(nm, init = init(nm), solver, 
+                                    parallel = parallel, runs = runs)
+                            end
                             snpeffectnullbeta = nm.β[end]
                             snpeffectnulltau = nm.τ[end]
                             copyto!(Z, modelmatrix(gxeformula, testdf))
@@ -872,8 +878,13 @@ function trajgwas(
                             copyparams!(fullmod, fittednullmodel)
 
                             fullmod.obswts .= fittednullmodel.obswts
-                            WiSER.fit!(fullmod, solver, init = fullmod,
+                            try
+                                WiSER.fit!(fullmod, solver, init = fullmod,
+                                    parallel = parallel, runs = runs)
+                            catch e
+                                WiSER.fit!(fullmod, solver, init = init(fullmod),
                                 parallel = parallel, runs = runs)
+                            end
                             γ̂β = fullmod.β[end]
                             γ̂τ = fullmod.β[end]
                             snpeffectbeta = fullmod.β[end-1]
@@ -918,6 +929,7 @@ function trajgwas(
     solver_config = Dict("print_level" => 0, "mehrotra_algorithm" => "yes", 
         "warm_start_init_point" => "yes",
         "max_iter" => 100),
+    init = WiSER.init_ls!,
     parallel::Bool = false,
     runs::Int = 2,
     verbose::Bool = false,
@@ -1096,7 +1108,11 @@ function trajgwas(
                             fittednullmodel.reformula, fullwsvarformula,
                             :id, testdf)
                         altmodel.obswts .= fittednullmodel.obswts
-                        WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs)
+                        try
+                            WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs)
+                        catch e
+                            WiSER.fit!(altmodel, init=init(altmodel), solver, parallel = parallel, runs = runs)    
+                        end
                         copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
                         copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
                         copyto!(pvalsβ, 1, coeftable(altmodel).cols[4], 
@@ -1403,8 +1419,14 @@ function trajgwas(
                         copyparams!(nm, fittednullmodel)
                         nm.obswts .= fittednullmodel.obswts
                         @assert nm.ids == fittednullmodel.ids "IDs not matching for GxE."
-                        WiSER.fit!(nm, init = nm, solver, 
-                            parallel = parallel, runs = runs)
+                        try
+                            WiSER.fit!(nm, init = nm, solver, 
+                                parallel = parallel, runs = runs)     
+                        catch
+                            WiSER.fit!(nm, init = init(nm), solver, 
+                                parallel = parallel, runs = runs) 
+                        end
+
                         snpeffectnullbeta = nm.β[end]
                         snpeffectnulltau = nm.τ[end]
                         copyto!(Z, modelmatrix(gxeformula, testdf))
@@ -1428,8 +1450,13 @@ function trajgwas(
                         copyparams!(fullmod, fittednullmodel)
 
                         fullmod.obswts .= fittednullmodel.obswts
-                        WiSER.fit!(fullmod, solver, init = fullmod,
+                        try
+                            WiSER.fit!(fullmod, solver, init = fullmod,
+                                parallel = parallel, runs = runs)
+                        catch e
+                            WiSER.fit!(fullmod, solver, init = init(fullmod),
                             parallel = parallel, runs = runs)
+                        end
                         γ̂β = fullmod.β[end]
                         γ̂τ = fullmod.β[end]
                         snpeffectbeta = fullmod.β[end-1]
@@ -1470,6 +1497,7 @@ function trajgwas(
     solver_config = Dict("print_level" => 0, "mehrotra_algorithm" => "yes", 
         "warm_start_init_point" => "yes",
         "max_iter" => 100),
+    init=WiSER.init_ls!,
     parallel::Bool = false,
     runs::Int = 2,
     verbose::Bool = false,
@@ -1728,7 +1756,11 @@ function trajgwas(
                             fittednullmodel.reformula, fullwsvarformula,
                             :id, testdf)
                         altmodel.obswts .= fittednullmodel.obswts
-                        WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs)
+                        try
+                            WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs)
+                        catch e
+                            WiSER.fit!(altmodel, init=init(altmodel), solver, parallel = parallel, runs = runs)
+                        end
                         copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
                         copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
                         copyto!(pvalsβ, 1, coeftable(altmodel).cols[4], 
@@ -2033,8 +2065,13 @@ function trajgwas(
 
                         nm.obswts .= fittednullmodel.obswts
                         @assert nm.ids == fittednullmodel.ids "IDs not matching for GxE."
-                        WiSER.fit!(nm, init = nm, 
-                            solver, parallel = parallel, runs = runs)
+                        try
+                            WiSER.fit!(nm, init = nm, 
+                                solver, parallel = parallel, runs = runs)
+                        catch e
+                            WiSER.fit!(nm, init = init(nm), 
+                                solver, parallel = parallel, runs = runs)
+                        end
                         snpeffectnullbeta = nm.β[end]
                         snpeffectnulltau = nm.τ[end]
                         copyto!(Z, modelmatrix(gxeformula, testdf))
@@ -2058,8 +2095,14 @@ function trajgwas(
                         copyparams!(fullmod, fittednullmodel)
 
                         fullmod.obswts .= fittednullmodel.obswts
-                        WiSER.fit!(fullmod, solver, init = fullmod,
-                            parallel = parallel, runs = runs)
+                        try
+                            WiSER.fit!(fullmod, solver, init = fullmod,
+                            parallel = parallel, runs = runs)           
+                        catch e
+                            WiSER.fit!(fullmod, solver, init = init(fullmod),
+                            parallel = parallel, runs = runs)                        
+                        end
+
                         γ̂β = fullmod.β[end]
                         γ̂τ = fullmod.β[end]
                         snpeffectbeta = fullmod.β[end-1]
