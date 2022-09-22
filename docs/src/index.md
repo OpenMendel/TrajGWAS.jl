@@ -1931,6 +1931,8 @@ trajgwas(nm, bgenfilename * ".bgen", count(sample_indicator);
     usespa=true)
 
 ```
+Note that an index file (`.bgen.bgi`) is required for this slicing of BGEN file. See [this link](https://enkre.net/cgi-bin/code/bgen/doc/trunk/doc/wiki/bgenix.md) to see how to create one. 
+
 
 - Command-line arguments
     - Argument 1: directory for the BGEN files. BGEN files (.bgen), BGEN index files (.bgen.bgi), and MFI files (.txt) should be included there.
