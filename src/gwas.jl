@@ -455,18 +455,20 @@ function trajgwas(
                 pvalsβ = Vector{Float64}(undef, q) # effect size for columns being tested
                 γ̂τ = Vector{Float64}(undef, q) # effect size for columns being tested
                 pvalsτ = Vector{Float64}(undef, q) # effect size for columns being tested
+                mean_rhs = typeof(fittednullmodel.meanformula.rhs) <: ConstantTerm ? (fittednullmodel.meanformula.rhs,) : fittednullmodel.meanformula.rhs
+                ws_rhs = typeof(fittednullmodel.wsvarformula.rhs) <: ConstantTerm ? (fittednullmodel.wsvarformula.rhs,) : fittednullmodel.wsvarformula.rhs
                 if snponly
                     println(io, "chr\tpos\tsnpid\tmaf\thwepval\tbetaeffect\tbetapval\t",
                     "taueffect\ttaupval")
                     fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-                    sum(union(fittednullmodel.meanformula.rhs, [testformula.rhs])))
+                    sum(union(mean_rhs, [testformula.rhs])))
                     fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-                    sum(union(fittednullmodel.wsvarformula.rhs, [testformula.rhs])))
+                    sum(union(ws_rhs, [testformula.rhs])))
                 else
                     fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-                    sum(union(fittednullmodel.meanformula.rhs, testformula.rhs)))
+                    sum(union(mean_rhs, testformula.rhs)))
                     fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-                    sum(union(fittednullmodel.wsvarformula.rhs, testformula.rhs)))
+                    sum(union(ws_rhs, testformula.rhs)))
                     print(io, "chr\tpos\tsnpid\tmaf\thwepval\t")
                     for j in 1:q
                         print(io, "betaeffect$j\tbetapval$j\t")
@@ -563,6 +565,13 @@ function trajgwas(
                                 WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs, init=init(altmodel))            
                             end
                             copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
+                            println(size(γ̂β))
+                            println(size(altmodel.β))
+                            println(fittednullmodel.p + 1)
+                            println(q)
+                            println(size(γ̂τ))
+                            println(size(altmodel.τ))
+                            println(fittednullmodel.l + 1)
                             copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
                             copyto!(pvalsβ, 1, coeftable(altmodel).cols[4], fittednullmodel.p + 1, q)
                             copyto!(pvalsτ, 1, coeftable(altmodel).cols[4], 
@@ -1018,18 +1027,20 @@ function trajgwas(
                 pvalsβ = Vector{Float64}(undef, q) # effect size for columns being tested
                 γ̂τ = Vector{Float64}(undef, q) # effect size for columns being tested
                 pvalsτ = Vector{Float64}(undef, q) # effect size for columns being tested
+                mean_rhs = typeof(fittednullmodel.meanformula.rhs) <: ConstantTerm ? (fittednullmodel.meanformula.rhs,) : fittednullmodel.meanformula.rhs
+                ws_rhs = typeof(fittednullmodel.wsvarformula.rhs) <: ConstantTerm ? (fittednullmodel.wsvarformula.rhs,) : fittednullmodel.wsvarformula.rhs
                 if snponly
                     println(io, "chr\tpos\tsnpid\tbetaeffect\tbetapval\t",
                     "taueffect\ttaupval")
                     fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-                    sum(union(fittednullmodel.meanformula.rhs, [testformula.rhs])))
+                    sum(union(mean_rhs, [testformula.rhs])))
                     fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-                    sum(union(fittednullmodel.wsvarformula.rhs, [testformula.rhs])))
+                    sum(union(ws_rhs, [testformula.rhs])))
                 else
                     fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-                    sum(union(fittednullmodel.meanformula.rhs, testformula.rhs)))
+                    sum(union(mean_rhs, testformula.rhs)))
                     fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-                    sum(union(fittednullmodel.wsvarformula.rhs, testformula.rhs)))
+                    sum(union(ws_rhs, testformula.rhs)))
                     print(io, "chr\tpos\tsnpid\t")
                     for j in 1:q
                         print(io, "betaeffect$j\tbetapval$j\t")
@@ -1617,18 +1628,20 @@ function trajgwas(
                 pvalsβ = Vector{Float64}(undef, q) # effect size for columns being tested
                 γ̂τ = Vector{Float64}(undef, q) # effect size for columns being tested
                 pvalsτ = Vector{Float64}(undef, q) # effect size for columns being tested
+                mean_rhs = typeof(fittednullmodel.meanformula.rhs) <: ConstantTerm ? (fittednullmodel.meanformula.rhs,) : fittednullmodel.meanformula.rhs
+                ws_rhs = typeof(fittednullmodel.wsvarformula.rhs) <: ConstantTerm ? (fittednullmodel.wsvarformula.rhs,) : fittednullmodel.wsvarformula.rhs
                 if snponly
                     println(io, "chr\tpos\tsnpid\tvarid\tbetaeffect\tbetapval\t",
                     "taueffect\ttaupval")
                     fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-                    sum(union(fittednullmodel.meanformula.rhs, [testformula.rhs])))
+                    sum(union(mean_rhs, [testformula.rhs])))
                     fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-                    sum(union(fittednullmodel.wsvarformula.rhs, [testformula.rhs])))
+                    sum(union(ws_rhs, [testformula.rhs])))
                 else
                     fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-                    sum(union(fittednullmodel.meanformula.rhs, testformula.rhs)))
+                    sum(union(mean_rhs, testformula.rhs)))
                     fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-                    sum(union(fittednullmodel.wsvarformula.rhs, testformula.rhs)))
+                    sum(union(ws_rhs, testformula.rhs)))
                     print(io, "chr\tpos\tsnpid\tvarid\t")
                     for j in 1:q
                         print(io, "betaeffect$j\tbetapval$j\t")
