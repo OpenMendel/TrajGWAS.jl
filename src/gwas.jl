@@ -168,7 +168,7 @@ function trajgwas(
     # fit and output null model
     nm = WSVarLmmModel(nullmeanformula, reformula, nullwsvarformula,
         idvar, nulldf)
-    WiSER.fit!(nm, solver, parallel = parallel, runs = runs, init=init(nm))
+    WiSER.fit!(nm, solver, parallel = parallel, runs = runs, init=init(nm); throw_on_failure=true)
     verbose && show(nm)
     SnpArrays.makestream(nullfile, "w") do io
         show(io, nm)
@@ -189,6 +189,7 @@ function trajgwas(
     samplepath::Union{AbstractString, Nothing} = nothing,
     testformula::FormulaTerm = fittednullmodel.meanformula.lhs ~ Term(:snp),
     test::Symbol = :score,
+    init = test == :score ? WiSER.init_ls! : x -> WiSER.init_ls!(x; gniters=0),
     pvalfile::Union{AbstractString, IOStream} = "trajgwas.pval.txt",
     snpmodel::Union{Val{1}, Val{2}, Val{3}} = ADDITIVE_MODEL,
     snpinds::Union{Nothing, AbstractVector{<:Integer}} = nothing,
@@ -299,6 +300,7 @@ function trajgwas(
             analysistype = analysistype,
             testformula = testformula,
             test = test,
+            init = init, 
             pvalfile = pvalfile,
             snpmodel = snpmodel,
             snpinds = snpinds,
@@ -318,6 +320,7 @@ function trajgwas(
             analysistype = analysistype,
             testformula = testformula,
             test = test,
+            init = init, 
             pvalfile = pvalfile,
             snpmodel = snpmodel,
             snpinds = snpinds,
@@ -338,6 +341,7 @@ function trajgwas(
             samplepath = samplepath,
             testformula = testformula,
             test = test,
+            init = init,
             pvalfile = pvalfile,
             snpmodel = snpmodel,
             snpinds = snpinds,
@@ -374,7 +378,7 @@ function trajgwas(
     solver_config = Dict("print_level" => 0, "mehrotra_algorithm" => "yes", 
         "warm_start_init_point" => "yes",
         "max_iter" => 100),
-    init = WiSER.init_ls!,
+    init = x -> WiSER.init_ls!(x; gniters=0),
     parallel::Bool = false,
     runs::Int = 2,
     verbose::Bool = false,
@@ -546,6 +550,7 @@ function trajgwas(
                         end
 
                     elseif test == :wald
+                        success = true
                         if maf == 0 # mono-allelic
                             fill!(γ̂β, 0)
                             fill!(pvalsβ, 1.0)
@@ -560,18 +565,16 @@ function trajgwas(
                                 :id, testdf)
                             altmodel.obswts .= fittednullmodel.obswts
                             try
-                                WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs)
+                                WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs; throw_on_failure=true)
                             catch e
-                                WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs, init=init(altmodel))            
+                                try
+                                    WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs, init=init(altmodel); throw_on_failure=true)  
+                                catch e
+                                    @warn "Test failed for $(snpj[1]). The SNP may be too rare. Effect size NaN and p-value -1 will be printed."
+                                    success = false
+                                end
                             end
                             copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
-                            println(size(γ̂β))
-                            println(size(altmodel.β))
-                            println(fittednullmodel.p + 1)
-                            println(q)
-                            println(size(γ̂τ))
-                            println(size(altmodel.τ))
-                            println(fittednullmodel.l + 1)
                             copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
                             copyto!(pvalsβ, 1, coeftable(altmodel).cols[4], fittednullmodel.p + 1, q)
                             copyto!(pvalsτ, 1, coeftable(altmodel).cols[4], 
@@ -579,14 +582,14 @@ function trajgwas(
                         end
                         if snponly
                             println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t$maf\t$hwepval\t",
-                            "$(γ̂β[1])\t$(pvalsβ[1])\t$(γ̂τ[1])\t$(pvalsτ[1])")
+                            "$(success ? γ̂β[1] : NaN)\t$(success ? pvalsβ[1] : -1.0)\t$(success ? γ̂τ[1] : NaN)\t$(success ? pvalsτ[1] : -1.0)")
                         else
                             print(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t$maf\t$hwepval\t")
                             for j in 1:q
-                                print(io, "$(γ̂β[j])\t$(pvalsβ[j])\t")
+                                print(io, "$(success ? γ̂β[j] : NaN)\t$(success ? pvalsβ[j] : -1.0)\t")
                             end
                             for j in 1:q
-                                print(io, "$(γ̂τ[j])\t$(pvalsτ[j])")
+                                print(io, "$(success ? γ̂τ[j] : NaN)\t$(success ? pvalsτ[j] : -1.0)")
                                 if j != q
                                     print(io, "\t")
                                 end
@@ -844,6 +847,7 @@ function trajgwas(
                     hwepval = SnpArrays.hwe(cc[1, j], cc[3, j], cc[4, j])
                     maf = mafs[j]
                     snpj = split(row)
+                    success = true
                     if maf == 0 # mono-allelic
                         γ̂β = 0.0
                         γ̂τ = 0.0
@@ -868,10 +872,15 @@ function trajgwas(
                             @assert nm.ids == fittednullmodel.ids "IDs not matching for GxE."
                             try
                                 WiSER.fit!(nm, init = nm, solver, 
-                                    parallel = parallel, runs = runs)
+                                    parallel = parallel, runs = runs; throw_on_failure=true)
                             catch e
-                                WiSER.fit!(nm, init = init(nm), solver, 
-                                    parallel = parallel, runs = runs)
+                                try
+                                    WiSER.fit!(nm, init = init(nm), solver, 
+                                        parallel = parallel, runs = runs; throw_on_failure=true)
+                                catch e
+                                    @warn "Test failed for $(snpj[1]). The SNP may be too rare. Effect size NaN and p-value -1 will be printed."
+                                    success = false
+                                end
                             end
                             snpeffectnullbeta = nm.β[end]
                             snpeffectnulltau = nm.τ[end]
@@ -889,10 +898,15 @@ function trajgwas(
                             fullmod.obswts .= fittednullmodel.obswts
                             try
                                 WiSER.fit!(fullmod, solver, init = fullmod,
-                                    parallel = parallel, runs = runs)
+                                    parallel = parallel, runs = runs; throw_on_failure=true)
                             catch e
-                                WiSER.fit!(fullmod, solver, init = init(fullmod),
-                                parallel = parallel, runs = runs)
+                                try
+                                    WiSER.fit!(fullmod, solver, init = init(fullmod),
+                                    parallel = parallel, runs = runs; throw_on_failure=true)
+                                catch e
+                                    @warn "Test failed for $(snpj[1]). The SNP may be too rare. Effect size NaN and p-value -1 will be printed."
+                                    success = false
+                                end
                             end
                             γ̂β = fullmod.β[end]
                             γ̂τ = fullmod.β[end]
@@ -904,12 +918,12 @@ function trajgwas(
                     end
                     if test == :score
                         println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t$maf\t",
-                        "$hwepval\t$snpeffectnullbeta\t$snpeffectnulltau\t",
-                        "$betapval\t$taupval")
+                        "$hwepval\t$(success ? snpeffectnullbeta : NaN)\t$(success ? snpeffectnulltau : NaN)\t",
+                        "$(success ? betapval : -1.0)\t$(success ? taupval : -1.0)")
                     else
                         println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t$maf\t",
-                        "$hwepval\t$snpeffectbeta\t$snpeffecttau\t$γ̂β\t$γ̂τ\t",
-                        "$betapval\t$taupval")
+                        "$hwepval\t$(success ? snpeffectbeta : NaN)\t$(success ? snpeffecttau : NaN)\t$(success ? γ̂β : NaN)\t$(success ? γ̂τ : NaN)\t",
+                        "$(success ? betapval : -1.0)\t$(success ? taupval : -1.0)")
                     end
                 end
             end
@@ -938,7 +952,7 @@ function trajgwas(
     solver_config = Dict("print_level" => 0, "mehrotra_algorithm" => "yes", 
         "warm_start_init_point" => "yes",
         "max_iter" => 100),
-    init = WiSER.init_ls!,
+    init = x -> WiSER.init_ls!(x; gniters=0),
     parallel::Bool = false,
     runs::Int = 2,
     verbose::Bool = false,
@@ -1108,6 +1122,7 @@ function trajgwas(
                         "$betapval\t$taupval\t$(hmean(betapval, taupval))")
                     end
                 elseif test == :wald
+                    success = true
                     if var(@view(gholder[vcfrowinds])) == 0
                         fill!(γ̂β, 0) 
                         fill!(pvalsβ, 1.)
@@ -1120,9 +1135,14 @@ function trajgwas(
                             :id, testdf)
                         altmodel.obswts .= fittednullmodel.obswts
                         try
-                            WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs)
+                            WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs; throw_on_failure=true)
                         catch e
-                            WiSER.fit!(altmodel, init=init(altmodel), solver, parallel = parallel, runs = runs)    
+                            try
+                                WiSER.fit!(altmodel, init=init(altmodel), solver, parallel = parallel, runs = runs; throw_on_failure=true)  
+                            catch e
+                                @warn "Test failed for $(rec_ids[1][1]). The SNP may be too rare. Effect size NaN and p-value -1 will be printed."
+                                success = false  
+                            end
                         end
                         copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
                         copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
@@ -1133,14 +1153,14 @@ function trajgwas(
                     end
                     if snponly
                         println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
-                        "$(γ̂β[1])\t$(pvalsβ[1])\t$(γ̂τ[1])\t$(pvalsτ[1])")
+                        "$(success ? γ̂β[1] : NaN)\t$(success ? pvalsβ[1] : -1.0)\t$(success ? γ̂τ[1] : NaN)\t$(success ? pvalsτ[1] : -1.0)")
                     else
                         print(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t")
                         for j in 1:q
-                            print(io, "$(γ̂β[j])\t$(pvalsβ[j])\t")
+                            print(io, "$(success ? γ̂β[j] : NaN)\t$(success ? pvalsβ[j] : -1.0)\t")
                         end
                         for j in 1:q
-                            print(io, "$(γ̂τ[j])\t$(pvalsτ[j])")
+                            print(io, "$(success ? γ̂τ[j] : NaN)\t$(success ? pvalsτ[j] : -1.0)")
                             if j != q
                                 print(io, "\t")
                             end
@@ -1419,6 +1439,7 @@ function trajgwas(
                 end
                 #copyto!(testvec, modelmatrix(@formula(trait ~ snp & e), testdf))
                 if test == :score
+                    success = true
                     if var(@view(gholder[vcfrowinds])) == 0
                         betapval, taupval = 1., 1.
                         snpeffectnullbeta, snpeffectnulltau = 0., 0.
@@ -1432,10 +1453,15 @@ function trajgwas(
                         @assert nm.ids == fittednullmodel.ids "IDs not matching for GxE."
                         try
                             WiSER.fit!(nm, init = nm, solver, 
-                                parallel = parallel, runs = runs)     
-                        catch
-                            WiSER.fit!(nm, init = init(nm), solver, 
-                                parallel = parallel, runs = runs) 
+                                parallel = parallel, runs = runs; throw_on_failure=true)     
+                        catch e
+                            try
+                                WiSER.fit!(nm, init = init(nm), solver, 
+                                    parallel = parallel, runs = runs; throw_on_failure=true) 
+                            catch e
+                                @warn "Test failed for $(rec_ids[1][1]). The SNP may be too rare. Effect size NaN and p-value -1 will be printed."
+                                success = false
+                            end
                         end
 
                         snpeffectnullbeta = nm.β[end]
@@ -1446,9 +1472,10 @@ function trajgwas(
                         betapval, taupval, _, _ = test!(ts, testvec, testvec)
                     end
                     println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
-                        "$snpeffectnullbeta\t$snpeffectnulltau\t",
-                        "$betapval\t$taupval")
+                        "$(success ? snpeffectnullbeta : NaN)\t$(success ? snpeffectnulltau : NaN)\t",
+                        "$(success ? betapval : -1.0)\t$(success ? taupval : -1.0)")
                 elseif test == :wald
+                    success = true
                     if var(@view(gholder[vcfrowinds])) == 0
                         betapval, taupval = 1., 1.
                         γ̂β, γ̂τ = 0., 0.
@@ -1463,10 +1490,15 @@ function trajgwas(
                         fullmod.obswts .= fittednullmodel.obswts
                         try
                             WiSER.fit!(fullmod, solver, init = fullmod,
-                                parallel = parallel, runs = runs)
+                                parallel = parallel, runs = runs; throw_on_failure=true)
                         catch e
-                            WiSER.fit!(fullmod, solver, init = init(fullmod),
-                            parallel = parallel, runs = runs)
+                            try
+                                WiSER.fit!(fullmod, solver, init = init(fullmod),
+                                parallel = parallel, runs = runs; throw_on_failure=true)
+                            catch e
+                                @warn "Test failed for $(rec_ids[1][1]). The SNP may be too rare. Effect size NaN and p-value -1 will be printed."
+                                success = false
+                            end
                         end
                         γ̂β = fullmod.β[end]
                         γ̂τ = fullmod.β[end]
@@ -1476,8 +1508,8 @@ function trajgwas(
                         taupval = coeftable(fullmod).cols[4][end]
                     end
                     println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
-                        "$snpeffectbeta\t$snpeffecttau\t$γ̂β\t$γ̂τ\t",
-                        "$betapval\t$taupval")
+                        "$(success ? snpeffectbeta : NaN)\t$(success ? snpeffecttau : NaN)\t$(success ? γ̂β : NaN)\t$(success ? γ̂τ : NaN)\t",
+                        "$(success ? betapval : -1.0)\t$(success ? taupval : -1.0)")
                 end
             end
         end
@@ -1508,7 +1540,7 @@ function trajgwas(
     solver_config = Dict("print_level" => 0, "mehrotra_algorithm" => "yes", 
         "warm_start_init_point" => "yes",
         "max_iter" => 100),
-    init=WiSER.init_ls!,
+    init = x -> WiSER.init_ls!(x; gniters=0),
     parallel::Bool = false,
     runs::Int = 2,
     verbose::Bool = false,
@@ -1758,6 +1790,7 @@ function trajgwas(
                     end
 
                 elseif test == :wald
+                    success = true
                     if var(snpholder) == 0
                         fill!(γ̂β, 0) 
                         fill!(pvalsβ, 1.)
@@ -1770,9 +1803,14 @@ function trajgwas(
                             :id, testdf)
                         altmodel.obswts .= fittednullmodel.obswts
                         try
-                            WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs)
+                            WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs; throw_on_failure=true)
                         catch e
-                            WiSER.fit!(altmodel, init=init(altmodel), solver, parallel = parallel, runs = runs)
+                            try
+                                WiSER.fit!(altmodel, init=init(altmodel), solver, parallel = parallel, runs = runs; throw_on_failure=true)
+                            catch e
+                                @warn "Test failed for $(variant.rsid). The SNP may be too rare. Effect size NaN and p-value -1 will be printed."
+                                success = false
+                            end
                         end
                         copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
                         copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
@@ -1783,15 +1821,15 @@ function trajgwas(
                     end
                     if snponly
                         println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
-                        "$(variant.varid)\t$(γ̂β[1])\t$(pvalsβ[1])\t$(γ̂τ[1])\t$(pvalsτ[1])")
+                        "$(variant.varid)\t$(success ? γ̂β[1] : NaN)\t$(success ? pvalsβ[1] : -1.0)\t$(success ? γ̂τ[1] : NaN)\t$(success ? pvalsτ[1] : -1.0)")
                     else
                         print(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
                         "$(variant.varid)\t")
                         for j in 1:q
-                            print(io, "$(γ̂β[j])\t$(pvalsβ[j])\t")
+                            print(io, "$(success ? γ̂β[j] : NaN)\t$(success ? pvalsβ[j] : -1.0)\t")
                         end
                         for j in 1:q
-                            print(io, "$(γ̂τ[j])\t$(pvalsτ[j])")
+                            print(io, "$(success ? γ̂τ[j] : NaN)\t$(success ? pvalsτ[j] : -1.0)")
                             if j != q
                                 print(io, "\t")
                             end
@@ -2066,6 +2104,7 @@ function trajgwas(
                     snptodf!(testdf[!, :snp], snpholder, fittednullmodel)
                 end
                 if test == :score
+                    success = true
                     if var(snpholder) == 0
                         betapval, taupval = 1., 1.
                         snpeffectnullbeta, snpeffectnulltau = 0., 0.
@@ -2080,10 +2119,15 @@ function trajgwas(
                         @assert nm.ids == fittednullmodel.ids "IDs not matching for GxE."
                         try
                             WiSER.fit!(nm, init = nm, 
-                                solver, parallel = parallel, runs = runs)
+                                solver, parallel = parallel, runs = runs; throw_on_failure=true)
                         catch e
-                            WiSER.fit!(nm, init = init(nm), 
-                                solver, parallel = parallel, runs = runs)
+                            try
+                                WiSER.fit!(nm, init = init(nm), 
+                                solver, parallel = parallel, runs = runs; throw_on_failure=true)
+                            catch e
+                                @warn "Test failed for $(variant.rsid). The SNP may be too rare. Effect size NaN and p-value -1 will be printed."
+                                success = false
+                            end
                         end
                         snpeffectnullbeta = nm.β[end]
                         snpeffectnulltau = nm.τ[end]
@@ -2093,9 +2137,10 @@ function trajgwas(
                         betapval, taupval, _, _ = test!(ts, testvec, testvec)
                     end
                     println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
-                        "$(variant.varid)\t$snpeffectnullbeta\t$snpeffectnulltau\t",
-                        "$betapval\t$taupval")
+                        "$(variant.varid)\t$(success ? snpeffectnullbeta : NaN)\t$(success ? snpeffectnulltau : NaN)\t",
+                        "$(success ? betapval : -1.0)\t$(success ? taupval : -1.0)")
                 elseif test == :wald
+                    success = true
                     if var(snpholder) == 0
                         betapval, taupval = 1., 1.
                         γ̂β, γ̂τ = 0., 0.
@@ -2110,10 +2155,15 @@ function trajgwas(
                         fullmod.obswts .= fittednullmodel.obswts
                         try
                             WiSER.fit!(fullmod, solver, init = fullmod,
-                            parallel = parallel, runs = runs)           
+                            parallel = parallel, runs = runs; throw_on_failure=true)           
                         catch e
-                            WiSER.fit!(fullmod, solver, init = init(fullmod),
-                            parallel = parallel, runs = runs)                        
+                            try
+                                WiSER.fit!(fullmod, solver, init = init(fullmod),
+                                parallel = parallel, runs = runs; throw_on_failure=true)  
+                            catch e
+                                @warn "Test failed for $(variant.rsid). The SNP may be too rare. Effect size NaN and p-value -1 will be printed."
+                                success = false              
+                            end        
                         end
 
                         γ̂β = fullmod.β[end]
@@ -2124,8 +2174,8 @@ function trajgwas(
                         taupval = coeftable(fullmod).cols[4][end]
                     end
                     println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
-                        "$(variant.varid)\t$snpeffectbeta\t$snpeffecttau\t$γ̂β\t$γ̂τ\t",
-                        "$betapval\t$taupval")
+                        "$(variant.varid)\t$(success ? snpeffectbeta : NaN)\t$(success ? snpeffecttau : NaN)\t$(success ? γ̂β : NaN)\t$(success ? γ̂τ : NaN)\t",
+                        "$(success ? betapval : -1.0)\t$(success ? taupval : -1.0)")
                 end
             end
         end

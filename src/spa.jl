@@ -36,11 +36,11 @@ function ecgf(vs::AbstractVector, zs::AbstractVector)
         K1[i] = M1 / M0
         K2[i] = M2 / M0 - (M1 / M0) ^ 2
     end
-    K0_int = LinearInterpolation(vs, convert(Vector{Float64}, K0);
+    K0_int = linear_interpolation(vs, convert(Vector{Float64}, K0);
         extrapolation_bc=Line())
-    K1_int = LinearInterpolation(vs, convert(Vector{Float64}, K1);
+    K1_int = linear_interpolation(vs, convert(Vector{Float64}, K1);
         extrapolation_bc=Line())
-    K2_int = LinearInterpolation(vs, convert(Vector{Float64}, K2);
+    K2_int = linear_interpolation(vs, convert(Vector{Float64}, K2);
         extrapolation_bc=Line())
     return K0_int, K1_int, K2_int
 end
