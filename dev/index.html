@@ -40,8 +40,8 @@ This program contains Ipopt, a library for large-scale nonlinear optimization.
          For more information visit https://github.com/coin-or/Ipopt
 ******************************************************************************
 
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.602286
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.040254
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.430740
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.039891
 
 
 
@@ -87,7 +87,7 @@ trajgwas(@formula(trait ~ sex), covfile, vcffile;
 trajgwas(@formula(trait ~ sex), covfile, vcffile;
     geneticfile = &quot;VCF&quot;, vcftype = :GT)</code></pre><p>The following is an example of snpset GWAS (every 50 snps). For more types of snpset analyses see documentation:</p><pre><code class="language-julia hljs">trajgwas(@formula(trait ~ sex), covfile, plkfile;
     analysistype = &quot;snpset&quot;, snpset = 50)</code></pre><p>The following is an example of GxE GWAS testing the interaction effect:</p><pre><code class="language-julia hljs">trajgwas(@formula(trait ~ sex), covfile, plkfile;
-    analysistype = &quot;gxe&quot;, e = :sex)</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/OpenMendel/TrajGWAS.jl/blob/142d7ee8e58953bb7623a07c101c023137de01b2/src/gwas.jl#LL23-L128">source</a></section></article><h3 id="Formula-for-null-model"><a class="docs-heading-anchor" href="#Formula-for-null-model">Formula for null model</a><a id="Formula-for-null-model-1"></a><a class="docs-heading-anchor-permalink" href="#Formula-for-null-model" title="Permalink"></a></h3><p>The first three arguments specify the null model without SNP effects. The fourth argument specifies the grouping variable (subject ID, cluster, etc.).</p><ul><li>The first term is the mean fixed effects formula e.g., <code>@formula(y ~ 1 + sex + onMeds)</code>.</li><li>The second argument is the random (location) effects – <code>@formula(y ~ 1)</code> specifies a random intercept, whereas <code>@formula(y ~ 1 + time)</code> would specify a random intercept and slope (time).</li><li>The third argument specifies the within-subject variance (WSV) formula <code>@formula(y ~ 1 + sex + onMeds)</code> models the intra-individual variability of <code>y</code> with an intercept, sex, and medication. Note: The WSV formula must have an intercept. </li><li>The fourth argument specifies the grouping variable of the longitudinal data. In the example data, the <code>id</code> variable specifies the grouping variable the repeated measures are collected on. </li></ul><h3 id="Input-files"><a class="docs-heading-anchor" href="#Input-files">Input files</a><a id="Input-files-1"></a><a class="docs-heading-anchor-permalink" href="#Input-files" title="Permalink"></a></h3><p><code>trajgwas</code> expects two input files: one for responses plus covariates (fifth argument) in long format, the other the genetic file(s) for dosages/genotypes (sixth argument).</p><h4 id="Covariate-and-trait-file"><a class="docs-heading-anchor" href="#Covariate-and-trait-file">Covariate and trait file</a><a id="Covariate-and-trait-file-1"></a><a class="docs-heading-anchor-permalink" href="#Covariate-and-trait-file" title="Permalink"></a></h4><p>Covariates and phenotype are provided in a csv file, e.g., <code>trajgwas_plinkex.csv</code>, which has one header line for variable names. In this example, variable <code>y</code> is continuous variable with repeated measures on individuals specified by <code>id</code>. We want to include variable <code>sex</code> and <code>onMeds</code> as covariates for GWAS.</p><pre><code class="language-julia hljs">run(`head $(datadir)trajgwas_plinkex.csv`);</code></pre><pre><code class="nohighlight hljs">sex,onMeds,snp1,snp2,snp3,snp4,y,id
+    analysistype = &quot;gxe&quot;, e = :sex)</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/OpenMendel/TrajGWAS.jl/blob/dec8d47595b39cbd7bb44d0a9d968c89339f93ed/src/gwas.jl#LL23-L128">source</a></section></article><h3 id="Formula-for-null-model"><a class="docs-heading-anchor" href="#Formula-for-null-model">Formula for null model</a><a id="Formula-for-null-model-1"></a><a class="docs-heading-anchor-permalink" href="#Formula-for-null-model" title="Permalink"></a></h3><p>The first three arguments specify the null model without SNP effects. The fourth argument specifies the grouping variable (subject ID, cluster, etc.).</p><ul><li>The first term is the mean fixed effects formula e.g., <code>@formula(y ~ 1 + sex + onMeds)</code>.</li><li>The second argument is the random (location) effects – <code>@formula(y ~ 1)</code> specifies a random intercept, whereas <code>@formula(y ~ 1 + time)</code> would specify a random intercept and slope (time).</li><li>The third argument specifies the within-subject variance (WSV) formula <code>@formula(y ~ 1 + sex + onMeds)</code> models the intra-individual variability of <code>y</code> with an intercept, sex, and medication. Note: The WSV formula must have an intercept. </li><li>The fourth argument specifies the grouping variable of the longitudinal data. In the example data, the <code>id</code> variable specifies the grouping variable the repeated measures are collected on. </li></ul><h3 id="Input-files"><a class="docs-heading-anchor" href="#Input-files">Input files</a><a id="Input-files-1"></a><a class="docs-heading-anchor-permalink" href="#Input-files" title="Permalink"></a></h3><p><code>trajgwas</code> expects two input files: one for responses plus covariates (fifth argument) in long format, the other the genetic file(s) for dosages/genotypes (sixth argument).</p><h4 id="Covariate-and-trait-file"><a class="docs-heading-anchor" href="#Covariate-and-trait-file">Covariate and trait file</a><a id="Covariate-and-trait-file-1"></a><a class="docs-heading-anchor-permalink" href="#Covariate-and-trait-file" title="Permalink"></a></h4><p>Covariates and phenotype are provided in a csv file, e.g., <code>trajgwas_plinkex.csv</code>, which has one header line for variable names. In this example, variable <code>y</code> is continuous variable with repeated measures on individuals specified by <code>id</code>. We want to include variable <code>sex</code> and <code>onMeds</code> as covariates for GWAS.</p><pre><code class="language-julia hljs">run(`head $(datadir)trajgwas_plinkex.csv`);</code></pre><pre><code class="nohighlight hljs">sex,onMeds,snp1,snp2,snp3,snp4,y,id
 0.0,1.0,0.0,1.0,2.0,0.0,12.26667411332518,A1
 0.0,0.0,0.0,1.0,2.0,0.0,10.268123812744903,A1
 0.0,0.0,0.0,1.0,2.0,0.0,12.165997408822557,A1
@@ -193,63 +193,61 @@ all(covdf[!, 2] .== plkfam[!, 2])</code></pre><pre><code class="nohighlight hljs
         datadir * &quot;hapmap3&quot;,
         pvalfile = pvalpath,
         nullfile = nullpath, 
-        usespa = false));</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.044445
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.042232
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043275
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.039053
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.044923
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.039103
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.044385
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.039346
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043468
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.039741
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043577
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.040535
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043344
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.039667
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043612
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.039483
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.045086
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.039441
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.044173
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.040099
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.044949
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.040097
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.044071
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.041057
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.044740
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.040537
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.044379
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.042448
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.045716
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.042732
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043419
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.040273
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.044672
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.040251
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.045095
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.041001
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043335
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.039804
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.044344
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.039873
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043518
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.039340
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.044033
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.039883
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043352
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.044078
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043401
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.039271
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.044151
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.039558
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043364
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.039549
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.044107
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.040570
-run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043527
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.040298
-  459.587 ms (1433770 allocations: 127.29 MiB)</code></pre><pre><code class="language-julia hljs"># clean up
+        usespa = false));</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043075
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.038360
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.042863
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.038349
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.046263
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.041134
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.044395
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.040617
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.046369
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.040637
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.047622
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.042389
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.048733
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.042363
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.057969
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.044363
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.046105
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.041188
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.046367
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.040956
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.045681
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.040467
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.045576
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.040579
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043948
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.039300
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.045900
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.038610
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.044771
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.040101
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.047024
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.039047
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043731
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.039392
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043643
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.038403
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.042840
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.038771
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.044481
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.040184
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.045463
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.042343
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.046744
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.041665
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043388
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.039299
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.046229
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.041051
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.046147
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.042524
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.047299
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.040978
+run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043347
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.050493
+  468.501 ms (1451269 allocations: 127.54 MiB)</code></pre><pre><code class="language-julia hljs"># clean up
 rm(&quot;trajgwas.null.txt&quot;, force=true)
 rm(&quot;trajgwas.pval.txt&quot;, force=true)</code></pre><h2 id="VCF-Formatted-Files"><a class="docs-heading-anchor" href="#VCF-Formatted-Files">VCF Formatted Files</a><a id="VCF-Formatted-Files-1"></a><a class="docs-heading-anchor-permalink" href="#VCF-Formatted-Files" title="Permalink"></a></h2><p>By default, TrajGWAS.jl will assume you are using PLINK files. It also supports VCF (and BGEN) Files. <code>vcf.gz</code> files are supported as well. To use vcf files in any of the analysis options detailed in this documentation, you simply need to add two keyword options to the <code>trajgwas</code> function:</p><ul><li><code>geneticformat</code>: Choices are &quot;VCF&quot; or &quot;PLINK&quot;. If you are using a VCF file, use <code>geneticformat = &quot;VCF&quot;</code>.</li><li><code>vcftype</code>: Choices are :GT (for genotypes) or :DS (for dosages). This tells TrajGWAS which type of data to extract from the VCF file.</li></ul><p>Using a VCF File does not output minor allele frequency or hardy weinberg equillibrium p-values for each SNP tested since they may be dosages. </p><p>The following shows how to run an analysis with a VCF file using the dosage information. </p><pre><code class="language-julia hljs">trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
@@ -259,8 +257,8 @@ rm(&quot;trajgwas.pval.txt&quot;, force=true)</code></pre><h2 id="VCF-Formatted-
         datadir * &quot;test_vcf&quot;,
         pvalfile = pvalpath,
         geneticformat = &quot;VCF&quot;,
-        vcftype = :DS)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.003459, ‖Δτ‖ = 0.421747, ‖ΔL‖ = 0.002492, status = LOCALLY_SOLVED, time(s) = 0.020257
-run = 2, ‖Δβ‖ = 0.001369, ‖Δτ‖ = 0.015998, ‖ΔL‖ = 0.003244, status = LOCALLY_SOLVED, time(s) = 0.017106
+        vcftype = :DS)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.003459, ‖Δτ‖ = 0.421747, ‖ΔL‖ = 0.002492, status = LOCALLY_SOLVED, time(s) = 0.020269
+run = 2, ‖Δβ‖ = 0.001369, ‖Δτ‖ = 0.015998, ‖ΔL‖ = 0.003244, status = LOCALLY_SOLVED, time(s) = 0.016583
 
 
 
@@ -308,8 +306,8 @@ Random effects covariance matrix Σγ:
         datadir * &quot;trajgwas_bgen_ex.csv&quot;, 
         datadir * &quot;example.8bits&quot;, 
         geneticformat = &quot;BGEN&quot;, 
-        pvalfile = pvalpath)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.096578, ‖Δτ‖ = 0.162563, ‖ΔL‖ = 0.007625, status = LOCALLY_SOLVED, time(s) = 0.055072
-run = 2, ‖Δβ‖ = 0.003173, ‖Δτ‖ = 0.005584, ‖ΔL‖ = 0.001468, status = LOCALLY_SOLVED, time(s) = 0.040037
+        pvalfile = pvalpath)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.096578, ‖Δτ‖ = 0.162563, ‖ΔL‖ = 0.007625, status = LOCALLY_SOLVED, time(s) = 0.046532
+run = 2, ‖Δβ‖ = 0.003173, ‖Δτ‖ = 0.005584, ‖ΔL‖ = 0.001468, status = LOCALLY_SOLVED, time(s) = 0.038319
 
 
 
@@ -360,9 +358,9 @@ snpinds = maf(SnpArray(&quot;../data/hapmap3.bed&quot;)) .≥ 0.05
         datadir * &quot;trajgwas_plinkex.csv&quot;,
         datadir * &quot;hapmap3&quot;,
         pvalfile = &quot;commonvariant.pval.txt&quot;,
-        snpinds = snpinds)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043349
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.039752
-  2.733297 seconds (8.07 M allocations: 492.816 MiB, 5.49% gc time, 65.58% compilation time)
+        snpinds = snpinds)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.049849
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.053331
+  3.115314 seconds (7.98 M allocations: 489.049 MiB, 3.92% gc time, 65.78% compilation time)
 
 
 
@@ -413,17 +411,17 @@ rm(&quot;commonvariant.pval.txt&quot;, force=true)</code></pre><p><code>covrowin
         datadir * &quot;hapmap3&quot;,
         pvalfile = &quot;wald.pval.txt&quot;,
         snpinds = 1:5,
-        test = :wald)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.051852
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.042647
-run = 1, ‖Δβ‖ = 0.033243, ‖Δτ‖ = 0.146511, ‖ΔL‖ = 0.005476, status = LOCALLY_SOLVED, time(s) = 0.052239
-run = 2, ‖Δβ‖ = 0.005774, ‖Δτ‖ = 0.042246, ‖ΔL‖ = 0.001784, status = LOCALLY_SOLVED, time(s) = 0.048045
-run = 1, ‖Δβ‖ = 0.013090, ‖Δτ‖ = 0.130781, ‖ΔL‖ = 0.005011, status = LOCALLY_SOLVED, time(s) = 0.057742
-run = 2, ‖Δβ‖ = 0.003913, ‖Δτ‖ = 0.037309, ‖ΔL‖ = 0.001516, status = LOCALLY_SOLVED, time(s) = 0.052004
-run = 1, ‖Δβ‖ = 0.022159, ‖Δτ‖ = 0.141135, ‖ΔL‖ = 0.005554, status = LOCALLY_SOLVED, time(s) = 0.048711
-run = 2, ‖Δβ‖ = 0.001482, ‖Δτ‖ = 0.021700, ‖ΔL‖ = 0.001435, status = LOCALLY_SOLVED, time(s) = 0.044404
-run = 1, ‖Δβ‖ = 0.026764, ‖Δτ‖ = 0.368620, ‖ΔL‖ = 0.000317, status = LOCALLY_SOLVED, time(s) = 0.047687
-run = 2, ‖Δβ‖ = 0.003023, ‖Δτ‖ = 0.030938, ‖ΔL‖ = 0.003568, status = LOCALLY_SOLVED, time(s) = 0.043295
-  4.293410 seconds (7.17 M allocations: 431.003 MiB, 2.57% gc time, 86.00% compilation time)
+        test = :wald)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.045384
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.043791
+run = 1, ‖Δβ‖ = 0.033243, ‖Δτ‖ = 0.146511, ‖ΔL‖ = 0.005476, status = LOCALLY_SOLVED, time(s) = 0.051594
+run = 2, ‖Δβ‖ = 0.005774, ‖Δτ‖ = 0.042246, ‖ΔL‖ = 0.001784, status = LOCALLY_SOLVED, time(s) = 0.046967
+run = 1, ‖Δβ‖ = 0.013090, ‖Δτ‖ = 0.130781, ‖ΔL‖ = 0.005011, status = LOCALLY_SOLVED, time(s) = 0.056558
+run = 2, ‖Δβ‖ = 0.003913, ‖Δτ‖ = 0.037309, ‖ΔL‖ = 0.001516, status = LOCALLY_SOLVED, time(s) = 0.051369
+run = 1, ‖Δβ‖ = 0.022159, ‖Δτ‖ = 0.141135, ‖ΔL‖ = 0.005554, status = LOCALLY_SOLVED, time(s) = 0.048028
+run = 2, ‖Δβ‖ = 0.001482, ‖Δτ‖ = 0.021700, ‖ΔL‖ = 0.001435, status = LOCALLY_SOLVED, time(s) = 0.043137
+run = 1, ‖Δβ‖ = 0.026764, ‖Δτ‖ = 0.368620, ‖ΔL‖ = 0.000317, status = LOCALLY_SOLVED, time(s) = 0.047566
+run = 2, ‖Δβ‖ = 0.003023, ‖Δτ‖ = 0.030938, ‖ΔL‖ = 0.003568, status = LOCALLY_SOLVED, time(s) = 0.042606
+  7.188892 seconds (12.73 M allocations: 777.569 MiB, 3.41% gc time, 91.29% compilation time)
 
 
 
@@ -459,7 +457,62 @@ Random effects covariance matrix Σγ:
 1	758311	rs12562034	0.07763975155279501	0.4098763332666681	-0.231072479332816	0.3929844692486013	0.01340575997086949	0.9216488777690096
 1	967643	rs2710875	0.32407407407407407	4.076249100705747e-7	0.6406954913590558	8.824209286611495e-7	-0.34763283794106525	1.0836367479719384e-11
 1	1168108	rs11260566	0.19158878504672894	0.1285682279446898	0.6188250819875118	0.0002537468407208455	-0.14748437551458396	0.0502802758129169
-1	1375074	rs1312568	0.441358024691358	2.5376019650614977e-19	-0.4560323801786057	0.00016592110001810087	0.4964521486169327	1.177346561221082e-36</code></pre><pre><code class="language-julia hljs"># clean up
+1	1375074	rs1312568	0.441358024691358	2.5376019650614977e-19	-0.4560323801786057	0.00016592110001810087	0.4964521486169327	1.177346561221082e-36</code></pre><p>One may disable within-sample variability modeling by putting a keyword argument <code>disable_wsvar=true</code>.  </p><pre><code class="language-julia hljs">@time trajgwas(@formula(y ~ 1 + sex + onMeds),
+        @formula(y ~ 1),
+        @formula(y ~ 1 + sex + onMeds),
+        :id,
+        datadir * &quot;trajgwas_plinkex.csv&quot;,
+        datadir * &quot;hapmap3&quot;,
+        pvalfile = &quot;wald.pval.txt&quot;,
+        snpinds = 1:5,
+        test = :wald,
+disable_wsvar = true)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043700
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.038386
+run = 1, ‖Δβ‖ = 0.034186, ‖Δτ‖ = 0.147419, ‖ΔL‖ = 0.005538, status = LOCALLY_SOLVED, time(s) = 0.043628
+run = 2, ‖Δβ‖ = 0.006293, ‖Δτ‖ = 0.021529, ‖ΔL‖ = 0.001733, status = LOCALLY_SOLVED, time(s) = 0.038884
+run = 1, ‖Δβ‖ = 0.007322, ‖Δτ‖ = 0.107654, ‖ΔL‖ = 0.004949, status = LOCALLY_SOLVED, time(s) = 0.043276
+run = 2, ‖Δβ‖ = 0.001662, ‖Δτ‖ = 0.013700, ‖ΔL‖ = 0.001501, status = LOCALLY_SOLVED, time(s) = 0.038970
+run = 1, ‖Δβ‖ = 0.021644, ‖Δτ‖ = 0.134147, ‖ΔL‖ = 0.005351, status = LOCALLY_SOLVED, time(s) = 0.043053
+run = 2, ‖Δβ‖ = 0.001608, ‖Δτ‖ = 0.019473, ‖ΔL‖ = 0.001570, status = LOCALLY_SOLVED, time(s) = 0.050367
+run = 1, ‖Δβ‖ = 0.017117, ‖Δτ‖ = 0.154749, ‖ΔL‖ = 0.005408, status = LOCALLY_SOLVED, time(s) = 0.047992
+run = 2, ‖Δβ‖ = 0.000453, ‖Δτ‖ = 0.023558, ‖ΔL‖ = 0.001218, status = LOCALLY_SOLVED, time(s) = 0.042605
+  4.148354 seconds (9.69 M allocations: 605.898 MiB, 4.13% gc time, 86.93% compilation time)
+
+
+
+
+
+
+Within-subject variance estimation by robust regression (WiSER)
+
+Mean Formula:
+y ~ 1 + sex + onMeds
+Random Effects Formula:
+y ~ 1
+Within-Subject Variance Formula:
+y ~ 1 + sex + onMeds
+
+Number of individuals/clusters: 324
+Total observations: 3240
+
+Fixed-effects parameters:
+────────────────────────────────────────────────────────
+                  Estimate  Std. Error       Z  Pr(&gt;|Z|)
+────────────────────────────────────────────────────────
+β1: (Intercept)  13.2282     0.146459    90.32    &lt;1e-99
+β2: sex          -3.29295    0.2101     -15.67    &lt;1e-54
+β3: onMeds        0.459585   0.0596002    7.71    &lt;1e-13
+τ1: (Intercept)   0.792508   0.0850728    9.32    &lt;1e-19
+τ2: sex          -0.2865     0.0970732   -2.95    0.0032
+τ3: onMeds        0.422303   0.063825     6.62    &lt;1e-10
+────────────────────────────────────────────────────────
+Random effects covariance matrix Σγ:
+ &quot;γ1: (Intercept)&quot;  3.32057</code></pre><pre><code class="language-julia hljs">run(`head wald.pval.txt`);</code></pre><pre><code class="nohighlight hljs">chr	pos	snpid	maf	hwepval	betaeffect	betapval
+1	554484	rs10458597	0.0	1.0	0.0	1.0
+1	758311	rs12562034	0.07763975155279501	0.4098763332666681	-0.23114605301396765	0.3929413858489548
+1	967643	rs2710875	0.32407407407407407	4.076249100705747e-7	0.6357974571413716	1.02417981478764e-6
+1	1168108	rs11260566	0.19158878504672894	0.1285682279446898	0.6188324923086607	0.0002473977473431405
+1	1375074	rs1312568	0.441358024691358	2.5376019650614977e-19	-0.45677365058013597	0.0001627044523523231</code></pre><pre><code class="language-julia hljs"># clean up
 rm(&quot;wald.pval.txt&quot;, force=true)
 rm(&quot;trajgwas.null.txt&quot;, force=true)</code></pre><h2 id="Score-test-for-screening,-Wald-for-effect-size-estimates"><a class="docs-heading-anchor" href="#Score-test-for-screening,-Wald-for-effect-size-estimates">Score test for screening, Wald for effect size estimates</a><a id="Score-test-for-screening,-Wald-for-effect-size-estimates-1"></a><a class="docs-heading-anchor-permalink" href="#Score-test-for-screening,-Wald-for-effect-size-estimates" title="Permalink"></a></h2><p>For large data sets, a practical solution is to perform the score test first across all SNPs, then re-do Wald for the most promising SNPs according to score test p-values in order to get estimated effect sizes.</p><p><strong>Step 1</strong>: Perform score test GWAS, results in <code>score.pval.txt</code>.</p><pre><code class="language-julia hljs">@time trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
@@ -467,9 +520,9 @@ rm(&quot;trajgwas.null.txt&quot;, force=true)</code></pre><h2 id="Score-test-for
         :id,
         datadir * &quot;trajgwas_plinkex.csv&quot;,
         datadir * &quot;hapmap3&quot;,
-        pvalfile = &quot;score.pval.txt&quot;)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.044256
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.041231
-  1.121874 seconds (4.00 M allocations: 259.048 MiB, 13.18% gc time)
+        pvalfile = &quot;score.pval.txt&quot;)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043247
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.038263
+  1.090987 seconds (4.02 M allocations: 259.292 MiB, 12.06% gc time)
 
 
 
@@ -530,29 +583,29 @@ scorepvals[tophits] # smallest 10 p-values</code></pre><pre><code class="nohighl
         datadir * &quot;hapmap3&quot;,
         pvalfile = &quot;wald.pval.txt&quot;,
         snpinds = tophits,
-        test = :wald)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043852
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.038897
-run = 1, ‖Δβ‖ = 0.026764, ‖Δτ‖ = 0.368620, ‖ΔL‖ = 0.000317, status = LOCALLY_SOLVED, time(s) = 0.051141
-run = 2, ‖Δβ‖ = 0.003023, ‖Δτ‖ = 0.030938, ‖ΔL‖ = 0.003568, status = LOCALLY_SOLVED, time(s) = 0.045226
-run = 1, ‖Δβ‖ = 0.039946, ‖Δτ‖ = 0.185049, ‖ΔL‖ = 0.005690, status = LOCALLY_SOLVED, time(s) = 0.047814
-run = 2, ‖Δβ‖ = 0.001640, ‖Δτ‖ = 0.029639, ‖ΔL‖ = 0.002028, status = LOCALLY_SOLVED, time(s) = 0.047543
-run = 1, ‖Δβ‖ = 0.040207, ‖Δτ‖ = 0.407863, ‖ΔL‖ = 0.001924, status = LOCALLY_SOLVED, time(s) = 0.049603
-run = 2, ‖Δβ‖ = 0.002632, ‖Δτ‖ = 0.039609, ‖ΔL‖ = 0.005131, status = LOCALLY_SOLVED, time(s) = 0.049566
-run = 1, ‖Δβ‖ = 0.052372, ‖Δτ‖ = 0.828946, ‖ΔL‖ = 0.001277, status = LOCALLY_SOLVED, time(s) = 0.061910
-run = 2, ‖Δβ‖ = 0.013694, ‖Δτ‖ = 0.185493, ‖ΔL‖ = 0.007118, status = LOCALLY_SOLVED, time(s) = 0.052748
-run = 1, ‖Δβ‖ = 0.032435, ‖Δτ‖ = 0.199659, ‖ΔL‖ = 0.004973, status = LOCALLY_SOLVED, time(s) = 0.049459
-run = 2, ‖Δβ‖ = 0.002847, ‖Δτ‖ = 0.032438, ‖ΔL‖ = 0.002941, status = LOCALLY_SOLVED, time(s) = 0.048901
-run = 1, ‖Δβ‖ = 0.009362, ‖Δτ‖ = 0.625969, ‖ΔL‖ = 0.002237, status = LOCALLY_SOLVED, time(s) = 0.061187
-run = 2, ‖Δβ‖ = 0.005893, ‖Δτ‖ = 0.176417, ‖ΔL‖ = 0.005017, status = LOCALLY_SOLVED, time(s) = 0.052250
-run = 1, ‖Δβ‖ = 0.012805, ‖Δτ‖ = 0.243313, ‖ΔL‖ = 0.006289, status = LOCALLY_SOLVED, time(s) = 0.051522
-run = 2, ‖Δβ‖ = 0.002636, ‖Δτ‖ = 0.044210, ‖ΔL‖ = 0.003312, status = LOCALLY_SOLVED, time(s) = 0.053374
-run = 1, ‖Δβ‖ = 0.014062, ‖Δτ‖ = 0.225841, ‖ΔL‖ = 0.003899, status = LOCALLY_SOLVED, time(s) = 0.054011
-run = 2, ‖Δβ‖ = 0.002112, ‖Δτ‖ = 0.030955, ‖ΔL‖ = 0.003860, status = LOCALLY_SOLVED, time(s) = 0.053688
-run = 1, ‖Δβ‖ = 0.026425, ‖Δτ‖ = 0.258805, ‖ΔL‖ = 0.004204, status = LOCALLY_SOLVED, time(s) = 0.051707
-run = 2, ‖Δβ‖ = 0.001090, ‖Δτ‖ = 0.051281, ‖ΔL‖ = 0.003822, status = LOCALLY_SOLVED, time(s) = 0.054497
-run = 1, ‖Δβ‖ = 0.035737, ‖Δτ‖ = 0.174702, ‖ΔL‖ = 0.001439, status = LOCALLY_SOLVED, time(s) = 0.053476
-run = 2, ‖Δβ‖ = 0.004776, ‖Δτ‖ = 0.019790, ‖ΔL‖ = 0.001867, status = LOCALLY_SOLVED, time(s) = 0.051735
-  3.154140 seconds (5.48 M allocations: 365.218 MiB, 3.34% gc time, 58.54% compilation time)
+        test = :wald)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.044230
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.041163
+run = 1, ‖Δβ‖ = 0.026764, ‖Δτ‖ = 0.368620, ‖ΔL‖ = 0.000317, status = LOCALLY_SOLVED, time(s) = 0.058660
+run = 2, ‖Δβ‖ = 0.003023, ‖Δτ‖ = 0.030938, ‖ΔL‖ = 0.003568, status = LOCALLY_SOLVED, time(s) = 0.047351
+run = 1, ‖Δβ‖ = 0.039946, ‖Δτ‖ = 0.185049, ‖ΔL‖ = 0.005690, status = LOCALLY_SOLVED, time(s) = 0.050856
+run = 2, ‖Δβ‖ = 0.001640, ‖Δτ‖ = 0.029639, ‖ΔL‖ = 0.002028, status = LOCALLY_SOLVED, time(s) = 0.046967
+run = 1, ‖Δβ‖ = 0.040207, ‖Δτ‖ = 0.407863, ‖ΔL‖ = 0.001924, status = LOCALLY_SOLVED, time(s) = 0.047495
+run = 2, ‖Δβ‖ = 0.002632, ‖Δτ‖ = 0.039609, ‖ΔL‖ = 0.005131, status = LOCALLY_SOLVED, time(s) = 0.047358
+run = 1, ‖Δβ‖ = 0.052372, ‖Δτ‖ = 0.828946, ‖ΔL‖ = 0.001277, status = LOCALLY_SOLVED, time(s) = 0.062142
+run = 2, ‖Δβ‖ = 0.013694, ‖Δτ‖ = 0.185493, ‖ΔL‖ = 0.007118, status = LOCALLY_SOLVED, time(s) = 0.057363
+run = 1, ‖Δβ‖ = 0.032435, ‖Δτ‖ = 0.199659, ‖ΔL‖ = 0.004973, status = LOCALLY_SOLVED, time(s) = 0.050019
+run = 2, ‖Δβ‖ = 0.002847, ‖Δτ‖ = 0.032438, ‖ΔL‖ = 0.002941, status = LOCALLY_SOLVED, time(s) = 0.074352
+run = 1, ‖Δβ‖ = 0.009362, ‖Δτ‖ = 0.625969, ‖ΔL‖ = 0.002237, status = LOCALLY_SOLVED, time(s) = 0.079848
+run = 2, ‖Δβ‖ = 0.005893, ‖Δτ‖ = 0.176417, ‖ΔL‖ = 0.005017, status = LOCALLY_SOLVED, time(s) = 0.057973
+run = 1, ‖Δβ‖ = 0.012805, ‖Δτ‖ = 0.243313, ‖ΔL‖ = 0.006289, status = LOCALLY_SOLVED, time(s) = 0.056301
+run = 2, ‖Δβ‖ = 0.002636, ‖Δτ‖ = 0.044210, ‖ΔL‖ = 0.003312, status = LOCALLY_SOLVED, time(s) = 0.060641
+run = 1, ‖Δβ‖ = 0.014062, ‖Δτ‖ = 0.225841, ‖ΔL‖ = 0.003899, status = LOCALLY_SOLVED, time(s) = 0.061649
+run = 2, ‖Δβ‖ = 0.002112, ‖Δτ‖ = 0.030955, ‖ΔL‖ = 0.003860, status = LOCALLY_SOLVED, time(s) = 0.053257
+run = 1, ‖Δβ‖ = 0.026425, ‖Δτ‖ = 0.258805, ‖ΔL‖ = 0.004204, status = LOCALLY_SOLVED, time(s) = 0.060798
+run = 2, ‖Δβ‖ = 0.001090, ‖Δτ‖ = 0.051281, ‖ΔL‖ = 0.003822, status = LOCALLY_SOLVED, time(s) = 0.059465
+run = 1, ‖Δβ‖ = 0.035737, ‖Δτ‖ = 0.174702, ‖ΔL‖ = 0.001439, status = LOCALLY_SOLVED, time(s) = 0.063468
+run = 2, ‖Δβ‖ = 0.004776, ‖Δτ‖ = 0.019790, ‖ΔL‖ = 0.001867, status = LOCALLY_SOLVED, time(s) = 0.064655
+  3.802703 seconds (7.04 M allocations: 458.754 MiB, 3.72% gc time, 60.82% compilation time)
 
 
 
@@ -599,15 +652,15 @@ Random effects covariance matrix Σγ:
 rm(&quot;trajgwas.null.txt&quot;, force=true)
 rm(&quot;trajgwas.pval.txt&quot;, force=true)
 rm(&quot;score.pval.txt&quot;, force=true)
-rm(&quot;wald.pval.txt&quot;, force=true)</code></pre><h2 id="GxE-or-other-interactions"><a class="docs-heading-anchor" href="#GxE-or-other-interactions">GxE or other interactions</a><a id="GxE-or-other-interactions-1"></a><a class="docs-heading-anchor-permalink" href="#GxE-or-other-interactions" title="Permalink"></a></h2><h3 id="Testing-jointly-G-GxE"><a class="docs-heading-anchor" href="#Testing-jointly-G-GxE">Testing jointly G + GxE</a><a id="Testing-jointly-G-GxE-1"></a><a class="docs-heading-anchor-permalink" href="#Testing-jointly-G-GxE" title="Permalink"></a></h3><p>In many applications, we want to test SNP effect and/or its interaction with other terms. <code>testformula</code> keyword specifies the test unit <strong>besides</strong> the covariates in <code>nullformula</code>. </p><p>In following example, keyword <code>testformula=@formula(trait ~ snp + snp &amp; sex)</code> instructs <code>trajgwas</code> to test joint effect of <code>snp</code> and <code>snp &amp; sex</code> interaction.</p><pre><code class="language-julia hljs">trajgwas(@formula(y ~ 1 + sex + onMeds),
+rm(&quot;wald.pval.txt&quot;, force=true)</code></pre><h2 id="GxE-or-other-interactions"><a class="docs-heading-anchor" href="#GxE-or-other-interactions">GxE or other interactions</a><a id="GxE-or-other-interactions-1"></a><a class="docs-heading-anchor-permalink" href="#GxE-or-other-interactions" title="Permalink"></a></h2><h3 id="Testing-jointly-G-GxE"><a class="docs-heading-anchor" href="#Testing-jointly-G-GxE">Testing jointly G + GxE</a><a id="Testing-jointly-G-GxE-1"></a><a class="docs-heading-anchor-permalink" href="#Testing-jointly-G-GxE" title="Permalink"></a></h3><p>In many applications, we want to test SNP effect and/or its interaction with other terms. <code>testformula</code> keyword specifies the test unit <strong>besides</strong> the covariates in <code>nullformula</code>. </p><p>In following example, keyword <code>testformula=@formula(y ~ snp + snp &amp; sex)</code> instructs <code>trajgwas</code> to test joint effect of <code>snp</code> and <code>snp &amp; sex</code> interaction.</p><pre><code class="language-julia hljs">trajgwas(@formula(y ~ 1 + sex + onMeds),
         @formula(y ~ 1),
         @formula(y ~ 1 + sex + onMeds),
         :id,
         datadir * &quot;trajgwas_plinkex.csv&quot;,
         datadir * &quot;hapmap3&quot;,
         pvalfile = &quot;GxE.pval.txt&quot;,
-        testformula=@formula(trait ~ snp + snp &amp; sex))</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.046905
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.043433
+        testformula=@formula(y ~ snp + snp &amp; sex))</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.054691
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.050742
 
 
 
@@ -657,16 +710,16 @@ rm(&quot;GxE.pval.txt&quot;,  force=true)</code></pre><h3 id="Testing-only-GxE-i
         analysistype = &quot;gxe&quot;,
         e = :sex, 
         snpinds=1:5)
-</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.045341
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.040165
-run = 1, ‖Δβ‖ = 0.480377, ‖Δτ‖ = 0.023510, ‖ΔL‖ = 0.001822, status = LOCALLY_SOLVED, time(s) = 0.045323
-run = 2, ‖Δβ‖ = 0.000323, ‖Δτ‖ = 0.002136, ‖ΔL‖ = 0.000025, status = LOCALLY_SOLVED, time(s) = 0.044147
-run = 1, ‖Δβ‖ = 1.059989, ‖Δτ‖ = 0.458239, ‖ΔL‖ = 0.063093, status = LOCALLY_SOLVED, time(s) = 0.060090
-run = 2, ‖Δβ‖ = 0.009118, ‖Δτ‖ = 0.105352, ‖ΔL‖ = 0.000056, status = LOCALLY_SOLVED, time(s) = 0.056690
-run = 1, ‖Δβ‖ = 1.144781, ‖Δτ‖ = 0.251459, ‖ΔL‖ = 0.034318, status = LOCALLY_SOLVED, time(s) = 0.047379
-run = 2, ‖Δβ‖ = 0.000830, ‖Δτ‖ = 0.025631, ‖ΔL‖ = 0.000042, status = LOCALLY_SOLVED, time(s) = 0.043087
-run = 1, ‖Δβ‖ = 0.683108, ‖Δτ‖ = 0.773919, ‖ΔL‖ = 0.042397, status = LOCALLY_SOLVED, time(s) = 0.044666
-run = 2, ‖Δβ‖ = 0.008159, ‖Δτ‖ = 0.069178, ‖ΔL‖ = 0.003574, status = LOCALLY_SOLVED, time(s) = 0.047489
+</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.052487
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.046791
+run = 1, ‖Δβ‖ = 0.480377, ‖Δτ‖ = 0.023510, ‖ΔL‖ = 0.001822, status = LOCALLY_SOLVED, time(s) = 0.045053
+run = 2, ‖Δβ‖ = 0.000323, ‖Δτ‖ = 0.002136, ‖ΔL‖ = 0.000025, status = LOCALLY_SOLVED, time(s) = 0.050111
+run = 1, ‖Δβ‖ = 1.059989, ‖Δτ‖ = 0.458239, ‖ΔL‖ = 0.063093, status = LOCALLY_SOLVED, time(s) = 0.064015
+run = 2, ‖Δβ‖ = 0.009118, ‖Δτ‖ = 0.105352, ‖ΔL‖ = 0.000056, status = LOCALLY_SOLVED, time(s) = 0.058007
+run = 1, ‖Δβ‖ = 1.144781, ‖Δτ‖ = 0.251459, ‖ΔL‖ = 0.034318, status = LOCALLY_SOLVED, time(s) = 0.049777
+run = 2, ‖Δβ‖ = 0.000830, ‖Δτ‖ = 0.025631, ‖ΔL‖ = 0.000042, status = LOCALLY_SOLVED, time(s) = 0.044902
+run = 1, ‖Δβ‖ = 0.683108, ‖Δτ‖ = 0.773919, ‖ΔL‖ = 0.042397, status = LOCALLY_SOLVED, time(s) = 0.045594
+run = 2, ‖Δβ‖ = 0.008159, ‖Δτ‖ = 0.069178, ‖ΔL‖ = 0.003574, status = LOCALLY_SOLVED, time(s) = 0.053428
 
 
 
@@ -714,8 +767,8 @@ rm(&quot;gxe_snp.pval.txt&quot;, force=true)</code></pre><h2 id="SNP-set-testing
         datadir * &quot;hapmap3&quot;,
         pvalfile = &quot;snpset.pval.txt&quot;, 
         analysistype = &quot;snpset&quot;,
-        snpset = 50:55)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043069
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.040745
+        snpset = 50:55)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.045957
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.043228
 
 
 
@@ -765,8 +818,8 @@ gene1 rs13376356</code></pre><pre><code class="language-julia hljs">trajgwas(@fo
         datadir * &quot;hapmap3&quot;,
         pvalfile = &quot;snpset.pval.txt&quot;, 
         analysistype = &quot;snpset&quot;,
-        snpset = datadir * &quot;/hapmap_snpsetfile.txt&quot;)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.044896
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.040974
+        snpset = datadir * &quot;/hapmap_snpsetfile.txt&quot;)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.063600
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.062349
 
 
 
@@ -814,8 +867,8 @@ rm(&quot;trajgwas.null.txt&quot;, force=true)</code></pre><p>In the following ex
         datadir * &quot;hapmap3&quot;,
         pvalfile = &quot;snpset.pval.txt&quot;, 
         analysistype = &quot;snpset&quot;,
-        snpset = 15)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043705
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.039385
+        snpset = 15)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.044625
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.038447
 
 
 
@@ -907,8 +960,8 @@ pretty_table(first(covdf, 11), tf = tf_markdown)</code></pre><pre><code class="n
         pvalfile = pvalpath,
         nullfile = nullpath,
         covrowinds = covrowmask,
-        geneticrowinds = geneticrowmask)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.043990
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.040579
+        geneticrowinds = geneticrowmask)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.049927
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.046026
 
 
 
@@ -974,8 +1027,8 @@ readdir(glob&quot;hapmap3.chr.*&quot;, datadir)</code></pre><pre><code class="no
         @formula(y ~ 1 + sex + onMeds),
         :id,
         datadir * &quot;trajgwas_plinkex.csv&quot;,
-        nothing)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.044113
-run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.038771
+        nothing)</code></pre><pre><code class="nohighlight hljs">run = 1, ‖Δβ‖ = 0.037090, ‖Δτ‖ = 0.136339, ‖ΔL‖ = 0.005441, status = LOCALLY_SOLVED, time(s) = 0.045024
+run = 2, ‖Δβ‖ = 0.000913, ‖Δτ‖ = 0.019810, ‖ΔL‖ = 0.001582, status = LOCALLY_SOLVED, time(s) = 0.047245
 
 
 
@@ -1160,7 +1213,7 @@ trajgwas(nm, bgenfilename * &quot;.bgen&quot;, count(sample_indicator);
     startidx = startidx,
     endidx = endidx,
     usespa=true)
-</code></pre><p>Note that an index file (<code>.bgen.bgi</code>) is required for this slicing of BGEN file. See <a href="https://enkre.net/cgi-bin/code/bgen/doc/trunk/doc/wiki/bgenix.md">this link</a> to see how to create one. </p><ul><li>Command-line arguments<ul><li>Argument 1: directory for the BGEN files. BGEN files (.bgen), BGEN index files (.bgen.bgi), and MFI files (.txt) should be included there.</li><li>Argument 2: chromosome</li><li>Argument 3: fitted null model (.jls)</li><li>Argument 4: path for the result p-value file</li><li>Argument 5: chunk index (1-based)</li><li>Argument 6: number of chunks</li></ul></li></ul><p>The code above runs the analysis on <code>ARGS[5]</code>-th slice out of <code>ARGS[6]</code> slices of chromosome <code>ARGS[2]</code>.</p><p>Then, the following script could be used for a cluster managed by Sun Grid Engine: (<code>sbp_diabetes.sh</code>)</p><pre><code class="language-bash hljs">#!/bin/bash
+</code></pre><ul><li>Command-line arguments<ul><li>Argument 1: directory for the BGEN files. BGEN files (.bgen), BGEN index files (.bgen.bgi), and MFI files (.txt) should be included there.</li><li>Argument 2: chromosome</li><li>Argument 3: fitted null model (.jls)</li><li>Argument 4: path for the result p-value file</li><li>Argument 5: chunk index (1-based)</li><li>Argument 6: number of chunks</li></ul></li></ul><p>The code above runs the analysis on <code>ARGS[5]</code>-th slice out of <code>ARGS[6]</code> slices of chromosome <code>ARGS[2]</code>.</p><ul><li>Note: an index file (<code>.bgen.bgi</code>) is required for this slicing of BGEN file. See <a href="https://enkre.net/cgi-bin/code/bgen/doc/trunk/doc/wiki/bgenix.md">this link</a> to see how to create one.</li></ul><p>Then, the following script could be used for a cluster managed by Sun Grid Engine: (<code>sbp_diabetes.sh</code>)</p><pre><code class="language-bash hljs">#!/bin/bash
 #$ -cwd
 #$ -o joblog.$JOB_ID.$TASK_ID
 #$ -j y
@@ -1183,4 +1236,4 @@ FITTED_NULL=/user/dir/null.model.jls
 PVALFILE=/user/dir/pvalfiles/sbp.test.diabetes.chr${CHR}.${CHUNKIDX}of${NCHUNKS}.txt
 
 module load julia
-time julia --project=${PROJECTDIR} ${PROJECTDIR}/scoretest_bp.jl ${BGENDIR} ${CHR} ${FITTED_NULL} ${PVALFILE} ${CHUNKIDX} ${NCHUNKS}</code></pre><p>and this could be submitted using the <code>qsub</code> command.</p><h2 id="Troubleshooting"><a class="docs-heading-anchor" href="#Troubleshooting">Troubleshooting</a><a id="Troubleshooting-1"></a><a class="docs-heading-anchor-permalink" href="#Troubleshooting" title="Permalink"></a></h2><p>If there are issues you&#39;re encountering with running TrajGWAS, the following are possible remedies.</p><ul><li>Null Model<ul><li>Issues with null model convergence may be solved by choosing alternate starting values for parameters, using a different solver, transforming variables, and increasing the number of runs (WiSER runs). These are detailed in the <a href="https://github.com/OpenMendel/WiSER.jl/blob/master/docs/src/model_fitting.md#tips-for-improving-estimation">WiSER documentation here</a>. <code>init = x -&gt; WiSER.init_ls!(x; gniters=0)</code> works fine in general. </li></ul></li><li>GWAS Results<ul><li>If you use the score test instead of the SPA-score test (SPA is default for single-SNP analyses), then there can be inflation in type I error and decreased power when (a) the sample size is small, (b) the number of repeated measures is low, or (c) the variants analyzed are rare with low minor allele frequencies. In these cases, the score test is not optimal and it is suggested to use the SPA version (<code>usespa=true</code>). SPA is only implemented for single-SNP analyses. These issues can occur in both Wald and score tests. </li></ul></li></ul><p>If you notice any problems with your output or results, <a href="https://github.com/OpenMendel/TrajGWAS.jl/issues">file an issue</a>. </p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.23 on <span class="colophon-date" title="Saturday 19 November 2022 03:33">Saturday 19 November 2022</span>. Using Julia version 1.6.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+time julia --project=${PROJECTDIR} ${PROJECTDIR}/scoretest_bp.jl ${BGENDIR} ${CHR} ${FITTED_NULL} ${PVALFILE} ${CHUNKIDX} ${NCHUNKS}</code></pre><p>and this could be submitted using the <code>qsub</code> command.</p><h2 id="Troubleshooting"><a class="docs-heading-anchor" href="#Troubleshooting">Troubleshooting</a><a id="Troubleshooting-1"></a><a class="docs-heading-anchor-permalink" href="#Troubleshooting" title="Permalink"></a></h2><p>If there are issues you&#39;re encountering with running TrajGWAS, the following are possible remedies.</p><ul><li>Null Model<ul><li>Issues with null model convergence may be solved by choosing alternate starting values for parameters, using a different solver, transforming variables, and increasing the number of runs (WiSER runs). These are detailed in the <a href="https://github.com/OpenMendel/WiSER.jl/blob/master/docs/src/model_fitting.md#tips-for-improving-estimation">WiSER documentation here</a>. <code>init = x -&gt; WiSER.init_ls!(x; gniters=0)</code> works fine in general. </li></ul></li><li>GWAS Results<ul><li>If you use the score test instead of the SPA-score test (SPA is default for single-SNP analyses), then there can be inflation in type I error and decreased power when (a) the sample size is small, (b) the number of repeated measures is low, or (c) the variants analyzed are rare with low minor allele frequencies. In these cases, the score test is not optimal and it is suggested to use the SPA version (<code>usespa=true</code>). SPA is only implemented for single-SNP analyses. These issues can occur in both Wald and score tests. </li></ul></li></ul><p>If you notice any problems with your output or results, <a href="https://github.com/OpenMendel/TrajGWAS.jl/issues">file an issue</a>. </p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.23 on <span class="colophon-date" title="Saturday 19 November 2022 04:16">Saturday 19 November 2022</span>. Using Julia version 1.6.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
