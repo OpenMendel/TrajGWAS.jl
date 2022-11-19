@@ -31,7 +31,7 @@ end
 # Positional arguments
 - `nullmeanformula::FormulaTerm`: mean formula (β) for the null model.
 - `reformula::FormulaTerm`: random effects formula (γ) for the model.
-- `nullmeanformula::FormulaTerm`: within-subject variance formula (τ) for the null model.
+- `nullwsvarformula::FormulaTerm`: within-subject variance formula (τ) for the null model.
 - `idvar::Union{String, Symbol}`: id variable for groupings.
 - `covfile::AbstractString`: covariate file (csv) with one header line. One column
     should be the longitudinal phenotype.
@@ -66,6 +66,7 @@ end
 - `covrowinds::Union{Nothing,AbstractVector{<:Integer}}`: sample indices for covariate file.
 - `testformula::FormulaTerm`: formula for test unit. Default is `@formula(trait ~ 0 + snp)`.
 - `test::Symbol`: `:score` (default) or `:wald`.
+- `disable_wsvar::Bool`: Disables test for within-sample variability for the Wald test. Default false. 
 - `link::GLM.Link`: `LogitLink()` (default), `ProbitLink()`, `CauchitLink()`,
     or `CloglogLink()`.
 - `snpmodel`: `ADDITIVE_MODEL` (default), `DOMINANT_MODEL`, or `RECESSIVE_MODEL`.
@@ -188,6 +189,7 @@ function trajgwas(
     vcftype::Union{Symbol, Nothing} = nothing,
     samplepath::Union{AbstractString, Nothing} = nothing,
     testformula::FormulaTerm = fittednullmodel.meanformula.lhs ~ Term(:snp),
+    testformula_wsvar::FormulaTerm = testformula,
     test::Symbol = :score,
     init = test == :score ? WiSER.init_ls! : x -> WiSER.init_ls!(x; gniters=0),
     pvalfile::Union{AbstractString, IOStream} = "trajgwas.pval.txt",
@@ -367,6 +369,7 @@ function trajgwas(
     bedn::Integer;           # number of samples in bed file
     analysistype::AbstractString = "singlesnp",
     testformula::FormulaTerm = fittednullmodel.meanformula.lhs ~ Term(:snp),
+    disable_wsvar::Bool = false,
     test::Symbol = :score,
     pvalfile::Union{AbstractString, IOStream} = "trajgwas.pval.txt",
     snpmodel::Union{Val{1}, Val{2}, Val{3}} = ADDITIVE_MODEL,
@@ -462,25 +465,30 @@ function trajgwas(
                 mean_rhs = typeof(fittednullmodel.meanformula.rhs) <: ConstantTerm ? (fittednullmodel.meanformula.rhs,) : fittednullmodel.meanformula.rhs
                 ws_rhs = typeof(fittednullmodel.wsvarformula.rhs) <: ConstantTerm ? (fittednullmodel.wsvarformula.rhs,) : fittednullmodel.wsvarformula.rhs
                 if snponly
-                    println(io, "chr\tpos\tsnpid\tmaf\thwepval\tbetaeffect\tbetapval\t",
-                    "taueffect\ttaupval")
+                    println(io, "chr\tpos\tsnpid\tmaf\thwepval\tbetaeffect\tbetapval",
+                    disable_wsvar ? "" : "\ttaueffect\ttaupval")
                     fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
                     sum(union(mean_rhs, [testformula.rhs])))
                     fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-                    sum(union(ws_rhs, [testformula.rhs])))
+                    sum(union(ws_rhs, disable_wsvar ? [] : [testformula.rhs])))
                 else
                     fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
                     sum(union(mean_rhs, testformula.rhs)))
                     fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-                    sum(union(ws_rhs, testformula.rhs)))
+                    sum(union(ws_rhs, disable_wsvar ? [] : testformula.rhs)))
                     print(io, "chr\tpos\tsnpid\tmaf\thwepval\t")
                     for j in 1:q
-                        print(io, "betaeffect$j\tbetapval$j\t")
-                    end
-                    for j in 1:q
-                        print(io, "taueffect$j\ttaupval$j")
-                        if j != q
+                        print(io, "betaeffect$j\tbetapval$j")
+                        if j != q || !disable_wsvar
                             print(io, "\t")
+                        end
+                    end
+                    if !disable_wsvar
+                        for j in 1:q
+                            print(io, "taueffect$j\ttaupval$j")
+                            if j != q
+                                print(io, "\t")
+                            end
                         end
                     end
                     println(io, "")
@@ -575,23 +583,32 @@ function trajgwas(
                                 end
                             end
                             copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
-                            copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
+                            if !disable_wsvar
+                                copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
+                            end
                             copyto!(pvalsβ, 1, coeftable(altmodel).cols[4], fittednullmodel.p + 1, q)
-                            copyto!(pvalsτ, 1, coeftable(altmodel).cols[4], 
-                                altmodel.p + fittednullmodel.l + 1, q)
+                            if !disable_wsvar
+                                copyto!(pvalsτ, 1, coeftable(altmodel).cols[4], 
+                                    altmodel.p + fittednullmodel.l + 1, q)
+                            end
                         end
                         if snponly
                             println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t$maf\t$hwepval\t",
-                            "$(success ? γ̂β[1] : NaN)\t$(success ? pvalsβ[1] : -1.0)\t$(success ? γ̂τ[1] : NaN)\t$(success ? pvalsτ[1] : -1.0)")
+                            "$(success ? γ̂β[1] : NaN)\t$(success ? pvalsβ[1] : -1.0)" * (disable_wsvar ? "" : "\t$(success ? γ̂τ[1] : NaN)\t$(success ? pvalsτ[1] : -1.0)"))
                         else
-                            print(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t$maf\t$hwepval\t")
+                            print(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t$maf\t$hwepval")
                             for j in 1:q
-                                print(io, "$(success ? γ̂β[j] : NaN)\t$(success ? pvalsβ[j] : -1.0)\t")
-                            end
-                            for j in 1:q
-                                print(io, "$(success ? γ̂τ[j] : NaN)\t$(success ? pvalsτ[j] : -1.0)")
-                                if j != q
+                                print(io, "$(success ? γ̂β[j] : NaN)\t$(success ? pvalsβ[j] : -1.0)")
+                                if j != q || !disable_wsvar
                                     print(io, "\t")
+                                end
+                            end
+                            if !disable_wsvar
+                                for j in 1:q
+                                    print(io, "$(success ? γ̂τ[j] : NaN)\t$(success ? pvalsτ[j] : -1.0)")
+                                    if j != q
+                                        print(io, "\t")
+                                    end
                                 end
                             end
                             println(io, "") #end line
@@ -942,6 +959,7 @@ function trajgwas(
     analysistype::AbstractString = "singlesnp",
     testformula::FormulaTerm = fittednullmodel.meanformula.lhs ~ Term(:snp),
     test::Symbol = :score,
+    disable_wsvar::Bool = false,
     pvalfile::Union{AbstractString, IOStream} = "trajgwas.pval.txt",
     snpmodel::Union{Val{1}, Val{2}, Val{3}} = ADDITIVE_MODEL,
     snpinds::Union{Nothing, AbstractVector{<:Integer}} = nothing,
@@ -1044,25 +1062,30 @@ function trajgwas(
                 mean_rhs = typeof(fittednullmodel.meanformula.rhs) <: ConstantTerm ? (fittednullmodel.meanformula.rhs,) : fittednullmodel.meanformula.rhs
                 ws_rhs = typeof(fittednullmodel.wsvarformula.rhs) <: ConstantTerm ? (fittednullmodel.wsvarformula.rhs,) : fittednullmodel.wsvarformula.rhs
                 if snponly
-                    println(io, "chr\tpos\tsnpid\tbetaeffect\tbetapval\t",
-                    "taueffect\ttaupval")
+                    println(io, "chr\tpos\tsnpid\tbetaeffect\tbetapval",
+                    disable_wsvar ? "" : "\ttaueffect\ttaupval")
                     fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
                     sum(union(mean_rhs, [testformula.rhs])))
                     fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-                    sum(union(ws_rhs, [testformula.rhs])))
+                    sum(union(ws_rhs, disable_wsvar ? [] : [testformula.rhs])))
                 else
                     fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
                     sum(union(mean_rhs, testformula.rhs)))
                     fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-                    sum(union(ws_rhs, testformula.rhs)))
+                    sum(union(ws_rhs, disable_wsvar ? [] : testformula.rhs)))
                     print(io, "chr\tpos\tsnpid\t")
                     for j in 1:q
-                        print(io, "betaeffect$j\tbetapval$j\t")
-                    end
-                    for j in 1:q
-                        print(io, "taueffect$j\ttaupval$j")
-                        if j != q
+                        print(io, "betaeffect$j\tbetapval$j")
+                        if j != q || !disable_wsvar
                             print(io, "\t")
+                        end
+                    end
+                    if !disable_wsvar
+                        for j in 1:q
+                            print(io, "taueffect$j\ttaupval$j")
+                            if j != q
+                                print(io, "\t")
+                            end
                         end
                     end
                     println(io, "")
@@ -1145,24 +1168,33 @@ function trajgwas(
                             end
                         end
                         copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
-                        copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
+                        if !disable_wsvar
+                            copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
+                        end
                         copyto!(pvalsβ, 1, coeftable(altmodel).cols[4], 
                             fittednullmodel.p + 1, q)
-                        copyto!(pvalsτ, 1, coeftable(altmodel).cols[4], 
-                        altmodel.p + fittednullmodel.l + 1, q)
+                        if !disable_wsvar
+                            copyto!(pvalsτ, 1, coeftable(altmodel).cols[4], 
+                            altmodel.p + fittednullmodel.l + 1, q)
+                        end
                     end
                     if snponly
                         println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
-                        "$(success ? γ̂β[1] : NaN)\t$(success ? pvalsβ[1] : -1.0)\t$(success ? γ̂τ[1] : NaN)\t$(success ? pvalsτ[1] : -1.0)")
+                        "$(success ? γ̂β[1] : NaN)\t$(success ? pvalsβ[1] : -1.0)" * (disable_wsvar ? "" : "\t$(success ? γ̂τ[1] : NaN)\t$(success ? pvalsτ[1] : -1.0)"))
                     else
                         print(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t")
                         for j in 1:q
-                            print(io, "$(success ? γ̂β[j] : NaN)\t$(success ? pvalsβ[j] : -1.0)\t")
-                        end
-                        for j in 1:q
-                            print(io, "$(success ? γ̂τ[j] : NaN)\t$(success ? pvalsτ[j] : -1.0)")
-                            if j != q
+                            print(io, "$(success ? γ̂β[j] : NaN)\t$(success ? pvalsβ[j] : -1.0)")
+                            if j != q || !disable_wsvar
                                 print(io, "\t")
+                            end
+                        end
+                        if !disable_wsvar
+                            for j in 1:q
+                                print(io, "$(success ? γ̂τ[j] : NaN)\t$(success ? pvalsτ[j] : -1.0)")
+                                if j != q
+                                    print(io, "\t")
+                                end
                             end
                         end
                         println(io, "") #end line
@@ -1527,6 +1559,7 @@ function trajgwas(
     analysistype::AbstractString = "singlesnp",
     testformula::FormulaTerm = fittednullmodel.meanformula.lhs ~ Term(:snp),
     test::Symbol = :score,
+    disable_wsvar::Bool = false,
     pvalfile::Union{AbstractString, IOStream} = "trajgwas.pval.txt",
     snpmodel::Union{Val{1}, Val{2}, Val{3}} = ADDITIVE_MODEL,
     snpinds::Union{Nothing, AbstractVector{<:Integer}} = nothing,
@@ -1663,25 +1696,30 @@ function trajgwas(
                 mean_rhs = typeof(fittednullmodel.meanformula.rhs) <: ConstantTerm ? (fittednullmodel.meanformula.rhs,) : fittednullmodel.meanformula.rhs
                 ws_rhs = typeof(fittednullmodel.wsvarformula.rhs) <: ConstantTerm ? (fittednullmodel.wsvarformula.rhs,) : fittednullmodel.wsvarformula.rhs
                 if snponly
-                    println(io, "chr\tpos\tsnpid\tvarid\tbetaeffect\tbetapval\t",
-                    "taueffect\ttaupval")
+                    println(io, "chr\tpos\tsnpid\tvarid\tbetaeffect\tbetapval",
+                    disable_wsvar ? "" : "\ttaueffect\ttaupval")
                     fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
                     sum(union(mean_rhs, [testformula.rhs])))
                     fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-                    sum(union(ws_rhs, [testformula.rhs])))
+                    sum(union(ws_rhs, disable_wsvar ? [] : [testformula.rhs])))
                 else
                     fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
                     sum(union(mean_rhs, testformula.rhs)))
                     fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
-                    sum(union(ws_rhs, testformula.rhs)))
+                    sum(union(ws_rhs, disable_wsvar ? [] : testformula.rhs)))
                     print(io, "chr\tpos\tsnpid\tvarid\t")
                     for j in 1:q
-                        print(io, "betaeffect$j\tbetapval$j\t")
-                    end
-                    for j in 1:q
-                        print(io, "taueffect$j\ttaupval$j")
-                        if j != q
+                        print(io, "betaeffect$j\tbetapval$j")
+                        if j != q || !disable_wsvar
                             print(io, "\t")
+                        end
+                    end
+                    if !disable_wsvar
+                        for j in 1:q
+                            print(io, "taueffect$j\ttaupval$j")
+                            if j != q
+                                print(io, "\t")
+                            end
                         end
                     end
                     println(io, "")
@@ -1813,25 +1851,34 @@ function trajgwas(
                             end
                         end
                         copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
-                        copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
+                        if !disable_wsvar
+                            copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
+                        end
                         copyto!(pvalsβ, 1, coeftable(altmodel).cols[4], 
                             fittednullmodel.p + 1, q)
-                        copyto!(pvalsτ, 1, coeftable(altmodel).cols[4], 
-                        altmodel.p + fittednullmodel.l + 1, q)
+                        if !disable_wsvar
+                            copyto!(pvalsτ, 1, coeftable(altmodel).cols[4], 
+                            altmodel.p + fittednullmodel.l + 1, q)
+                        end
                     end
                     if snponly
                         println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
-                        "$(variant.varid)\t$(success ? γ̂β[1] : NaN)\t$(success ? pvalsβ[1] : -1.0)\t$(success ? γ̂τ[1] : NaN)\t$(success ? pvalsτ[1] : -1.0)")
+                        "$(variant.varid)\t$(success ? γ̂β[1] : NaN)\t$(success ? pvalsβ[1] : -1.0)" * (disable_wsvar ? "" : "\t$(success ? γ̂τ[1] : NaN)\t$(success ? pvalsτ[1] : -1.0)"))
                     else
                         print(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
                         "$(variant.varid)\t")
                         for j in 1:q
-                            print(io, "$(success ? γ̂β[j] : NaN)\t$(success ? pvalsβ[j] : -1.0)\t")
-                        end
-                        for j in 1:q
-                            print(io, "$(success ? γ̂τ[j] : NaN)\t$(success ? pvalsτ[j] : -1.0)")
-                            if j != q
+                            print(io, "$(success ? γ̂β[j] : NaN)\t$(success ? pvalsβ[j] : -1.0)")
+                            if j != q || !disable_wsvar
                                 print(io, "\t")
+                            end
+                        end
+                        if !disable_wsvar
+                            for j in 1:q
+                                print(io, "$(success ? γ̂τ[j] : NaN)\t$(success ? pvalsτ[j] : -1.0)")
+                                if j != q
+                                    print(io, "\t")
+                                end
                             end
                         end
                         println(io, "") #end line
