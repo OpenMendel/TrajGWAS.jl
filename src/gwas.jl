@@ -596,7 +596,7 @@ function trajgwas(
                             println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t$maf\t$hwepval\t",
                             "$(success ? γ̂β[1] : NaN)\t$(success ? pvalsβ[1] : -1.0)" * (disable_wsvar ? "" : "\t$(success ? γ̂τ[1] : NaN)\t$(success ? pvalsτ[1] : -1.0)"))
                         else
-                            print(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t$maf\t$hwepval")
+                            print(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t$maf\t$hwepval\t")
                             for j in 1:q
                                 print(io, "$(success ? γ̂β[j] : NaN)\t$(success ? pvalsβ[j] : -1.0)")
                                 if j != q || !disable_wsvar
