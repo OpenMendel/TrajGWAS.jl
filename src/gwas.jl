@@ -443,16 +443,16 @@ function trajgwas(
             if test == :score
                 if snponly
                     if usespa && reportchisq
-                        println(io, "chr\tpos\tsnpid\tmaf\thwepval\tbetapval\tbetachisqpval\tbetadir\ttaupval\ttauchisqpval\ttaudir\tjointpval")
+                        println(io, "chr\tpos\tsnpid\tallele1\tallele2\tmaf\thwepval\tbetapval\tbetachisqpval\tbetadir\ttaupval\ttauchisqpval\ttaudir\tjointpval")
                     else
-                        println(io, "chr\tpos\tsnpid\tmaf\thwepval\tbetapval\tbetadir\ttaupval\ttaudir\tjointpval")
+                        println(io, "chr\tpos\tsnpid\tallele1\tallele2\tmaf\thwepval\tbetapval\tbetadir\ttaupval\ttaudir\tjointpval")
                     end
                     ts = WSVarScoreTestInvariant(fittednullmodel, 1, 1)
                     if usespa
                         Ks = ecgf(ts)
                     end
                 else
-                    println(io, "chr\tpos\tsnpid\tmaf\thwepval\tbetapval\ttaupval\tjointpval")
+                    println(io, "chr\tpos\tsnpid\tallele1\tallele2\tmaf\thwepval\tbetapval\ttaupval\tjointpval")
                     ts = WSVarScoreTest(fittednullmodel, q, q)
                     testvec = [Matrix{Float64}(undef, ni, q) for
                     ni in fittednullmodel.nis]
@@ -465,7 +465,7 @@ function trajgwas(
                 mean_rhs = typeof(fittednullmodel.meanformula.rhs) <: ConstantTerm ? (fittednullmodel.meanformula.rhs,) : fittednullmodel.meanformula.rhs
                 ws_rhs = typeof(fittednullmodel.wsvarformula.rhs) <: ConstantTerm ? (fittednullmodel.wsvarformula.rhs,) : fittednullmodel.wsvarformula.rhs
                 if snponly
-                    println(io, "chr\tpos\tsnpid\tmaf\thwepval\tbetaeffect\tbetapval",
+                    println(io, "chr\tpos\tsnpid\tallele1\tallele2\tmaf\thwepval\tbetaeffect\tbetapval",
                     disable_wsvar ? "" : "\ttaueffect\ttaupval")
                     fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
                     sum(union(mean_rhs, [testformula.rhs])))
@@ -476,7 +476,7 @@ function trajgwas(
                     sum(union(mean_rhs, testformula.rhs)))
                     fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
                     sum(union(ws_rhs, disable_wsvar ? [] : testformula.rhs)))
-                    print(io, "chr\tpos\tsnpid\tmaf\thwepval\t")
+                    print(io, "chr\tpos\tsnpid\tallele1\tallele2\tmaf\thwepval\t")
                     for j in 1:q
                         print(io, "betaeffect$j\tbetapval$j")
                         if j != q || !disable_wsvar
@@ -509,6 +509,7 @@ function trajgwas(
                             taudir = 0
                             if snponly
                                 println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
+                                "$(snpj[5])\t$(snpj[6])\t",
                                 "$maf\t$hwepval\t$betapval\t$betadir\t$taupval\t$taudir\t$(hmean(betapval, taupval))")
                             else
                                 println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
@@ -537,12 +538,15 @@ function trajgwas(
                                 end
                                 if usespa && reportchisq
                                     println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
+                                    "$(snpj[5])\t$(snpj[6])\t",
                                     "$maf\t$hwepval\t$betapval_\t$betapval\t$betadir_\t$taupval_\t$taupval\t$taudir_\t$(hmean(betapval, taupval))")
                                 elseif usespa
                                     println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
+                                    "$(snpj[5])\t$(snpj[6])\t",
                                     "$maf\t$hwepval\t$betapval_\t$betadir_\t$taupval_\t$taudir_\t$(hmean(betapval, taupval))")
                                 else
                                     println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
+                                    "$(snpj[5])\t$(snpj[6])\t",
                                     "$maf\t$hwepval\t$betapval\t$betadir\t$taupval\t$taudir\t$(hmean(betapval, taupval))")                                    
                                 end
                             else # snp + other terms
@@ -553,6 +557,7 @@ function trajgwas(
                                 loadtimevar!(testvec, Z, fittednullmodel)
                                 betapval, taupval, _, _ = test!(ts, testvec, testvec)
                                 println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
+                                "$(snpj[5])\t$(snpj[6])\t",
                                 "$maf\t$hwepval\t$betapval\t$taupval\t$(hmean(betapval, taupval))")
                             end
                         end
@@ -593,10 +598,13 @@ function trajgwas(
                             end
                         end
                         if snponly
-                            println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t$maf\t$hwepval\t",
+                            println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
+                            "$(snpj[5])\t$(snpj[6])\t$maf\t$hwepval\t",
                             "$(success ? γ̂β[1] : NaN)\t$(success ? pvalsβ[1] : -1.0)" * (disable_wsvar ? "" : "\t$(success ? γ̂τ[1] : NaN)\t$(success ? pvalsτ[1] : -1.0)"))
                         else
-                            print(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t$maf\t$hwepval\t")
+                            print(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
+                            "$(snpj[5])\t$(snpj[6])\t",
+                            "$maf\t$hwepval\t")
                             for j in 1:q
                                 print(io, "$(success ? γ̂β[j] : NaN)\t$(success ? pvalsβ[j] : -1.0)")
                                 if j != q || !disable_wsvar
@@ -841,7 +849,7 @@ function trajgwas(
             [term(:snp)], [InteractionTerm(term.((:snp, Symbol(e))))] )))
         SnpArrays.makestream(pvalfile, "w") do io
             if test == :score
-                println(io, "chr\tpos\tsnpid\tmaf\thwepval\tsnpeffectnullbeta\t",
+                println(io, "chr\tpos\tsnpid\tallele1\tallele2\tmaf\thwepval\tsnpeffectnullbeta\t",
                 "snpeffectnulltau\tbetapval\ttaupval")
                 # e may be factor - Z should match dimension
                 Z = similar(modelmatrix(FormulaTerm(term(:y), term(Symbol(e))), testdf))
@@ -854,7 +862,7 @@ function trajgwas(
                 γ̂τ = 0.0 # effect size for tau gxe effect
                 snpeffectbeta = 0.0
                 snpeffecttau = 0.0
-                println(io, "chr\tpos\tsnpid\tmaf\thwepval\tsnpeffectbeta\tsnpeffecttau\t",
+                println(io, "chr\tpos\tsnpid\tallele1\tallele2\tmaf\thwepval\tsnpeffectbeta\tsnpeffecttau\t",
                 "GxEeffectbeta\tGxEeffecttau\tbetapval\ttaupval")
             end
             SnpArrays.makestream(bimfile) do bimio
@@ -934,11 +942,13 @@ function trajgwas(
                         end
                     end
                     if test == :score
-                        println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t$maf\t",
+                        println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
+                        "$(snpj[5])\t$(snpj[6])\tmaf\t",
                         "$hwepval\t$(success ? snpeffectnullbeta : NaN)\t$(success ? snpeffectnulltau : NaN)\t",
                         "$(success ? betapval : -1.0)\t$(success ? taupval : -1.0)")
                     else
-                        println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t$maf\t",
+                        println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
+                        "$(snpj[5])\t$(snpj[6])\t$maf\t",
                         "$hwepval\t$(success ? snpeffectbeta : NaN)\t$(success ? snpeffecttau : NaN)\t$(success ? γ̂β : NaN)\t$(success ? γ̂τ : NaN)\t",
                         "$(success ? betapval : -1.0)\t$(success ? taupval : -1.0)")
                     end
@@ -1031,6 +1041,8 @@ function trajgwas(
         rec_chr = Array{Any, 1}(undef, 1)
         rec_pos = Array{Any, 1}(undef, 1)
         rec_ids = Array{Any, 1}(undef, 1)
+        rec_ref = Array{Any, 1}(undef, 1)
+        rec_alt = Array{Any, 1}(undef, 1)
         gholder = zeros(Union{Missing, Float64}, nsamples)
         snpholder = zeros(fittednullmodel.m)
 
@@ -1040,16 +1052,16 @@ function trajgwas(
             if test == :score
                 if snponly
                     if usespa && reportchisq
-                        println(io, "chr\tpos\tsnpid\tbetapval\tbetachisqpval\tbetadir\ttaupval\ttauchisqpval\ttaudir\tjointpval")
+                        println(io, "chr\tpos\tsnpid\tref\talt\tbetapval\tbetachisqpval\tbetadir\ttaupval\ttauchisqpval\ttaudir\tjointpval")
                     else
-                        println(io, "chr\tpos\tsnpid\tbetapval\tbetadir\ttaupval\ttaudir\tjointpval")
+                        println(io, "chr\tpos\tsnpid\tref\talt\tbetapval\tbetadir\ttaupval\ttaudir\tjointpval")
                     end
                     ts = WSVarScoreTestInvariant(fittednullmodel, 1, 1)
                     if usespa
                         Ks = ecgf(ts)
                     end
                 else
-                    println(io, "chr\tpos\tsnpid\tbetapval\ttaupval\tjointpval")
+                    println(io, "chr\tpos\tsnpid\tref\talt\tbetapval\ttaupval\tjointpval")
                     ts = WSVarScoreTest(fittednullmodel, q, q)
                     testvec = [Matrix{Float64}(undef, ni, q) for
                     ni in fittednullmodel.nis]
@@ -1062,7 +1074,7 @@ function trajgwas(
                 mean_rhs = typeof(fittednullmodel.meanformula.rhs) <: ConstantTerm ? (fittednullmodel.meanformula.rhs,) : fittednullmodel.meanformula.rhs
                 ws_rhs = typeof(fittednullmodel.wsvarformula.rhs) <: ConstantTerm ? (fittednullmodel.wsvarformula.rhs,) : fittednullmodel.wsvarformula.rhs
                 if snponly
-                    println(io, "chr\tpos\tsnpid\tbetaeffect\tbetapval",
+                    println(io, "chr\tpos\tsnpid\tref\talt\tbetaeffect\tbetapval",
                     disable_wsvar ? "" : "\ttaueffect\ttaupval")
                     fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
                     sum(union(mean_rhs, [testformula.rhs])))
@@ -1073,7 +1085,7 @@ function trajgwas(
                     sum(union(mean_rhs, testformula.rhs)))
                     fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
                     sum(union(ws_rhs, disable_wsvar ? [] : testformula.rhs)))
-                    print(io, "chr\tpos\tsnpid\t")
+                    print(io, "chr\tpos\tsnpid\tref\talt\t")
                     for j in 1:q
                         print(io, "betaeffect$j\tbetapval$j")
                         if j != q || !disable_wsvar
@@ -1094,10 +1106,12 @@ function trajgwas(
             for j in eachindex(snpmask)
                 if vcftype == :GT #genotype
                     copy_gt!(gholder, reader; model = snpmodel, impute = true,
-                    record_chr = rec_chr, record_pos = rec_pos, record_ids = rec_ids)
+                    record_chr = rec_chr, record_pos = rec_pos, record_ids = rec_ids,
+                    record_ref = rec_ref, record_alt = rec_alt)
                 else #dosage
                     copy_ds!(gholder, reader; model = snpmodel, impute = true,
-                    record_chr = rec_chr, record_pos = rec_pos, record_ids = rec_ids)
+                    record_chr = rec_chr, record_pos = rec_pos, record_ids = rec_ids,
+                    record_ref = rec_ref, record_alt = rec_alt)
                 end
                 if !snpmask[j] #skip snp, must have read marker still.
                     continue
@@ -1109,9 +1123,11 @@ function trajgwas(
                         betadir, taudir = 0, 0
                         if snponly
                             println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
+                            "$(rec_ref[1])\t$(rec_alt[1][1])\t",
                             "$betapval\t$betadir\t$taupval\t$taudir\t$(hmean(betapval, taupval))")
                         else
                             println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
+                            "$(rec_ref[1])\t$(rec_alt[1][1])\t",
                             "$betapval\t$taupval\t$(hmean(betapval, taupval))")
                         end              
                     elseif snponly
@@ -1128,12 +1144,15 @@ function trajgwas(
                         # "$betapval\t$betadir\t$taupval\t$taudir")
                         if usespa && reportchisq
                             println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
+                            "$(rec_ref[1])\t$(rec_alt[1][1])\t",
                             "$betapval_\t$betapval\t$betadir_\t$taupval_\t$taupval\t$taudir_\t$(hmean(betapval, taupval))")
                         elseif usespa
                             println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
+                            "$(rec_ref[1])\t$(rec_alt[1][1])\t",
                             "$betapval_\t$betadir_\t$taupval_\t$taudir_\t$(hmean(betapval, taupval))")
                         else
                             println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
+                            "$(rec_ref[1])\t$(rec_alt[1][1])\t",
                             "$betapval\t$betadir\t$taupval\t$taudir\t$(hmean(betapval, taupval))")                                    
                         end
                     else # snp + other terms
@@ -1142,6 +1161,7 @@ function trajgwas(
                         loadtimevar!(testvec, Z, fittednullmodel)
                         betapval, taupval, _, _ = test!(ts, testvec, testvec)
                         println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
+                        "$(rec_ref[1])\t$(rec_alt[1][1])\t",
                         "$betapval\t$taupval\t$(hmean(betapval, taupval))")
                     end
                 elseif test == :wald
@@ -1180,9 +1200,11 @@ function trajgwas(
                     end
                     if snponly
                         println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
+                        "$(rec_ref[1])\t$(rec_alt[1][1])\t",
                         "$(success ? γ̂β[1] : NaN)\t$(success ? pvalsβ[1] : -1.0)" * (disable_wsvar ? "" : "\t$(success ? γ̂τ[1] : NaN)\t$(success ? pvalsτ[1] : -1.0)"))
                     else
-                        print(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t")
+                        print(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
+                        "$(rec_ref[1])\t$(rec_alt[1][1])\t")
                         for j in 1:q
                             print(io, "$(success ? γ̂β[j] : NaN)\t$(success ? pvalsβ[j] : -1.0)")
                             if j != q || !disable_wsvar
@@ -1417,6 +1439,8 @@ function trajgwas(
         rec_chr = Array{Any, 1}(undef, 1)
         rec_pos = Array{Any, 1}(undef, 1)
         rec_ids = Array{Any, 1}(undef, 1)
+        rec_ref = Array{Any, 1}(undef, 1)
+        rec_alt = Array{Any, 1}(undef, 1)
         gholder = zeros(Union{Missing, Float64}, nsamples)
 
         snpeffectnullbeta = 0.0
@@ -1436,7 +1460,7 @@ function trajgwas(
 
         SnpArrays.makestream(pvalfile, "w") do io
             if test == :score
-                println(io, "chr\tpos\tsnpid\tsnpeffectnullbeta\t",
+                println(io, "chr\tpos\tsnpid\tref\talt\tsnpeffectnullbeta\t",
                 "snpeffectnulltau\tbetapval\ttaupval")
                 # e may be factor - Z should match dimension
                 Z = similar(modelmatrix(FormulaTerm(term(:y), term(Symbol(e))),
@@ -1450,16 +1474,18 @@ function trajgwas(
                 γ̂τ = 0.0 # effect size for tau gxe effect
                 snpeffectbeta = 0.0
                 snpeffecttau = 0.0
-                println(io, "chr\tpos\tsnpid\tsnpeffectbeta\tsnpeffecttau\t",
+                println(io, "chr\tpos\tsnpid\tref\talt\tsnpeffectbeta\tsnpeffecttau\t",
                 "GxEeffectbeta\tGxEeffecttau\tbetapval\ttaupval")
             end
             for j in eachindex(snpmask)
                 if vcftype == :GT #genotype
                     copy_gt!(gholder, reader; model = snpmodel, impute = true,
-                    record_chr = rec_chr, record_pos = rec_pos, record_ids = rec_ids)
+                    record_chr = rec_chr, record_pos = rec_pos, record_ids = rec_ids,
+                    record_ref = rec_ref, record_alt = rec_alt)
                 else #dosage
                     copy_ds!(gholder, reader; model = snpmodel, impute = true,
-                    record_chr = rec_chr, record_pos = rec_pos, record_ids = rec_ids)
+                    record_chr = rec_chr, record_pos = rec_pos, record_ids = rec_ids,
+                    record_ref = rec_ref, record_alt = rec_alt)
                 end
                 if !snpmask[j] #skip snp, must read marker still.
                     continue
@@ -1504,6 +1530,7 @@ function trajgwas(
                         betapval, taupval, _, _ = test!(ts, testvec, testvec)
                     end
                     println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
+                        "$(rec_ref[1])\t$(rec_alt[1][1])\t",
                         "$(success ? snpeffectnullbeta : NaN)\t$(success ? snpeffectnulltau : NaN)\t",
                         "$(success ? betapval : -1.0)\t$(success ? taupval : -1.0)")
                 elseif test == :wald
@@ -1540,6 +1567,7 @@ function trajgwas(
                         taupval = coeftable(fullmod).cols[4][end]
                     end
                     println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
+                        "$(rec_ref[1])\t$(rec_alt[1][1])\t",
                         "$(success ? snpeffectbeta : NaN)\t$(success ? snpeffecttau : NaN)\t$(success ? γ̂β : NaN)\t$(success ? γ̂τ : NaN)\t",
                         "$(success ? betapval : -1.0)\t$(success ? taupval : -1.0)")
                 end
@@ -1674,16 +1702,16 @@ function trajgwas(
             if test == :score
                 if snponly
                     if usespa && reportchisq
-                        println(io, "chr\tpos\tsnpid\tvarid\thwepval\tmaf\tinfoscore\tbetapval\tbetachisqpval\tbetadir\ttaupval\ttauchisqpval\ttaudir\tjointpval")
+                        println(io, "chr\tpos\tsnpid\tvarid\tallele1\tallele2\thwepval\tmaf\tinfoscore\tbetapval\tbetachisqpval\tbetadir\ttaupval\ttauchisqpval\ttaudir\tjointpval")
                     else
-                        println(io, "chr\tpos\tsnpid\tvarid\thwepval\tmaf\tinfoscore\tbetapval\tbetadir\ttaupval\ttaudir\tjointpval")
+                        println(io, "chr\tpos\tsnpid\tvarid\tallele1\tallele2\thwepval\tmaf\tinfoscore\tbetapval\tbetadir\ttaupval\ttaudir\tjointpval")
                     end
                     ts = WSVarScoreTestInvariant(fittednullmodel, 1, 1)
                     if usespa
                         Ks = ecgf(ts)
                     end
                 else
-                    println(io, "chr\tpos\tsnpid\tvarid\thwepval\tmaf\tinfoscore\tbetapval\ttaupval\tjointpval")
+                    println(io, "chr\tpos\tsnpid\tvarid\tallele1\tallele2\thwepval\tmaf\tinfoscore\tbetapval\ttaupval\tjointpval")
                     ts = WSVarScoreTest(fittednullmodel, q, q)
                     testvec = [Matrix{Float64}(undef, ni, q) for
                     ni in fittednullmodel.nis]
@@ -1707,7 +1735,7 @@ function trajgwas(
                     sum(union(mean_rhs, testformula.rhs)))
                     fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
                     sum(union(ws_rhs, disable_wsvar ? [] : testformula.rhs)))
-                    print(io, "chr\tpos\tsnpid\tvarid\t")
+                    print(io, "chr\tpos\tsnpid\tvarid\tallele1\tallele2\t")
                     for j in 1:q
                         print(io, "betaeffect$j\tbetapval$j")
                         if j != q || !disable_wsvar
@@ -1755,10 +1783,14 @@ function trajgwas(
                             end
                             
                             println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
-                            "$(variant.varid)\t$hwepval\t$maf\t$infoscore\t$betapval\t$betadir\t$taupval\t$taudir\t$(hmean(betapval, taupval))")
+                            "$(variant.varid)\t",
+                            "$(variant.alleles[1])\t$(variant.alleles[2])\t",
+                            "$hwepval\t$maf\t$infoscore\t$betapval\t$betadir\t$taupval\t$taudir\t$(hmean(betapval, taupval))")
                         else
                             println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
-                            "$(variant.varid)\t$betapval\t$taupval\t$(hmean(betapval, taupval))")
+                            "$(variant.varid)\t",
+                            "$(variant.alleles[1])\t$(variant.alleles[2])\t",
+                            "$betapval\t$taupval\t$(hmean(betapval, taupval))")
                         end
                     elseif snponly
                         betapval, taupval, betadir, taudir = test!(ts, snpholder, snpholder)
@@ -1810,13 +1842,19 @@ function trajgwas(
                         # "$(variant.varid)\t$hwepval\t$maf\t$infoscore\t$betapval\t$betadir\t$taupval\t$taudir")
                         if usespa && reportchisq
                             println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
-                            "$(variant.varid)\t$hwepval\t$maf\t$infoscore\t$betapval_\t$betapval\t$betadir_\t$taupval_\t$taupval\t$taudir_\t$(hmean(betapval, taupval))")
+                            "$(variant.varid)\t",
+                            "$(variant.alleles[1])\t$(variant.alleles[2])\t",
+                            "$hwepval\t$maf\t$infoscore\t$betapval_\t$betapval\t$betadir_\t$taupval_\t$taupval\t$taudir_\t$(hmean(betapval, taupval))")
                         elseif usespa
                             println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
-                            "$(variant.varid)\t$hwepval\t$maf\t$infoscore\t$betapval_\t$betadir_\t$taupval_\t$taudir_\t$(hmean(betapval, taupval))")
+                            "$(variant.varid)\t",
+                            "$(variant.alleles[1])\t$(variant.alleles[2])\t",
+                            "$hwepval\t$maf\t$infoscore\t$betapval_\t$betadir_\t$taupval_\t$taudir_\t$(hmean(betapval, taupval))")
                         else
                             println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
-                            "$(variant.varid)\t$hwepval\t$maf\t$infoscore\t$betapval\t$betadir\t$taupval\t$taudir\t$(hmean(betapval, taupval))")                                    
+                            "$(variant.varid)\t",
+                            "$(variant.alleles[1])\t$(variant.alleles[2])\t",
+                            "$hwepval\t$maf\t$infoscore\t$betapval\t$betadir\t$taupval\t$taudir\t$(hmean(betapval, taupval))")                                    
                         end
                     else # snp + other terms
                         snptodf!(testdf[!, :snp], snpholder, fittednullmodel)
@@ -1824,7 +1862,9 @@ function trajgwas(
                         loadtimevar!(testvec, Z, fittednullmodel)
                         betapval, taupval, _, _ = test!(ts, testvec, testvec)
                         println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
-                        "$(variant.varid)\t$betapval\t$taupval\t$(hmean(betapval, taupval))")
+                        "$(variant.varid)\t",
+                        "$(variant.alleles[1])\t$(variant.alleles[2])\t",
+                        "$betapval\t$taupval\t$(hmean(betapval, taupval))")
                     end
 
                 elseif test == :wald
@@ -1863,10 +1903,13 @@ function trajgwas(
                     end
                     if snponly
                         println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
-                        "$(variant.varid)\t$(success ? γ̂β[1] : NaN)\t$(success ? pvalsβ[1] : -1.0)" * (disable_wsvar ? "" : "\t$(success ? γ̂τ[1] : NaN)\t$(success ? pvalsτ[1] : -1.0)"))
+                        "$(variant.varid)\t",
+                        "$(variant.alleles[1])\t$(variant.alleles[2])\t",
+                        "$(success ? γ̂β[1] : NaN)\t$(success ? pvalsβ[1] : -1.0)" * (disable_wsvar ? "" : "\t$(success ? γ̂τ[1] : NaN)\t$(success ? pvalsτ[1] : -1.0)"))
                     else
                         print(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
-                        "$(variant.varid)\t")
+                        "$(variant.varid)\t",
+                        "$(variant.alleles[1])\t$(variant.alleles[2])\t")
                         for j in 1:q
                             print(io, "$(success ? γ̂β[j] : NaN)\t$(success ? pvalsβ[j] : -1.0)")
                             if j != q || !disable_wsvar
@@ -2120,7 +2163,7 @@ function trajgwas(
 
         SnpArrays.makestream(pvalfile, "w") do io
             if test == :score
-                println(io, "chr\tpos\tsnpid\tvarid\tsnpeffectnullbeta\t",
+                println(io, "chr\tpos\tsnpid\tvarid\tallele1\tallele2\tsnpeffectnullbeta\t",
                 "snpeffectnulltau\tbetapval\ttaupval")
                 # e may be factor - Z should match dimension
                 Z = similar(modelmatrix(FormulaTerm(term(:y), term(Symbol(e))),
@@ -2134,7 +2177,7 @@ function trajgwas(
                 γ̂τ = 0.0 # effect size for tau gxe effect
                 snpeffectbeta = 0.0
                 snpeffecttau = 0.0
-                println(io, "chr\tpos\tsnpid\tvarid\tsnpeffectbeta\tsnpeffecttau\t",
+                println(io, "chr\tpos\tsnpid\tvarid\tallele1\tallele2\tsnpeffectbeta\tsnpeffecttau\t",
                 "GxEeffectbeta\tGxEeffecttau\tbetapval\ttaupval")
             end
             for (variant) in bgen_iterator_filter
@@ -2184,7 +2227,7 @@ function trajgwas(
                         betapval, taupval, _, _ = test!(ts, testvec, testvec)
                     end
                     println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
-                        "$(variant.varid)\t$(success ? snpeffectnullbeta : NaN)\t$(success ? snpeffectnulltau : NaN)\t",
+                        "$(variant.varid)\t$(variant.alleles[1])\t$(variant.alleles[2])\t$(success ? snpeffectnullbeta : NaN)\t$(success ? snpeffectnulltau : NaN)\t",
                         "$(success ? betapval : -1.0)\t$(success ? taupval : -1.0)")
                 elseif test == :wald
                     success = true
@@ -2221,7 +2264,7 @@ function trajgwas(
                         taupval = coeftable(fullmod).cols[4][end]
                     end
                     println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
-                        "$(variant.varid)\t$(success ? snpeffectbeta : NaN)\t$(success ? snpeffecttau : NaN)\t$(success ? γ̂β : NaN)\t$(success ? γ̂τ : NaN)\t",
+                        "$(variant.varid)\t$(variant.alleles[1])\t$(variant.alleles[2])\t$(success ? snpeffectbeta : NaN)\t$(success ? snpeffecttau : NaN)\t$(success ? γ̂β : NaN)\t$(success ? γ̂τ : NaN)\t",
                         "$(success ? betapval : -1.0)\t$(success ? taupval : -1.0)")
                 end
             end
