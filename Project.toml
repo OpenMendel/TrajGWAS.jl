@@ -1,7 +1,7 @@
 name = "TrajGWAS"
 uuid = "9514c204-b736-47c9-8157-11c3e9e5ab30"
 authors = ["Seyoon Ko <kos@ucla.edu>, Chris German <germc3@ucla.edu>, and contributors"]
-version = "0.3.0"
+version = "0.4.0"
 
 [deps]
 BGEN = "6db4b851-9beb-4b83-9d64-eb1cfb37721d"
