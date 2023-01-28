@@ -460,13 +460,15 @@ function trajgwas(
             else # wald
                 γ̂β = Vector{Float64}(undef, q) # effect size for columns being tested
                 pvalsβ = Vector{Float64}(undef, q) # effect size for columns being tested
+                stderrβ = Vector{Float64}(undef, q)
                 γ̂τ = Vector{Float64}(undef, q) # effect size for columns being tested
                 pvalsτ = Vector{Float64}(undef, q) # effect size for columns being tested
+                stderrτ = Vector{Float64}(undef, q)    
                 mean_rhs = typeof(fittednullmodel.meanformula.rhs) <: ConstantTerm ? (fittednullmodel.meanformula.rhs,) : fittednullmodel.meanformula.rhs
                 ws_rhs = typeof(fittednullmodel.wsvarformula.rhs) <: ConstantTerm ? (fittednullmodel.wsvarformula.rhs,) : fittednullmodel.wsvarformula.rhs
                 if snponly
-                    println(io, "chr\tpos\tsnpid\tallele1\tallele2\tmaf\thwepval\tbetaeffect\tbetapval",
-                    disable_wsvar ? "" : "\ttaueffect\ttaupval")
+                    println(io, "chr\tpos\tsnpid\tallele1\tallele2\tmaf\thwepval\tbetaeffect\tbetastderr\tbetapval",
+                    disable_wsvar ? "" : "\ttaueffect\ttaustderr\ttaupval")
                     fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
                     sum(union(mean_rhs, [testformula.rhs])))
                     fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
@@ -478,14 +480,14 @@ function trajgwas(
                     sum(union(ws_rhs, disable_wsvar ? [] : testformula.rhs)))
                     print(io, "chr\tpos\tsnpid\tallele1\tallele2\tmaf\thwepval\t")
                     for j in 1:q
-                        print(io, "betaeffect$j\tbetapval$j")
+                        print(io, "betaeffect$j\tbetastderr$j\tbetapval$j")
                         if j != q || !disable_wsvar
                             print(io, "\t")
                         end
                     end
                     if !disable_wsvar
                         for j in 1:q
-                            print(io, "taueffect$j\ttaupval$j")
+                            print(io, "taueffect$j\ttaustderr$j\ttaupval$j")
                             if j != q
                                 print(io, "\t")
                             end
@@ -566,8 +568,10 @@ function trajgwas(
                         success = true
                         if maf == 0 # mono-allelic
                             fill!(γ̂β, 0)
+                            fill!(stderrβ, Inf)
                             fill!(pvalsβ, 1.0)
                             fill!(γ̂τ, 0)
+                            fill!(stderrτ, Inf)
                             fill!(pvalsτ, 1.0)
                         else
                             copyto!(snpholder, @view(genomat[bedrowinds, j]),
@@ -588,32 +592,36 @@ function trajgwas(
                                 end
                             end
                             copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
+                            ctable = coeftable(altmodel)
+                            copyto!(pvalsβ, 1, ctable.cols[4], fittednullmodel.p + 1, q)
+                            copyto!(stderrβ, 1, ctable.cols[2], fittednullmodel.p + 1, q)
                             if !disable_wsvar
                                 copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
-                            end
-                            copyto!(pvalsβ, 1, coeftable(altmodel).cols[4], fittednullmodel.p + 1, q)
-                            if !disable_wsvar
-                                copyto!(pvalsτ, 1, coeftable(altmodel).cols[4], 
+                                copyto!(pvalsτ, 1, ctable.cols[4], 
+                                    altmodel.p + fittednullmodel.l + 1, q)
+                                copyto!(stderrτ, 1, ctable.cols[2], 
                                     altmodel.p + fittednullmodel.l + 1, q)
                             end
                         end
                         if snponly
                             println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
                             "$(snpj[5])\t$(snpj[6])\t$maf\t$hwepval\t",
-                            "$(success ? γ̂β[1] : NaN)\t$(success ? pvalsβ[1] : -1.0)" * (disable_wsvar ? "" : "\t$(success ? γ̂τ[1] : NaN)\t$(success ? pvalsτ[1] : -1.0)"))
+                            "$(success ? γ̂β[1] : NaN)\t$(success ? stderrβ[1] : NaN)\t$(success ? pvalsβ[1] : -1.0)",
+                            (disable_wsvar ? "" : "\t$(success ? γ̂τ[1] : NaN)\t$(success ? stderrτ[1] : NaN)\t$(success ? pvalsτ[1] : -1.0)"),
+                            )
                         else
                             print(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
                             "$(snpj[5])\t$(snpj[6])\t",
                             "$maf\t$hwepval\t")
                             for j in 1:q
-                                print(io, "$(success ? γ̂β[j] : NaN)\t$(success ? pvalsβ[j] : -1.0)")
+                                print(io, "$(success ? γ̂β[j] : NaN)\t$(success ? stderrβ[j] : NaN)\t$(success ? pvalsβ[j] : -1.0)")
                                 if j != q || !disable_wsvar
                                     print(io, "\t")
                                 end
                             end
                             if !disable_wsvar
                                 for j in 1:q
-                                    print(io, "$(success ? γ̂τ[j] : NaN)\t$(success ? pvalsτ[j] : -1.0)")
+                                    print(io, "$(success ? γ̂τ[j] : NaN)\t$(success ? stderrτ[j] : NaN)\t$(success ? pvalsτ[j] : -1.0)")
                                     if j != q
                                         print(io, "\t")
                                     end
@@ -863,7 +871,7 @@ function trajgwas(
                 snpeffectbeta = 0.0
                 snpeffecttau = 0.0
                 println(io, "chr\tpos\tsnpid\tallele1\tallele2\tmaf\thwepval\tsnpeffectbeta\tsnpeffecttau\t",
-                "GxEeffectbeta\tGxEeffecttau\tbetapval\ttaupval")
+                "GxEeffectbeta\tGxEeffecttau\tbetastderr\ttaustderr\tbetapval\ttaupval")
             end
             SnpArrays.makestream(bimfile) do bimio
                 for j in eachindex(snpmask)
@@ -934,11 +942,14 @@ function trajgwas(
                                 end
                             end
                             γ̂β = fullmod.β[end]
-                            γ̂τ = fullmod.β[end]
+                            γ̂τ = fullmod.τ[end]
                             snpeffectbeta = fullmod.β[end-1]
                             snpeffecttau = fullmod.τ[end-1]
-                            betapval = coeftable(fullmod).cols[4][fullmod.p]
-                            taupval = coeftable(fullmod).cols[4][end]
+                            ctable = coeftable(fullmod)
+                            betapval = ctable.cols[4][fullmod.p]
+                            taupval = ctable.cols[4][end]
+                            betastderr = ctable.cols[2][fullmod.p]
+                            taustderr = ctable.cols[2][end]
                         end
                     end
                     if test == :score
@@ -950,6 +961,7 @@ function trajgwas(
                         println(io, "$(snpj[1])\t$(snpj[4])\t$(snpj[2])\t",
                         "$(snpj[5])\t$(snpj[6])\t$maf\t",
                         "$hwepval\t$(success ? snpeffectbeta : NaN)\t$(success ? snpeffecttau : NaN)\t$(success ? γ̂β : NaN)\t$(success ? γ̂τ : NaN)\t",
+                        "$(success ? betastderr : NaN)\t$(success ? taustderr : NaN)\t",
                         "$(success ? betapval : -1.0)\t$(success ? taupval : -1.0)")
                     end
                 end
@@ -1068,14 +1080,16 @@ function trajgwas(
                 end
             else # wald
                 γ̂β = Vector{Float64}(undef, q) # effect size for columns being tested
+                stderrβ = Vector{Float64}(undef, q)
                 pvalsβ = Vector{Float64}(undef, q) # effect size for columns being tested
                 γ̂τ = Vector{Float64}(undef, q) # effect size for columns being tested
+                stderrτ = Vector{Float64}(undef, q)
                 pvalsτ = Vector{Float64}(undef, q) # effect size for columns being tested
                 mean_rhs = typeof(fittednullmodel.meanformula.rhs) <: ConstantTerm ? (fittednullmodel.meanformula.rhs,) : fittednullmodel.meanformula.rhs
                 ws_rhs = typeof(fittednullmodel.wsvarformula.rhs) <: ConstantTerm ? (fittednullmodel.wsvarformula.rhs,) : fittednullmodel.wsvarformula.rhs
                 if snponly
-                    println(io, "chr\tpos\tsnpid\tref\talt\tbetaeffect\tbetapval",
-                    disable_wsvar ? "" : "\ttaueffect\ttaupval")
+                    println(io, "chr\tpos\tsnpid\tref\talt\tbetaeffect\tbetastderr\tbetapval",
+                    disable_wsvar ? "" : "\ttaueffect\ttaustderr\ttaupval")
                     fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
                     sum(union(mean_rhs, [testformula.rhs])))
                     fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
@@ -1087,14 +1101,14 @@ function trajgwas(
                     sum(union(ws_rhs, disable_wsvar ? [] : testformula.rhs)))
                     print(io, "chr\tpos\tsnpid\tref\talt\t")
                     for j in 1:q
-                        print(io, "betaeffect$j\tbetapval$j")
+                        print(io, "betaeffect$j\tbetastderr$j\tbetapval$j")
                         if j != q || !disable_wsvar
                             print(io, "\t")
                         end
                     end
                     if !disable_wsvar
                         for j in 1:q
-                            print(io, "taueffect$j\ttaupval$j")
+                            print(io, "taueffect$j\ttaustderr$j\ttaupval$j")
                             if j != q
                                 print(io, "\t")
                             end
@@ -1168,8 +1182,10 @@ function trajgwas(
                     success = true
                     if var(@view(gholder[vcfrowinds])) == 0
                         fill!(γ̂β, 0) 
+                        fill!(stderrβ, Inf)
                         fill!(pvalsβ, 1.)
                         fill!(γ̂τ, 0) 
+                        fill!(stderrτ, Inf)
                         fill!(pvalsτ, 1.)
                     else
                         snptodf!(testdf[!, :snp], @view(gholder[vcfrowinds]), fittednullmodel)
@@ -1187,33 +1203,35 @@ function trajgwas(
                                 success = false  
                             end
                         end
+                        ctable = coeftable(altmodel)
                         copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
-                        if !disable_wsvar
-                            copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
-                        end
-                        copyto!(pvalsβ, 1, coeftable(altmodel).cols[4], 
+                        copyto!(stderrβ, 1, ctable.cols[2], fittednullmodel.p + 1, q)
+                        copyto!(pvalsβ, 1, ctable.cols[4], 
                             fittednullmodel.p + 1, q)
                         if !disable_wsvar
-                            copyto!(pvalsτ, 1, coeftable(altmodel).cols[4], 
-                            altmodel.p + fittednullmodel.l + 1, q)
+                            copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
+                            copyto!(stderrτ, 1, ctable.cols[1], 
+                                altmodel.p + fittednullmodel.l + 1, q)                            
+                            copyto!(pvalsτ, 1, ctable.cols[4], 
+                                altmodel.p + fittednullmodel.l + 1, q)
                         end
                     end
                     if snponly
                         println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
                         "$(rec_ref[1])\t$(rec_alt[1][1])\t",
-                        "$(success ? γ̂β[1] : NaN)\t$(success ? pvalsβ[1] : -1.0)" * (disable_wsvar ? "" : "\t$(success ? γ̂τ[1] : NaN)\t$(success ? pvalsτ[1] : -1.0)"))
+                        "$(success ? γ̂β[1] : NaN)\t$(success ? stderrβ[1] : NaN)\t$(success ? pvalsβ[1] : -1.0)" * (disable_wsvar ? "" : "\t$(success ? γ̂τ[1] : NaN)\t$(success ? stderτ[1] : NaN)\t$(success ? pvalsτ[1] : -1.0)"))
                     else
                         print(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
                         "$(rec_ref[1])\t$(rec_alt[1][1])\t")
                         for j in 1:q
-                            print(io, "$(success ? γ̂β[j] : NaN)\t$(success ? pvalsβ[j] : -1.0)")
+                            print(io, "$(success ? γ̂β[j] : NaN)\t$(success ? stderrβ[j] : NaN)\t$(success ? pvalsβ[j] : -1.0)")
                             if j != q || !disable_wsvar
                                 print(io, "\t")
                             end
                         end
                         if !disable_wsvar
                             for j in 1:q
-                                print(io, "$(success ? γ̂τ[j] : NaN)\t$(success ? pvalsτ[j] : -1.0)")
+                                print(io, "$(success ? γ̂τ[j] : NaN)\t$(success ? stderrτ[j] : NaN)\t$(success ? pvalsτ[j] : -1.0)")
                                 if j != q
                                     print(io, "\t")
                                 end
@@ -1475,7 +1493,7 @@ function trajgwas(
                 snpeffectbeta = 0.0
                 snpeffecttau = 0.0
                 println(io, "chr\tpos\tsnpid\tref\talt\tsnpeffectbeta\tsnpeffecttau\t",
-                "GxEeffectbeta\tGxEeffecttau\tbetapval\ttaupval")
+                "GxEeffectbeta\tGxEeffecttau\tbetastderr\ttaustderr\tbetapval\ttaupval")
             end
             for j in eachindex(snpmask)
                 if vcftype == :GT #genotype
@@ -1563,12 +1581,16 @@ function trajgwas(
                         γ̂τ = fullmod.β[end]
                         snpeffectbeta = fullmod.β[end-1]
                         snpeffecttau = fullmod.τ[end-1]
-                        betapval = coeftable(fullmod).cols[4][fullmod.p]
-                        taupval = coeftable(fullmod).cols[4][end]
+                        ctable = coeftable(fullmod)
+                        betastderr = ctable.cols[2][fullmod.p]
+                        taustderr = ctable.cols[2][end]
+                        betapval = ctable.cols[4][fullmod.p]
+                        taupval = ctable.cols[4][end]
                     end
                     println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
                         "$(rec_ref[1])\t$(rec_alt[1][1])\t",
                         "$(success ? snpeffectbeta : NaN)\t$(success ? snpeffecttau : NaN)\t$(success ? γ̂β : NaN)\t$(success ? γ̂τ : NaN)\t",
+                        "$(success ? betastderr : NaN)\t$(success ? taustderr : NaN)",                     
                         "$(success ? betapval : -1.0)\t$(success ? taupval : -1.0)")
                 end
             end
@@ -1718,14 +1740,16 @@ function trajgwas(
                 end
             else # wald
                 γ̂β = Vector{Float64}(undef, q) # effect size for columns being tested
+                stderrβ = Vector{Float64}(undef, q)
                 pvalsβ = Vector{Float64}(undef, q) # effect size for columns being tested
                 γ̂τ = Vector{Float64}(undef, q) # effect size for columns being tested
+                stderrτ = Vector{Float64}(undef, q)
                 pvalsτ = Vector{Float64}(undef, q) # effect size for columns being tested
                 mean_rhs = typeof(fittednullmodel.meanformula.rhs) <: ConstantTerm ? (fittednullmodel.meanformula.rhs,) : fittednullmodel.meanformula.rhs
                 ws_rhs = typeof(fittednullmodel.wsvarformula.rhs) <: ConstantTerm ? (fittednullmodel.wsvarformula.rhs,) : fittednullmodel.wsvarformula.rhs
                 if snponly
-                    println(io, "chr\tpos\tsnpid\tvarid\tbetaeffect\tbetapval",
-                    disable_wsvar ? "" : "\ttaueffect\ttaupval")
+                    println(io, "chr\tpos\tsnpid\tvarid\tbetaeffect\tbetastderr\tbetapval",
+                    disable_wsvar ? "" : "\ttaueffect\ttaustderr\ttaupval")
                     fullmeanformula = FormulaTerm(fittednullmodel.meanformula.lhs,
                     sum(union(mean_rhs, [testformula.rhs])))
                     fullwsvarformula = FormulaTerm(fittednullmodel.meanformula.lhs,
@@ -1737,14 +1761,14 @@ function trajgwas(
                     sum(union(ws_rhs, disable_wsvar ? [] : testformula.rhs)))
                     print(io, "chr\tpos\tsnpid\tvarid\tallele1\tallele2\t")
                     for j in 1:q
-                        print(io, "betaeffect$j\tbetapval$j")
+                        print(io, "betaeffect$j\tbetastderr$j\tbetapval$j")
                         if j != q || !disable_wsvar
                             print(io, "\t")
                         end
                     end
                     if !disable_wsvar
                         for j in 1:q
-                            print(io, "taueffect$j\ttaupval$j")
+                            print(io, "taueffect$j\ttaustderr$j\ttaupval$j")
                             if j != q
                                 print(io, "\t")
                             end
@@ -1871,8 +1895,10 @@ function trajgwas(
                     success = true
                     if var(snpholder) == 0
                         fill!(γ̂β, 0) 
+                        fill!(stderrβ, Inf)
                         fill!(pvalsβ, 1.)
                         fill!(γ̂τ, 0) 
+                        fill!(stderrτ, Inf)
                         fill!(pvalsτ, 1.)
                     else
                         snptodf!(testdf[!, :snp], snpholder, fittednullmodel)
@@ -1890,35 +1916,34 @@ function trajgwas(
                                 success = false
                             end
                         end
+                        ctable = coeftable(altmodel)
                         copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
+                        copyto!(stderrβ, 1, ctable.cols[2], fittednullmodel.p + 1, q)
+                        copyto!(pvalsβ, 1, ctable.cols[4], fittednullmodel.p + 1, q)
                         if !disable_wsvar
                             copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
-                        end
-                        copyto!(pvalsβ, 1, coeftable(altmodel).cols[4], 
-                            fittednullmodel.p + 1, q)
-                        if !disable_wsvar
-                            copyto!(pvalsτ, 1, coeftable(altmodel).cols[4], 
-                            altmodel.p + fittednullmodel.l + 1, q)
+                            copyto!(stderrτ, 1, ctable.cols[2], altmodel.p + fittednullmodel.l + 1, q)
+                            copyto!(pvalsτ, 1, ctable.cols[4], altmodel.p + fittednullmodel.l + 1, q)
                         end
                     end
                     if snponly
                         println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
                         "$(variant.varid)\t",
                         "$(variant.alleles[1])\t$(variant.alleles[2])\t",
-                        "$(success ? γ̂β[1] : NaN)\t$(success ? pvalsβ[1] : -1.0)" * (disable_wsvar ? "" : "\t$(success ? γ̂τ[1] : NaN)\t$(success ? pvalsτ[1] : -1.0)"))
+                        "$(success ? γ̂β[1] : NaN)\t$(success ? stderrβ[1] : NaN)\t$(success ? pvalsβ[1] : -1.0)" * (disable_wsvar ? "" : "\t$(success ? γ̂τ[1] : NaN)\t$(success ? stderrτ[1] : NaN)\t$(success ? pvalsτ[1] : -1.0)"))
                     else
                         print(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
                         "$(variant.varid)\t",
                         "$(variant.alleles[1])\t$(variant.alleles[2])\t")
                         for j in 1:q
-                            print(io, "$(success ? γ̂β[j] : NaN)\t$(success ? pvalsβ[j] : -1.0)")
+                            print(io, "$(success ? γ̂β[j] : NaN)\t$(success ? stderrβ[j] : NaN)\t$(success ? pvalsβ[j] : -1.0)")
                             if j != q || !disable_wsvar
                                 print(io, "\t")
                             end
                         end
                         if !disable_wsvar
                             for j in 1:q
-                                print(io, "$(success ? γ̂τ[j] : NaN)\t$(success ? pvalsτ[j] : -1.0)")
+                                print(io, "$(success ? γ̂τ[j] : NaN)\t$(success ? stderrτ[j] : NaN)\t$(success ? pvalsτ[j] : -1.0)")
                                 if j != q
                                     print(io, "\t")
                                 end
@@ -2178,7 +2203,7 @@ function trajgwas(
                 snpeffectbeta = 0.0
                 snpeffecttau = 0.0
                 println(io, "chr\tpos\tsnpid\tvarid\tallele1\tallele2\tsnpeffectbeta\tsnpeffecttau\t",
-                "GxEeffectbeta\tGxEeffecttau\tbetapval\ttaupval")
+                "GxEeffectbeta\tGxEeffecttau\tbetastderr\ttaustderr\tbetapval\ttaupval")
             end
             for (variant) in bgen_iterator_filter
                 # if !snpmask[j] #skip snp
@@ -2260,11 +2285,15 @@ function trajgwas(
                         γ̂τ = fullmod.β[end]
                         snpeffectbeta = fullmod.β[end-1]
                         snpeffecttau = fullmod.τ[end-1]
-                        betapval = coeftable(fullmod).cols[4][fullmod.p]
-                        taupval = coeftable(fullmod).cols[4][end]
+                        ctable = coeftable(fullmod)
+                        betastderr = ctable.cols[2][fullmod.p]
+                        taustderr = ctable.cols[2][end]
+                        betapval = ctable.cols[4][fullmod.p]
+                        taupval = ctable.cols[4][end]
                     end
                     println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
                         "$(variant.varid)\t$(variant.alleles[1])\t$(variant.alleles[2])\t$(success ? snpeffectbeta : NaN)\t$(success ? snpeffecttau : NaN)\t$(success ? γ̂β : NaN)\t$(success ? γ̂τ : NaN)\t",
+                        "$(success ? betastderr : NaN)\t$(success ? taustderr : NaN)",
                         "$(success ? betapval : -1.0)\t$(success ? taupval : -1.0)")
                 end
             end
