@@ -581,20 +581,25 @@ function trajgwas(
                                 fittednullmodel.reformula, fullwsvarformula,
                                 :id, testdf)
                             altmodel.obswts .= fittednullmodel.obswts
+                            local ctable
                             try
                                 WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs; throw_on_failure=true)
+                                copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
+                                ctable = coeftable(altmodel)
+                                copyto!(pvalsβ, 1, ctable.cols[4], fittednullmodel.p + 1, q)
+                                copyto!(stderrβ, 1, ctable.cols[2], fittednullmodel.p + 1, q)
                             catch e
                                 try
-                                    WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs, init=init(altmodel); throw_on_failure=true)  
+                                    WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs, init=init(altmodel); throw_on_failure=true) 
+                                    copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
+                                    ctable = coeftable(altmodel)
+                                    copyto!(pvalsβ, 1, ctable.cols[4], fittednullmodel.p + 1, q)
+                                    copyto!(stderrβ, 1, ctable.cols[2], fittednullmodel.p + 1, q) 
                                 catch e
                                     @warn "Test failed for $(snpj[1]). The SNP may be too rare. Effect size NaN and p-value -1 will be printed."
                                     success = false
                                 end
                             end
-                            copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
-                            ctable = coeftable(altmodel)
-                            copyto!(pvalsβ, 1, ctable.cols[4], fittednullmodel.p + 1, q)
-                            copyto!(stderrβ, 1, ctable.cols[2], fittednullmodel.p + 1, q)
                             if !disable_wsvar
                                 copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
                                 copyto!(pvalsτ, 1, ctable.cols[4], 
@@ -929,27 +934,37 @@ function trajgwas(
                             copyparams!(fullmod, fittednullmodel)
 
                             fullmod.obswts .= fittednullmodel.obswts
+                            local ctable
                             try
                                 WiSER.fit!(fullmod, solver, init = fullmod,
                                     parallel = parallel, runs = runs; throw_on_failure=true)
+                                γ̂β = fullmod.β[end]
+                                γ̂τ = fullmod.τ[end]
+                                snpeffectbeta = fullmod.β[end-1]
+                                snpeffecttau = fullmod.τ[end-1]
+                                ctable = coeftable(fullmod)
+                                betapval = ctable.cols[4][fullmod.p]
+                                taupval = ctable.cols[4][end]
+                                betastderr = ctable.cols[2][fullmod.p]
+                                taustderr = ctable.cols[2][end]
                             catch e
                                 try
                                     WiSER.fit!(fullmod, solver, init = init(fullmod),
-                                    parallel = parallel, runs = runs; throw_on_failure=true)
+                                        parallel = parallel, runs = runs; throw_on_failure=true)
+                                    γ̂β = fullmod.β[end]
+                                    γ̂τ = fullmod.τ[end]
+                                    snpeffectbeta = fullmod.β[end-1]
+                                    snpeffecttau = fullmod.τ[end-1]
+                                    ctable = coeftable(fullmod)
+                                    betapval = ctable.cols[4][fullmod.p]
+                                    taupval = ctable.cols[4][end]
+                                    betastderr = ctable.cols[2][fullmod.p]
+                                    taustderr = ctable.cols[2][end]
                                 catch e
                                     @warn "Test failed for $(snpj[1]). The SNP may be too rare. Effect size NaN and p-value -1 will be printed."
                                     success = false
                                 end
                             end
-                            γ̂β = fullmod.β[end]
-                            γ̂τ = fullmod.τ[end]
-                            snpeffectbeta = fullmod.β[end-1]
-                            snpeffecttau = fullmod.τ[end-1]
-                            ctable = coeftable(fullmod)
-                            betapval = ctable.cols[4][fullmod.p]
-                            taupval = ctable.cols[4][end]
-                            betastderr = ctable.cols[2][fullmod.p]
-                            taustderr = ctable.cols[2][end]
                         end
                     end
                     if test == :score
@@ -1193,21 +1208,27 @@ function trajgwas(
                             fittednullmodel.reformula, fullwsvarformula,
                             :id, testdf)
                         altmodel.obswts .= fittednullmodel.obswts
+                        local ctable
                         try
                             WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs; throw_on_failure=true)
+                            ctable = coeftable(altmodel)
+                            copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
+                            copyto!(stderrβ, 1, ctable.cols[2], fittednullmodel.p + 1, q)
+                            copyto!(pvalsβ, 1, ctable.cols[4], 
+                                fittednullmodel.p + 1, q)
                         catch e
                             try
-                                WiSER.fit!(altmodel, init=init(altmodel), solver, parallel = parallel, runs = runs; throw_on_failure=true)  
+                                WiSER.fit!(altmodel, init=init(altmodel), solver, parallel = parallel, runs = runs; throw_on_failure=true)
+                                ctable = coeftable(altmodel)
+                                copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
+                                copyto!(stderrβ, 1, ctable.cols[2], fittednullmodel.p + 1, q)
+                                copyto!(pvalsβ, 1, ctable.cols[4], 
+                                    fittednullmodel.p + 1, q) 
                             catch e
                                 @warn "Test failed for $(rec_ids[1][1]). The SNP may be too rare. Effect size NaN and p-value -1 will be printed."
                                 success = false  
                             end
                         end
-                        ctable = coeftable(altmodel)
-                        copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
-                        copyto!(stderrβ, 1, ctable.cols[2], fittednullmodel.p + 1, q)
-                        copyto!(pvalsβ, 1, ctable.cols[4], 
-                            fittednullmodel.p + 1, q)
                         if !disable_wsvar
                             copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
                             copyto!(stderrτ, 1, ctable.cols[1], 
@@ -1565,27 +1586,37 @@ function trajgwas(
                         copyparams!(fullmod, fittednullmodel)
 
                         fullmod.obswts .= fittednullmodel.obswts
+                        local ctable
                         try
                             WiSER.fit!(fullmod, solver, init = fullmod,
                                 parallel = parallel, runs = runs; throw_on_failure=true)
+                            γ̂β = fullmod.β[end]
+                            γ̂τ = fullmod.β[end]
+                            snpeffectbeta = fullmod.β[end-1]
+                            snpeffecttau = fullmod.τ[end-1]
+                            ctable = coeftable(fullmod)
+                            betastderr = ctable.cols[2][fullmod.p]
+                            taustderr = ctable.cols[2][end]
+                            betapval = ctable.cols[4][fullmod.p]
+                            taupval = ctable.cols[4][end]
                         catch e
                             try
                                 WiSER.fit!(fullmod, solver, init = init(fullmod),
-                                parallel = parallel, runs = runs; throw_on_failure=true)
+                                    parallel = parallel, runs = runs; throw_on_failure=true)
+                                γ̂β = fullmod.β[end]
+                                γ̂τ = fullmod.β[end]
+                                snpeffectbeta = fullmod.β[end-1]
+                                snpeffecttau = fullmod.τ[end-1]
+                                ctable = coeftable(fullmod)
+                                betastderr = ctable.cols[2][fullmod.p]
+                                taustderr = ctable.cols[2][end]
+                                betapval = ctable.cols[4][fullmod.p]
+                                taupval = ctable.cols[4][end]
                             catch e
                                 @warn "Test failed for $(rec_ids[1][1]). The SNP may be too rare. Effect size NaN and p-value -1 will be printed."
                                 success = false
                             end
                         end
-                        γ̂β = fullmod.β[end]
-                        γ̂τ = fullmod.β[end]
-                        snpeffectbeta = fullmod.β[end-1]
-                        snpeffecttau = fullmod.τ[end-1]
-                        ctable = coeftable(fullmod)
-                        betastderr = ctable.cols[2][fullmod.p]
-                        taustderr = ctable.cols[2][end]
-                        betapval = ctable.cols[4][fullmod.p]
-                        taupval = ctable.cols[4][end]
                     end
                     println(io, "$(rec_chr[1])\t$(rec_pos[1])\t$(rec_ids[1][1])\t",
                         "$(rec_ref[1])\t$(rec_alt[1][1])\t",
@@ -1906,20 +1937,25 @@ function trajgwas(
                             fittednullmodel.reformula, fullwsvarformula,
                             :id, testdf)
                         altmodel.obswts .= fittednullmodel.obswts
+                        local ctable
                         try
                             WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs; throw_on_failure=true)
+                            ctable = coeftable(altmodel)
+                            copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
+                            copyto!(stderrβ, 1, ctable.cols[2], fittednullmodel.p + 1, q)
+                            copyto!(pvalsβ, 1, ctable.cols[4], fittednullmodel.p + 1, q)
                         catch e
                             try
                                 WiSER.fit!(altmodel, init=init(altmodel), solver, parallel = parallel, runs = runs; throw_on_failure=true)
+                                ctable = coeftable(altmodel)
+                                copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
+                                copyto!(stderrβ, 1, ctable.cols[2], fittednullmodel.p + 1, q)
+                                copyto!(pvalsβ, 1, ctable.cols[4], fittednullmodel.p + 1, q)
                             catch e
                                 @warn "Test failed for $(variant.rsid). The SNP may be too rare. Effect size NaN and p-value -1 will be printed."
                                 success = false
                             end
                         end
-                        ctable = coeftable(altmodel)
-                        copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
-                        copyto!(stderrβ, 1, ctable.cols[2], fittednullmodel.p + 1, q)
-                        copyto!(pvalsβ, 1, ctable.cols[4], fittednullmodel.p + 1, q)
                         if !disable_wsvar
                             copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
                             copyto!(stderrτ, 1, ctable.cols[2], altmodel.p + fittednullmodel.l + 1, q)
@@ -2268,28 +2304,37 @@ function trajgwas(
                         copyparams!(fullmod, fittednullmodel)
 
                         fullmod.obswts .= fittednullmodel.obswts
+                        local ctable
                         try
                             WiSER.fit!(fullmod, solver, init = fullmod,
-                            parallel = parallel, runs = runs; throw_on_failure=true)           
+                            parallel = parallel, runs = runs; throw_on_failure=true)
+                            γ̂β = fullmod.β[end]
+                            γ̂τ = fullmod.β[end]
+                            snpeffectbeta = fullmod.β[end-1]
+                            snpeffecttau = fullmod.τ[end-1]
+                            ctable = coeftable(fullmod)
+                            betastderr = ctable.cols[2][fullmod.p]
+                            taustderr = ctable.cols[2][end]
+                            betapval = ctable.cols[4][fullmod.p]
+                            taupval = ctable.cols[4][end]         
                         catch e
                             try
                                 WiSER.fit!(fullmod, solver, init = init(fullmod),
-                                parallel = parallel, runs = runs; throw_on_failure=true)  
+                                parallel = parallel, runs = runs; throw_on_failure=true)
+                                γ̂β = fullmod.β[end]
+                                γ̂τ = fullmod.β[end]
+                                snpeffectbeta = fullmod.β[end-1]
+                                snpeffecttau = fullmod.τ[end-1]
+                                ctable = coeftable(fullmod)
+                                betastderr = ctable.cols[2][fullmod.p]
+                                taustderr = ctable.cols[2][end]
+                                betapval = ctable.cols[4][fullmod.p]
+                                taupval = ctable.cols[4][end]  
                             catch e
                                 @warn "Test failed for $(variant.rsid). The SNP may be too rare. Effect size NaN and p-value -1 will be printed."
                                 success = false              
                             end        
                         end
-
-                        γ̂β = fullmod.β[end]
-                        γ̂τ = fullmod.β[end]
-                        snpeffectbeta = fullmod.β[end-1]
-                        snpeffecttau = fullmod.τ[end-1]
-                        ctable = coeftable(fullmod)
-                        betastderr = ctable.cols[2][fullmod.p]
-                        taustderr = ctable.cols[2][end]
-                        betapval = ctable.cols[4][fullmod.p]
-                        taupval = ctable.cols[4][end]
                     end
                     println(io, "$(variant.chrom)\t$(variant.pos)\t$(variant.rsid)\t",
                         "$(variant.varid)\t$(variant.alleles[1])\t$(variant.alleles[2])\t$(success ? snpeffectbeta : NaN)\t$(success ? snpeffecttau : NaN)\t$(success ? γ̂β : NaN)\t$(success ? γ̂τ : NaN)\t",
