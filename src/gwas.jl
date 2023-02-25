@@ -163,20 +163,24 @@ function trajgwas(
     runs::Int = 2,
     verbose::Bool = false,
     init = WiSER.init_ls!,
+    test = :score,
     kwargs...
     )
     config_solver(solver, solver_config)
     # fit and output null model
     nm = WSVarLmmModel(nullmeanformula, reformula, nullwsvarformula,
         idvar, nulldf)
-    WiSER.fit!(nm, solver, parallel = parallel, runs = runs, init=init(nm); throw_on_failure=true)
-    verbose && show(nm)
-    SnpArrays.makestream(nullfile, "w") do io
-        show(io, nm)
+    if test != :wald
+        WiSER.fit!(nm, solver, parallel = parallel, runs = runs, init=init(nm); throw_on_failure=true)
+        verbose && show(nm)
+        SnpArrays.makestream(nullfile, "w") do io
+            show(io, nm)
+        end
     end
+
     geneticfile === nothing && (return nm)
     trajgwas(nm, geneticfile; solver = solver, runs = runs, 
-        verbose = verbose, kwargs...)
+        verbose = verbose, test = test, kwargs...)
 end
 
 function trajgwas(
