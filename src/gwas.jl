@@ -592,24 +592,31 @@ function trajgwas(
                                 ctable = coeftable(altmodel)
                                 copyto!(pvalsβ, 1, ctable.cols[4], fittednullmodel.p + 1, q)
                                 copyto!(stderrβ, 1, ctable.cols[2], fittednullmodel.p + 1, q)
+                                if !disable_wsvar
+                                    copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
+                                    copyto!(pvalsτ, 1, ctable.cols[4], 
+                                        altmodel.p + fittednullmodel.l + 1, q)
+                                    copyto!(stderrτ, 1, ctable.cols[2], 
+                                        altmodel.p + fittednullmodel.l + 1, q)
+                                end
                             catch e
                                 try
                                     WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs, init=init(altmodel); throw_on_failure=true) 
                                     copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
                                     ctable = coeftable(altmodel)
                                     copyto!(pvalsβ, 1, ctable.cols[4], fittednullmodel.p + 1, q)
-                                    copyto!(stderrβ, 1, ctable.cols[2], fittednullmodel.p + 1, q) 
+                                    copyto!(stderrβ, 1, ctable.cols[2], fittednullmodel.p + 1, q)
+                                    if !disable_wsvar
+                                        copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
+                                        copyto!(pvalsτ, 1, ctable.cols[4], 
+                                            altmodel.p + fittednullmodel.l + 1, q)
+                                        copyto!(stderrτ, 1, ctable.cols[2], 
+                                            altmodel.p + fittednullmodel.l + 1, q)
+                                    end
                                 catch e
                                     @warn "Test failed for $(snpj[1]). The SNP may be too rare. Effect size NaN and p-value -1 will be printed."
                                     success = false
                                 end
-                            end
-                            if !disable_wsvar
-                                copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
-                                copyto!(pvalsτ, 1, ctable.cols[4], 
-                                    altmodel.p + fittednullmodel.l + 1, q)
-                                copyto!(stderrτ, 1, ctable.cols[2], 
-                                    altmodel.p + fittednullmodel.l + 1, q)
                             end
                         end
                         if snponly
@@ -1220,6 +1227,13 @@ function trajgwas(
                             copyto!(stderrβ, 1, ctable.cols[2], fittednullmodel.p + 1, q)
                             copyto!(pvalsβ, 1, ctable.cols[4], 
                                 fittednullmodel.p + 1, q)
+                            if !disable_wsvar
+                                copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
+                                copyto!(stderrτ, 1, ctable.cols[1], 
+                                    altmodel.p + fittednullmodel.l + 1, q)                            
+                                copyto!(pvalsτ, 1, ctable.cols[4], 
+                                    altmodel.p + fittednullmodel.l + 1, q)
+                            end
                         catch e
                             try
                                 WiSER.fit!(altmodel, init=init(altmodel), solver, parallel = parallel, runs = runs; throw_on_failure=true)
@@ -1228,17 +1242,17 @@ function trajgwas(
                                 copyto!(stderrβ, 1, ctable.cols[2], fittednullmodel.p + 1, q)
                                 copyto!(pvalsβ, 1, ctable.cols[4], 
                                     fittednullmodel.p + 1, q) 
+                                if !disable_wsvar
+                                    copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
+                                    copyto!(stderrτ, 1, ctable.cols[1], 
+                                        altmodel.p + fittednullmodel.l + 1, q)                            
+                                    copyto!(pvalsτ, 1, ctable.cols[4], 
+                                        altmodel.p + fittednullmodel.l + 1, q)
+                                end
                             catch e
                                 @warn "Test failed for $(rec_ids[1][1]). The SNP may be too rare. Effect size NaN and p-value -1 will be printed."
                                 success = false  
                             end
-                        end
-                        if !disable_wsvar
-                            copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
-                            copyto!(stderrτ, 1, ctable.cols[1], 
-                                altmodel.p + fittednullmodel.l + 1, q)                            
-                            copyto!(pvalsτ, 1, ctable.cols[4], 
-                                altmodel.p + fittednullmodel.l + 1, q)
                         end
                     end
                     if snponly
@@ -1948,6 +1962,11 @@ function trajgwas(
                             copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
                             copyto!(stderrβ, 1, ctable.cols[2], fittednullmodel.p + 1, q)
                             copyto!(pvalsβ, 1, ctable.cols[4], fittednullmodel.p + 1, q)
+                            if !disable_wsvar
+                                copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
+                                copyto!(stderrτ, 1, ctable.cols[2], altmodel.p + fittednullmodel.l + 1, q)
+                                copyto!(pvalsτ, 1, ctable.cols[4], altmodel.p + fittednullmodel.l + 1, q)
+                            end
                         catch e
                             try
                                 WiSER.fit!(altmodel, init=init(altmodel), solver, parallel = parallel, runs = runs; throw_on_failure=true)
@@ -1955,15 +1974,15 @@ function trajgwas(
                                 copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
                                 copyto!(stderrβ, 1, ctable.cols[2], fittednullmodel.p + 1, q)
                                 copyto!(pvalsβ, 1, ctable.cols[4], fittednullmodel.p + 1, q)
+                                if !disable_wsvar
+                                    copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
+                                    copyto!(stderrτ, 1, ctable.cols[2], altmodel.p + fittednullmodel.l + 1, q)
+                                    copyto!(pvalsτ, 1, ctable.cols[4], altmodel.p + fittednullmodel.l + 1, q)
+                                end
                             catch e
                                 @warn "Test failed for $(variant.rsid). The SNP may be too rare. Effect size NaN and p-value -1 will be printed."
                                 success = false
                             end
-                        end
-                        if !disable_wsvar
-                            copyto!(γ̂τ, 1, altmodel.τ, fittednullmodel.l + 1, q)
-                            copyto!(stderrτ, 1, ctable.cols[2], altmodel.p + fittednullmodel.l + 1, q)
-                            copyto!(pvalsτ, 1, ctable.cols[4], altmodel.p + fittednullmodel.l + 1, q)
                         end
                     end
                     if snponly
