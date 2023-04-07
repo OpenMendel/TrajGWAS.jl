@@ -3,7 +3,6 @@ uuid = "9514c204-b736-47c9-8157-11c3e9e5ab30"
 authors = ["Seyoon Ko <kos@ucla.edu>, Chris German <germc3@ucla.edu>, and contributors"]
 version = "0.4.3"
 
-
 [deps]
 BGEN = "6db4b851-9beb-4b83-9d64-eb1cfb37721d"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
@@ -35,7 +34,7 @@ Optim = "1"
 Reexport = "1"
 SnpArrays = "0.3.8"
 StatsBase = "0.33"
-StatsModels = "0.6"
+StatsModels = "0.6, 0.7"
 Tables = "1"
 VCFTools = "0.2.7"
 VariantCallFormat = "0.5"
