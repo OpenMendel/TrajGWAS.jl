@@ -171,7 +171,7 @@ function trajgwas(
     nm = WSVarLmmModel(nullmeanformula, reformula, nullwsvarformula,
         idvar, nulldf)
     if test != :wald
-        WiSER.fit!(nm, solver, parallel = parallel, runs = runs, init=init(nm); throw_on_failure=true)
+        WiSER.fit!(nm, solver, parallel = parallel, runs = runs, init=init(nm); solver_config=solver_config, throw_on_failure=true)
         verbose && show(nm)
         SnpArrays.makestream(nullfile, "w") do io
             show(io, nm)
@@ -179,7 +179,7 @@ function trajgwas(
     end
 
     geneticfile === nothing && (return nm)
-    trajgwas(nm, geneticfile; solver = solver, runs = runs, 
+    trajgwas(nm, geneticfile; solver = solver, solver_config=solver_config, runs = runs, 
         verbose = verbose, test = test, kwargs...)
 end
 
@@ -587,7 +587,8 @@ function trajgwas(
                             altmodel.obswts .= fittednullmodel.obswts
                             local ctable
                             try
-                                WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs; throw_on_failure=true)
+                                WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs; 
+                                    throw_on_failure=true, solver_config=solver_config)
                                 copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
                                 ctable = coeftable(altmodel)
                                 copyto!(pvalsβ, 1, ctable.cols[4], fittednullmodel.p + 1, q)
@@ -601,7 +602,8 @@ function trajgwas(
                                 end
                             catch e
                                 try
-                                    WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs, init=init(altmodel); throw_on_failure=true) 
+                                    WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs, init=init(altmodel); 
+                                        solver_config=solver_config, throw_on_failure=true) 
                                     copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
                                     ctable = coeftable(altmodel)
                                     copyto!(pvalsβ, 1, ctable.cols[4], fittednullmodel.p + 1, q)
@@ -921,11 +923,13 @@ function trajgwas(
                             @assert nm.ids == fittednullmodel.ids "IDs not matching for GxE."
                             try
                                 WiSER.fit!(nm, init = nm, solver, 
-                                    parallel = parallel, runs = runs; throw_on_failure=true)
+                                    parallel = parallel, runs = runs; 
+                                    solver_config=solver_config, throw_on_failure=true)
                             catch e
                                 try
                                     WiSER.fit!(nm, init = init(nm), solver, 
-                                        parallel = parallel, runs = runs; throw_on_failure=true)
+                                        parallel = parallel, runs = runs; 
+                                        solver_config=solver_config, throw_on_failure=true)
                                 catch e
                                     @warn "Test failed for $(snpj[1]). The SNP may be too rare. Effect size NaN and p-value -1 will be printed."
                                     success = false
@@ -948,7 +952,8 @@ function trajgwas(
                             local ctable
                             try
                                 WiSER.fit!(fullmod, solver, init = fullmod,
-                                    parallel = parallel, runs = runs; throw_on_failure=true)
+                                    parallel = parallel, runs = runs; 
+                                    solver_config=solver_config, throw_on_failure=true)
                                 γ̂β = fullmod.β[end]
                                 γ̂τ = fullmod.τ[end]
                                 snpeffectbeta = fullmod.β[end-1]
@@ -961,7 +966,8 @@ function trajgwas(
                             catch e
                                 try
                                     WiSER.fit!(fullmod, solver, init = init(fullmod),
-                                        parallel = parallel, runs = runs; throw_on_failure=true)
+                                        parallel = parallel, runs = runs; 
+                                        solver_config=solver_config, throw_on_failure=true)
                                     γ̂β = fullmod.β[end]
                                     γ̂τ = fullmod.τ[end]
                                     snpeffectbeta = fullmod.β[end-1]
@@ -1221,7 +1227,8 @@ function trajgwas(
                         altmodel.obswts .= fittednullmodel.obswts
                         local ctable
                         try
-                            WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs; throw_on_failure=true)
+                            WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs; 
+                            solver_config=solver_config, throw_on_failure=true)
                             ctable = coeftable(altmodel)
                             copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
                             copyto!(stderrβ, 1, ctable.cols[2], fittednullmodel.p + 1, q)
@@ -1236,7 +1243,8 @@ function trajgwas(
                             end
                         catch e
                             try
-                                WiSER.fit!(altmodel, init=init(altmodel), solver, parallel = parallel, runs = runs; throw_on_failure=true)
+                                WiSER.fit!(altmodel, init=init(altmodel), solver, parallel = parallel, runs = runs; 
+                                solver_config=solver_config, throw_on_failure=true)
                                 ctable = coeftable(altmodel)
                                 copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
                                 copyto!(stderrβ, 1, ctable.cols[2], fittednullmodel.p + 1, q)
@@ -1568,11 +1576,13 @@ function trajgwas(
                         @assert nm.ids == fittednullmodel.ids "IDs not matching for GxE."
                         try
                             WiSER.fit!(nm, init = nm, solver, 
-                                parallel = parallel, runs = runs; throw_on_failure=true)     
+                                parallel = parallel, runs = runs; 
+                                solver_config=solver_config, throw_on_failure=true)     
                         catch e
                             try
                                 WiSER.fit!(nm, init = init(nm), solver, 
-                                    parallel = parallel, runs = runs; throw_on_failure=true) 
+                                    parallel = parallel, runs = runs; 
+                                    solver_config=solver_config, throw_on_failure=true) 
                             catch e
                                 @warn "Test failed for $(rec_ids[1][1]). The SNP may be too rare. Effect size NaN and p-value -1 will be printed."
                                 success = false
@@ -1607,7 +1617,8 @@ function trajgwas(
                         local ctable
                         try
                             WiSER.fit!(fullmod, solver, init = fullmod,
-                                parallel = parallel, runs = runs; throw_on_failure=true)
+                                parallel = parallel, runs = runs; 
+                                solver_config=solver_config, throw_on_failure=true)
                             γ̂β = fullmod.β[end]
                             γ̂τ = fullmod.β[end]
                             snpeffectbeta = fullmod.β[end-1]
@@ -1620,7 +1631,8 @@ function trajgwas(
                         catch e
                             try
                                 WiSER.fit!(fullmod, solver, init = init(fullmod),
-                                    parallel = parallel, runs = runs; throw_on_failure=true)
+                                    parallel = parallel, runs = runs; 
+                                    solver_config=solver_config, throw_on_failure=true)
                                 γ̂β = fullmod.β[end]
                                 γ̂τ = fullmod.β[end]
                                 snpeffectbeta = fullmod.β[end-1]
@@ -1957,7 +1969,8 @@ function trajgwas(
                         altmodel.obswts .= fittednullmodel.obswts
                         local ctable
                         try
-                            WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs; throw_on_failure=true)
+                            WiSER.fit!(altmodel, solver, parallel = parallel, runs = runs; 
+                                solver_config=solver_config, throw_on_failure=true)
                             ctable = coeftable(altmodel)
                             copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
                             copyto!(stderrβ, 1, ctable.cols[2], fittednullmodel.p + 1, q)
@@ -1969,7 +1982,8 @@ function trajgwas(
                             end
                         catch e
                             try
-                                WiSER.fit!(altmodel, init=init(altmodel), solver, parallel = parallel, runs = runs; throw_on_failure=true)
+                                WiSER.fit!(altmodel, init=init(altmodel), solver, parallel = parallel, runs = runs; 
+                                    solver_config=solver_config, throw_on_failure=true)
                                 ctable = coeftable(altmodel)
                                 copyto!(γ̂β, 1, altmodel.β, fittednullmodel.p + 1, q)
                                 copyto!(stderrβ, 1, ctable.cols[2], fittednullmodel.p + 1, q)
@@ -2293,11 +2307,13 @@ function trajgwas(
                         @assert nm.ids == fittednullmodel.ids "IDs not matching for GxE."
                         try
                             WiSER.fit!(nm, init = nm, 
-                                solver, parallel = parallel, runs = runs; throw_on_failure=true)
+                                solver, parallel = parallel, runs = runs; 
+                                solver_config=solver_config, throw_on_failure=true)
                         catch e
                             try
                                 WiSER.fit!(nm, init = init(nm), 
-                                solver, parallel = parallel, runs = runs; throw_on_failure=true)
+                                solver, parallel = parallel, runs = runs; 
+                                solver_config=solver_config, throw_on_failure=true)
                             catch e
                                 @warn "Test failed for $(variant.rsid). The SNP may be too rare. Effect size NaN and p-value -1 will be printed."
                                 success = false
@@ -2330,7 +2346,8 @@ function trajgwas(
                         local ctable
                         try
                             WiSER.fit!(fullmod, solver, init = fullmod,
-                            parallel = parallel, runs = runs; throw_on_failure=true)
+                                parallel = parallel, runs = runs; 
+                                solver_config=solver_config, throw_on_failure=true)
                             γ̂β = fullmod.β[end]
                             γ̂τ = fullmod.β[end]
                             snpeffectbeta = fullmod.β[end-1]
@@ -2343,7 +2360,8 @@ function trajgwas(
                         catch e
                             try
                                 WiSER.fit!(fullmod, solver, init = init(fullmod),
-                                parallel = parallel, runs = runs; throw_on_failure=true)
+                                    parallel = parallel, runs = runs; 
+                                    solver_config=solver_config, throw_on_failure=true)
                                 γ̂β = fullmod.β[end]
                                 γ̂τ = fullmod.β[end]
                                 snpeffectbeta = fullmod.β[end-1]
