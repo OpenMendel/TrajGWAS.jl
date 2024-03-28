@@ -67,8 +67,6 @@ end
 - `testformula::FormulaTerm`: formula for test unit. Default is `@formula(trait ~ 0 + snp)`.
 - `test::Symbol`: `:score` (default) or `:wald`.
 - `disable_wsvar::Bool`: Disables test for within-sample variability for the Wald test. Default false. 
-- `link::GLM.Link`: `LogitLink()` (default), `ProbitLink()`, `CauchitLink()`,
-    or `CloglogLink()`.
 - `snpmodel`: `ADDITIVE_MODEL` (default), `DOMINANT_MODEL`, or `RECESSIVE_MODEL`.
 - `snpinds::Union{Nothing,AbstractVector{<:Integer}}`: SNP indices for bed/vcf file.
 - `geneticrowinds::Union{Nothing,AbstractVector{<:Integer}}`: sample indices for bed/vcf file.
